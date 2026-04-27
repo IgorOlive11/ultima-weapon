@@ -1,0 +1,99 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  background: #0a0a0a;
+  position: relative;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  background: #0d0d0d;
+  border-bottom: 2px solid #39FF14;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+}
+
+.logo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  color: #39FF14;
+  letter-spacing: 3px;
+  line-height: 1;
+}
+
+.logoSub {
+  font-size: 9px;
+  color: #444;
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: 2px;
+  margin-top: 1px;
+}
+
+.weekBadge {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 15px;
+  color: #000;
+  padding: 4px 12px;
+  letter-spacing: 1px;
+  font-weight: 700;
+  transition: background 0.3s;
+}
+
+.main {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nav {
+  display: flex;
+  background: #0d0d0d;
+  border-top: 1px solid #2a2a2a;
+  flex-shrink: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.navBtn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 4px 8px;
+  background: none;
+  border: none;
+  border-top: 2px solid transparent;
+  color: #444;
+  cursor: pointer;
+  transition: all 0.15s;
+  gap: 2px;
+}
+
+.navBtnActive {
+  color: #39FF14;
+}
+
+.navIcon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.navLabel {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+}

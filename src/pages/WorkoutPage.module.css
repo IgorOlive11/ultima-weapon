@@ -1,0 +1,135 @@
+.container {
+  padding: 12px;
+  padding-bottom: 24px;
+}
+
+.weekRow {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.weekChip {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  border: 1px solid #2a2a2a;
+  background: #111;
+  color: #666;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 14px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.weekChipActive {
+  font-weight: 700;
+}
+
+.dayRow {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.dayChip {
+  flex-shrink: 0;
+  padding: 7px 13px;
+  border: 1px solid #2a2a2a;
+  background: #111;
+  color: #666;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-transform: uppercase;
+}
+
+.dayChipActive {
+  background: #39FF14;
+  color: #000;
+  border-color: #39FF14;
+}
+
+.dayChipRest {
+  border-style: dashed;
+  color: #444;
+}
+
+.phaseBanner {
+  border-left: 3px solid #39FF14;
+  background: rgba(0,0,0,0.4);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.phaseLeft {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1;
+}
+
+.phaseLabel {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 14px;
+  letter-spacing: 2px;
+  font-weight: 700;
+}
+
+.phaseProgress {
+  font-size: 11px;
+  color: #555;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.progressBar {
+  width: 80px;
+  height: 3px;
+  background: #2a2a2a;
+  flex-shrink: 0;
+}
+
+.progressFill {
+  height: 100%;
+  transition: width 0.4s ease;
+}
+
+.restDay {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.restTitle {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 56px;
+  color: #39FF14;
+  letter-spacing: 6px;
+  line-height: 1;
+  text-shadow: 0 0 30px rgba(57,255,20,0.3);
+}
+
+.restSub {
+  color: #555;
+  font-size: 13px;
+  letter-spacing: 2px;
+  margin-top: 10px;
+  font-family: 'Share Tech Mono', monospace;
+  text-transform: uppercase;
+}
+
+.exerciseList {
+  display: flex;
+  flex-direction: column;
+}

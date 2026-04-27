@@ -1,0 +1,294 @@
+.card {
+  background: #111;
+  border: 1px solid #2a2a2a;
+  border-left: 3px solid var(--type-color, #39FF14);
+  margin-bottom: 8px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  position: relative;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #e0e0e0;
+  letter-spacing: 0.3px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta {
+  font-size: 11px;
+  color: #666;
+  font-family: 'Share Tech Mono', monospace;
+  margin-top: 2px;
+}
+
+.gerLabel {
+  color: var(--type-color, #39FF14);
+}
+
+.gerBadge {
+  background: rgba(57,255,20,0.1);
+  color: #39FF14;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 7px;
+  font-family: 'Share Tech Mono', monospace;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.loggedDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #39FF14;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px #39FF14;
+}
+
+.chevron {
+  color: #555;
+  font-size: 18px;
+  transition: transform 0.25s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* Body */
+.body {
+  padding: 12px;
+  border-top: 1px solid #222;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.typeTag {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--type-color, #39FF14);
+  border-left-width: 3px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+
+.typeLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--type-color, #39FF14);
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: 1px;
+}
+
+.typeDesc {
+  font-size: 11px;
+  color: #888;
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+.gerInfo {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.gerInfoLabel {
+  font-size: 11px;
+  font-family: 'Share Tech Mono', monospace;
+  color: #39FF14;
+  font-weight: 700;
+}
+
+.gerInfoTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ccc;
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 1px;
+}
+
+.gerInfoSub {
+  font-size: 11px;
+  color: #555;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.prevLog {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(57,255,20,0.06);
+  border: 1px solid rgba(57,255,20,0.2);
+  padding: 7px 10px;
+  margin-bottom: 12px;
+}
+
+.prevLogLabel {
+  font-size: 10px;
+  color: #555;
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: 1px;
+}
+
+.prevLogVal {
+  font-size: 14px;
+  font-weight: 700;
+  color: #39FF14;
+  font-family: 'Share Tech Mono', monospace;
+  margin-left: auto;
+}
+
+.inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inputLabel {
+  font-size: 10px;
+  color: #555;
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: 1px;
+}
+
+.inputRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.input {
+  flex: 1;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  color: #e0e0e0;
+  padding: 10px;
+  font-size: 18px;
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 1px;
+  text-align: center;
+  outline: none;
+  -webkit-appearance: none;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+
+.input:focus {
+  border-color: #39FF14;
+}
+
+.unit {
+  font-size: 11px;
+  color: #555;
+  font-family: 'Share Tech Mono', monospace;
+  flex-shrink: 0;
+  width: 26px;
+}
+
+.saveBtn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 13px;
+  background: #39FF14;
+  color: #000;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 18px;
+  letter-spacing: 2px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.saveBtn:active {
+  transform: scale(0.98);
+  opacity: 0.85;
+}
+
+.saveBtnSaved {
+  background: #1a7a08;
+  color: #39FF14;
+}
+
+/* History */
+.history {
+  margin-top: 12px;
+  border-top: 1px solid #222;
+  padding-top: 10px;
+}
+
+.historyTitle {
+  font-size: 10px;
+  color: #444;
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+
+.historyRow {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 4px 0;
+  border-bottom: 1px solid #1a1a1a;
+  font-size: 12px;
+}
+
+.historyDate {
+  color: #444;
+  font-family: 'Share Tech Mono', monospace;
+  flex-shrink: 0;
+}
+
+.historyVal {
+  color: #39FF14;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.historyObs {
+  color: #555;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
