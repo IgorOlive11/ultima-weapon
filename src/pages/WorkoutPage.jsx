@@ -494,8 +494,6 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked }) {
   const [lastBlockReps, setLastBlockReps]     = useState(0)
   const typeInfo  = SET_TYPES.MUSCLE_ROUND
 
-  const isLastBlock = completedBlocks === TOTAL_BLOCKS - 1
-
   const handleBlockDone = () => {
     if (phase !== 'ready') return
     const next = completedBlocks + 1
@@ -504,6 +502,7 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked }) {
       setPhase('done')
       return
     }
+    setLastBlockReps(0)
     setPhase('rest10')
     let t = 10
     setBlockTimer(t)
@@ -591,10 +590,10 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked }) {
           </div>
         )}
 
-        {/* last block reps input */}
-        {isLastBlock && phase === 'ready' && failedBlock === null && (
+        {/* current block reps input */}
+        {phase === 'ready' && failedBlock === null && (
           <div className="mb-3">
-            <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">REPS NO BLOCO 12</label>
+            <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">REPS NO BLOCO {completedBlocks + 1}</label>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setLastBlockReps(r => Math.max(0, r - 1))}
@@ -616,7 +615,7 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked }) {
           <div className="flex gap-2 mb-0">
             <button
               onClick={handleBlockDone}
-              disabled={phase !== 'ready' || (isLastBlock && lastBlockReps === 0)}
+              disabled={phase !== 'ready'}
               className="flex-1 py-3 font-display text-sm tracking-[0.15em] text-bg disabled:opacity-40 transition-opacity"
               style={{ background: typeInfo.color }}
             >
