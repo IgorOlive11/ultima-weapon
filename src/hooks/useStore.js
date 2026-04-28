@@ -28,11 +28,11 @@ export const useStore = create(
       sidebarOpen: false,
       headerVisible: true,
 
-      setWeek:         (week) => set({ currentWeek: week, currentDay: 0 }),
-      setDay:          (day)  => set({ currentDay: day }),
-      setTab:          (tab)  => set({ activeTab: tab, sidebarOpen: false }),
-      setSidebar:      (v)    => set({ sidebarOpen: v }),
-      setHeaderVisible:(v)    => set({ headerVisible: v }),
+      setWeek:          (week) => set({ currentWeek: week, currentDay: 0 }),
+      setDay:           (day)  => set({ currentDay: day }),
+      setTab:           (tab)  => set({ activeTab: tab, sidebarOpen: false }),
+      setSidebar:       (v)    => set({ sidebarOpen: v }),
+      setHeaderVisible: (v)    => set({ headerVisible: v }),
 
       logs: {},
 
@@ -94,10 +94,61 @@ export const useStore = create(
         const s = seconds ?? get().restTimer.preset
         set(state => ({ restTimer: { ...state.restTimer, running: false, seconds: s, preset: s } }))
       },
+
+      // --- user profile ---
+      userProfile: {
+        weight: 80,
+        height: 183,
+        age: 21,
+        sex: 'M',
+        workoutTime: '16:30',
+        sleepTime: '23:00',
+        caloricGoal: 'bulk',
+        activityLevel: 1.55,
+      },
+      setUserProfile: (updates) => set(state => ({
+        userProfile: { ...state.userProfile, ...updates }
+      })),
+
+      // --- food log ---
+      foodLog: {},
+      microLog: {},
+
+      addFoodEntry: (dateStr, entry) => set(state => ({
+        foodLog: {
+          ...state.foodLog,
+          [dateStr]: [
+            ...(state.foodLog[dateStr] || []),
+            { ...entry, id: Date.now(), addedAt: new Date().toISOString() },
+          ],
+        },
+      })),
+
+      removeFoodEntry: (dateStr, id) => set(state => ({
+        foodLog: {
+          ...state.foodLog,
+          [dateStr]: (state.foodLog[dateStr] || []).filter(e => e.id !== id),
+        },
+      })),
+
+      toggleMicro: (dateStr, microId) => set(state => ({
+        microLog: {
+          ...state.microLog,
+          [dateStr]: {
+            ...(state.microLog[dateStr] || {}),
+            [microId]: !(state.microLog[dateStr]?.[microId]),
+          },
+        },
+      })),
     }),
     {
       name: 'uw-store-v2',
-      partialize: (state) => ({ logs: state.logs }),
+      partialize: (state) => ({
+        logs:        state.logs,
+        userProfile: state.userProfile,
+        foodLog:     state.foodLog,
+        microLog:    state.microLog,
+      }),
     }
   )
 )

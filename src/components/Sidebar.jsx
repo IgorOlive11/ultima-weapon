@@ -1,5 +1,5 @@
 import React from 'react'
-import { LuSwords, LuTimer, LuTrendingUp, LuSlidersHorizontal, LuX, LuCalendar, LuFlame } from 'react-icons/lu'
+import { LuSwords, LuTimer, LuTrendingUp, LuSlidersHorizontal, LuX, LuCalendar, LuFlame, LuSalad } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 import { PROTOCOL } from '../data/protocol'
 
@@ -7,6 +7,7 @@ const PHASE_COLORS = { REVOLUME:'#39FF14', BASE:'#ffaa00', PEAK:'#ff2d2d', DEVOL
 const NAV = [
   { id:'workout',  label:'TREINO',        Icon:LuSwords },
   { id:'timer',    label:'TIMER',         Icon:LuTimer },
+  { id:'diet',     label:'DIETA',         Icon:LuSalad },
   { id:'history',  label:'HISTÓRICO',     Icon:LuTrendingUp },
   { id:'settings', label:'CONFIGURAÇÕES', Icon:LuSlidersHorizontal },
 ]

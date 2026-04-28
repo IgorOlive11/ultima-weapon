@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import { useRef } from 'react'
 import { useStore } from './hooks/useStore'
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'
@@ -6,6 +6,7 @@ import WorkoutPage from './pages/WorkoutPage'
 import TimerPage from './pages/TimerPage'
 import HistoryPage from './pages/HistoryPage'
 import SettingsPage from './pages/SettingsPage'
+import DietPage from './pages/DietPage'
 
 export default function App() {
   const activeTab = useStore((s) => s.activeTab)
@@ -24,6 +25,7 @@ export default function App() {
       >
         {activeTab === 'workout'  && <WorkoutPage />}
         {activeTab === 'timer'    && <TimerPage />}
+        {activeTab === 'diet'     && <DietPage />}
         {activeTab === 'history'  && <HistoryPage />}
         {activeTab === 'settings' && <SettingsPage />}
       </main>

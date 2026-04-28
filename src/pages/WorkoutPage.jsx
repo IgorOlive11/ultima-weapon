@@ -9,7 +9,6 @@ const PHASE_COLORS = {
   DEVOLUME: '#00aaff', DELOAD: '#888',
 }
 
-// Assign muscle group index per exercise for feeder set count logic
 function tagExercises(exercises) {
   const groupMap = {}
   return exercises.map((ex) => {
@@ -21,7 +20,6 @@ function tagExercises(exercises) {
   })
 }
 
-// Group tagged exercises by muscle group preserving order
 function groupByMuscle(taggedExercises) {
   const groups = []
   const seen = new Set()
@@ -53,10 +51,12 @@ export default function WorkoutPage() {
   )
   const groups = useMemo(() => groupByMuscle(tagged), [tagged])
 
-  const loggedCount = tagged.filter((_, i) => !!getLog(currentWeek, currentDay, i)?.kg).length
+  const loggedCount = tagged.filter((_, i) => {
+    const log = getLog(currentWeek, currentDay, i)
+    return log?.sets?.some(s => s.kg) || !!log?.kg
+  }).length
   const total = tagged.length
 
-  // find the original index in the day.exercises array for each tagged exercise
   const exIndexMap = useMemo(() => {
     const map = {}
     tagged.forEach((ex, i) => { map[`${ex.muscleGroup}-${ex.muscleGroupIdx}`] = i })
@@ -139,7 +139,6 @@ export default function WorkoutPage() {
       {/* Exercise groups */}
       {!day?.rest && groups.map((group) => (
         <div key={group.label} className="mb-2">
-          {/* Muscle group label */}
           <div className="section-label mb-2" style={{ color: '#555' }}>
             {group.label}
           </div>
@@ -171,7 +170,6 @@ export default function WorkoutPage() {
                 dayIdx={currentDay}
                 exIdx={exIdx}
                 savedLog={log}
-                muscleGroupIdx={ex.muscleGroupIdx}
                 onSave={(entry) => saveLog(currentWeek, currentDay, exIdx, entry)}
               />
             )
