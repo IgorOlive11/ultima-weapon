@@ -340,7 +340,7 @@ export const useStore = create(
         ;(day.exercises || []).forEach((ex, exIdx) => {
           const data = exerciseMap[ex.id]
           if (!data) return
-          saveLog(weekIdx, dayIdx, exIdx, { name: data.name, sets: data.sets, kg: data.kg })
+          saveLog(weekIdx, dayIdx, exIdx, { name: data.name, sets: data.sets, kg: data.kg, warmups: data.warmups, feeders: data.feeders })
           saveExerciseHistory(data.name, {
             date: new Date().toISOString(),
             kg: data.kg,

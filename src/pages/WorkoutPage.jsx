@@ -389,6 +389,17 @@ function RestPauseCard({ step, workingWeight, onDone, isLocked }) {
           DC STYLE REST PAUSE · {fmtKg(workingWeight)}
         </div>
 
+        {/* GER face */}
+        <div className="flex items-center gap-3 bg-s2 border border-border1 px-4 py-3 mb-4">
+          <DoomFace face={GER_CONFIG[typeInfo.ger].face} size={40}/>
+          <div>
+            <div className="font-display text-sm tracking-wider" style={{ color: typeInfo.color }}>
+              {GER_CONFIG[typeInfo.ger].label}
+            </div>
+            <div className="font-mono text-[11px] text-muted">{GER_CONFIG[typeInfo.ger].title}</div>
+          </div>
+        </div>
+
         {/* instructions */}
         <div className="bg-s2 border border-border1 px-3 py-3 mb-4 font-mono text-[10px] text-muted leading-relaxed">
           Carga para ~8 reps. Vai até a falha → <span className="text-orange-400">Pausa 20s</span> → vai até a falha de novo.
@@ -480,12 +491,19 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked }) {
   const [failedBlock, setFailedBlock]         = useState(null)
   const [blockTimer, setBlockTimer]           = useState(null)
   const [phase, setPhase]                     = useState('ready') // ready | rest10 | done
+  const [lastBlockReps, setLastBlockReps]     = useState(0)
   const typeInfo  = SET_TYPES.MUSCLE_ROUND
+
+  const isLastBlock = completedBlocks === TOTAL_BLOCKS - 1
 
   const handleBlockDone = () => {
     if (phase !== 'ready') return
     const next = completedBlocks + 1
     setCompletedBlocks(next)
+    if (next >= TOTAL_BLOCKS) {
+      setPhase('done')
+      return
+    }
     setPhase('rest10')
     let t = 10
     setBlockTimer(t)
@@ -506,7 +524,7 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked }) {
   }
 
   const handleFinish = () => {
-    onDone({ kg: workingWeight, blocks: completedBlocks, failedBlock })
+    onDone({ kg: workingWeight, blocks: completedBlocks, failedBlock, lastBlockReps: lastBlockReps || null })
   }
 
   return (
@@ -517,6 +535,17 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked }) {
         <div className="font-display text-xl tracking-wider text-ink mb-0.5">{step.exerciseName}</div>
         <div className="font-display text-xs tracking-[0.2em] mb-4" style={{ color: typeInfo.color }}>
           MUSCLE ROUND · {fmtKg(workingWeight)}
+        </div>
+
+        {/* GER face */}
+        <div className="flex items-center gap-3 bg-s2 border border-border1 px-4 py-3 mb-4">
+          <DoomFace face={GER_CONFIG[typeInfo.ger].face} size={40}/>
+          <div>
+            <div className="font-display text-sm tracking-wider" style={{ color: typeInfo.color }}>
+              {GER_CONFIG[typeInfo.ger].label}
+            </div>
+            <div className="font-mono text-[11px] text-muted">{GER_CONFIG[typeInfo.ger].title}</div>
+          </div>
         </div>
 
         <div className="bg-s2 border border-border1 px-3 py-3 mb-4 font-mono text-[10px] text-muted leading-relaxed">
@@ -562,12 +591,32 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked }) {
           </div>
         )}
 
+        {/* last block reps input */}
+        {isLastBlock && phase === 'ready' && failedBlock === null && (
+          <div className="mb-3">
+            <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">REPS NO BLOCO 12</label>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setLastBlockReps(r => Math.max(0, r - 1))}
+                className="w-11 h-11 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
+              ><LuMinus size={16}/></button>
+              <div className="flex-1 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-2.5">
+                {lastBlockReps}
+              </div>
+              <button
+                onClick={() => setLastBlockReps(r => r + 1)}
+                className="w-11 h-11 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
+              ><LuPlus size={16}/></button>
+            </div>
+          </div>
+        )}
+
         {/* actions */}
         {phase !== 'done' && failedBlock === null && (
           <div className="flex gap-2 mb-0">
             <button
               onClick={handleBlockDone}
-              disabled={phase !== 'ready'}
+              disabled={phase !== 'ready' || (isLastBlock && lastBlockReps === 0)}
               className="flex-1 py-3 font-display text-sm tracking-[0.15em] text-bg disabled:opacity-40 transition-opacity"
               style={{ background: typeInfo.color }}
             >
@@ -619,6 +668,17 @@ function WidowmakerCard({ step, workingWeight, onDone, isLocked }) {
         <div className="font-display text-xl tracking-wider text-ink mb-0.5">{step.exerciseName}</div>
         <div className="font-display text-xs tracking-[0.2em] mb-4" style={{ color: typeInfo.color }}>
           DC STYLE WIDOWMAKER · {fmtKg(workingWeight)}
+        </div>
+
+        {/* GER face */}
+        <div className="flex items-center gap-3 bg-s2 border border-border1 px-4 py-3 mb-4">
+          <DoomFace face={GER_CONFIG[typeInfo.ger].face} size={40}/>
+          <div>
+            <div className="font-display text-sm tracking-wider" style={{ color: typeInfo.color }}>
+              {GER_CONFIG[typeInfo.ger].label}
+            </div>
+            <div className="font-mono text-[11px] text-muted">{GER_CONFIG[typeInfo.ger].title}</div>
+          </div>
         </div>
 
         {phase === 'working' && (

@@ -59,18 +59,30 @@ export default function HistoryPage() {
               <div className="flex-1 min-w-0">
                 <div className="font-body font-bold text-[13px] text-muted2 truncate">{ex.name}</div>
                 {val.history?.length > 0 ? (
-                  <div className="mt-1 space-y-0.5">
+                  <div className="mt-1 space-y-1.5">
                     {val.history.slice(-3).reverse().map((h, i) => (
-                      <div key={i} className="flex gap-2 items-baseline">
-                        <span className="font-mono text-[10px] text-muted w-9 flex-shrink-0">
-                          {new Date(h.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                        </span>
-                        <span className="font-mono text-[11px] text-neon font-bold">
-                          {h.kg}kg
-                          {h.reps ? ` × ${h.reps}` : ''}
-                          {h.blocks ? ` · ${h.blocks} blocos` : ''}
-                        </span>
-                        {h.obs && <span className="font-mono text-[10px] text-muted truncate">{h.obs}</span>}
+                      <div key={i} className="flex flex-col gap-0.5">
+                        <div className="flex gap-2 items-baseline">
+                          <span className="font-mono text-[10px] text-muted w-9 flex-shrink-0">
+                            {new Date(h.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                          </span>
+                          <span className="font-mono text-[11px] text-neon font-bold">
+                            {h.kg}kg
+                            {h.reps ? ` × ${h.reps}` : ''}
+                            {h.blocks ? ` · ${h.blocks} blocos` : ''}
+                          </span>
+                          {h.obs && <span className="font-mono text-[10px] text-muted truncate">{h.obs}</span>}
+                        </div>
+                        {h.warmups?.filter(w => w.reps > 0).map((w, wi) => (
+                          <div key={`w${wi}`} className="flex gap-2 items-baseline pl-9">
+                            <span className="font-mono text-[10px] text-muted/60">Aq{wi+1} {w.reps}r · {w.kg}kg</span>
+                          </div>
+                        ))}
+                        {h.feeders?.filter(f => f.reps > 0).map((f, fi) => (
+                          <div key={`f${fi}`} className="flex gap-2 items-baseline pl-9">
+                            <span className="font-mono text-[10px] text-muted/60">Fe{fi+1} {f.reps}r · {f.kg}kg</span>
+                          </div>
+                        ))}
                       </div>
                     ))}
                   </div>
