@@ -1,12 +1,7 @@
 import React, { useState } from 'react'
 import { LuSave, LuCircleCheck } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
-import { PROTOCOL } from '../data/protocol'
-
-const PHASE_COLORS = {
-  REVOLUME: '#39FF14', BASE: '#ffaa00', PEAK: '#ff2d2d',
-  DEVOLUME: '#00aaff', DELOAD: '#888',
-}
+import { DAY_NAMES } from '../data/protocol'
 
 function SaveBtn({ saved, onClick }) {
   return (
@@ -39,7 +34,12 @@ export default function SettingsPage() {
   const [times, setTimes]       = useState({ workoutTime: userProfile.workoutTime, sleepTime: userProfile.sleepTime })
   const [timesSaved, setTimesSaved] = useState(false)
 
-  const week = PROTOCOL[currentWeek]
+  const userProtocol = useStore((s) => s.userProtocol)
+  const currentDay   = useStore((s) => s.currentDay)
+
+  const weekData = userProtocol.weeks[currentWeek]
+  const day = weekData?.days[currentDay]
+  const filledWeeks = userProtocol.weeks.filter(w => w.days.some(d => !d.isRest && d.exercises.length > 0)).length
 
   const saveDate = () => {
     setStartDate(dateInput)
@@ -104,7 +104,8 @@ export default function SettingsPage() {
         </div>
         <div className="space-y-2">
           {[
-            ['Semana atual', `${week.num} — ${week.phase}`],
+            ['Semana atual', `S${String(currentWeek + 1).padStart(2, '0')} · ${DAY_NAMES[currentDay]}`],
+            ['Semanas configuradas', `${filledWeeks} de 8`],
             ['Data de início', new Date(startDate + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })],
           ].map(([label, val]) => (
             <div key={label} className="flex items-center justify-between py-1.5 border-b border-border1 last:border-0">
@@ -196,31 +197,32 @@ export default function SettingsPage() {
       {/* Protocol overview */}
       <div className="bg-s1 border border-border1 p-4">
         <div className="font-display text-sm text-neon tracking-[0.2em] mb-3 pb-2 border-b border-border1">
-          VISÃO GERAL
+          VISÃO GERAL DO PROTOCOLO
         </div>
         <div className="space-y-1">
-          {PROTOCOL.map((w, i) => {
-            const active = i === currentWeek
-            const color  = PHASE_COLORS[w.phase] || '#888'
+          {userProtocol.weeks.map((w, i) => {
+            const active   = i === currentWeek
+            const training = w.days.filter(d => !d.isRest && d.exercises.length > 0).length
+            const hasData  = training > 0
             return (
               <div
                 key={i}
-                className={`flex items-center gap-3 py-2 border-b border-border1 last:border-0 ${active ? '' : 'opacity-50'}`}
+                className={`flex items-center gap-3 py-2 border-b border-border1 last:border-0 ${!hasData && !active ? 'opacity-40' : ''}`}
               >
-                <span className="font-display text-base tracking-wider w-9 flex-shrink-0" style={{ color: active ? color : '#555' }}>
-                  S{String(w.num).padStart(2, '0')}
+                <span
+                  className="font-display text-base tracking-wider w-9 flex-shrink-0"
+                  style={{ color: active ? '#39FF14' : '#555' }}
+                >
+                  S{String(i + 1).padStart(2, '0')}
                 </span>
                 <span className="flex-1 font-body font-semibold text-sm tracking-wider" style={{ color: active ? '#e8e8e8' : '#555' }}>
-                  {w.phase}
+                  {hasData ? `${training} dia${training !== 1 ? 's' : ''} de treino` : 'sem dados'}
                 </span>
                 <span className="font-mono text-[10px] text-muted">
-                  {w.days.filter((d) => !d.rest).length} treinos
+                  {w.days.reduce((a, d) => a + d.exercises.length, 0)} ex.
                 </span>
                 {active && (
-                  <span
-                    className="font-mono text-[9px] px-2 py-0.5 font-bold tracking-widest"
-                    style={{ background: color + '22', color, border: `1px solid ${color}44` }}
-                  >
+                  <span className="font-mono text-[9px] px-2 py-0.5 font-bold tracking-widest bg-neon/20 text-neon border border-neon/30">
                     ATUAL
                   </span>
                 )}

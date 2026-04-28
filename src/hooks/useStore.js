@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { JS_DAY_TO_IDX } from '../data/protocol'
+import { JS_DAY_TO_IDX, defaultUserProtocol, buildWorkoutSteps } from '../data/protocol'
 import { timerManager } from '../utils/timerManager'
 
 function detectWeekDay() {
@@ -10,18 +10,23 @@ function detectWeekDay() {
     return { week: 0, day: 0 }
   }
   const start = new Date(saved)
-  const now = new Date()
+  const now   = new Date()
   const diffDays = Math.floor((now - start) / (1000 * 60 * 60 * 24))
-  const weekIdx = Math.min(Math.floor(diffDays / 7), 7)
-  const dayIdx = JS_DAY_TO_IDX[now.getDay()] ?? 0
+  const weekIdx  = Math.min(Math.floor(diffDays / 7), 7)
+  const dayIdx   = JS_DAY_TO_IDX[now.getDay()] ?? 0
   return { week: weekIdx, day: dayIdx }
 }
 
 const { week: initWeek, day: initDay } = detectWeekDay()
 
+function genId() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36)
+}
+
 export const useStore = create(
   persist(
     (set, get) => ({
+      // ── navigation ──────────────────────────────────────────────────────────
       currentWeek: initWeek,
       currentDay:  initDay,
       activeTab:   'workout',
@@ -34,6 +39,7 @@ export const useStore = create(
       setSidebar:       (v)    => set({ sidebarOpen: v }),
       setHeaderVisible: (v)    => set({ headerVisible: v }),
 
+      // ── workout logs ─────────────────────────────────────────────────────────
       logs: {},
 
       saveLog: (weekIdx, dayIdx, exIdx, entry) => {
@@ -62,6 +68,7 @@ export const useStore = create(
 
       clearAllLogs: () => set({ logs: {} }),
 
+      // ── start date ───────────────────────────────────────────────────────────
       startDate: localStorage.getItem('uw_start_date') || new Date().toISOString().split('T')[0],
       setStartDate: (date) => {
         localStorage.setItem('uw_start_date', date)
@@ -69,10 +76,11 @@ export const useStore = create(
         set({ startDate: date, currentWeek: week, currentDay: day })
       },
 
-      // --- rest timer ---
+      // ── rest timer ───────────────────────────────────────────────────────────
       restTimer: { running: false, seconds: 120, preset: 120 },
 
       startRestTimer: (seconds) => {
+        timerManager.clear()
         set(state => ({ restTimer: { ...state.restTimer, running: true, preset: seconds, seconds } }))
         timerManager.start(
           seconds,
@@ -95,42 +103,23 @@ export const useStore = create(
         set(state => ({ restTimer: { ...state.restTimer, running: false, seconds: s, preset: s } }))
       },
 
-      // --- user profile ---
+      // ── user profile ─────────────────────────────────────────────────────────
       userProfile: {
-        weight: 80,
-        height: 183,
-        age: 21,
-        sex: 'M',
-        workoutTime: '16:30',
-        sleepTime: '23:00',
-        caloricGoal: 'bulk',
+        weight:       80,
+        height:       183,
+        age:          21,
+        sex:          'M',
+        workoutTime:  '16:30',
+        sleepTime:    '23:00',
+        caloricGoal:  'bulk',
         activityLevel: 1.55,
       },
       setUserProfile: (updates) => set(state => ({
         userProfile: { ...state.userProfile, ...updates }
       })),
 
-      // --- food log ---
-      foodLog: {},
+      // ── micronutrient log ────────────────────────────────────────────────────
       microLog: {},
-
-      addFoodEntry: (dateStr, entry) => set(state => ({
-        foodLog: {
-          ...state.foodLog,
-          [dateStr]: [
-            ...(state.foodLog[dateStr] || []),
-            { ...entry, id: Date.now(), addedAt: new Date().toISOString() },
-          ],
-        },
-      })),
-
-      removeFoodEntry: (dateStr, id) => set(state => ({
-        foodLog: {
-          ...state.foodLog,
-          [dateStr]: (state.foodLog[dateStr] || []).filter(e => e.id !== id),
-        },
-      })),
-
       toggleMicro: (dateStr, microId) => set(state => ({
         microLog: {
           ...state.microLog,
@@ -140,14 +129,164 @@ export const useStore = create(
           },
         },
       })),
+
+      // ── meal log (marked meals) ──────────────────────────────────────────────
+      mealLog: {},
+      toggleMeal: (dateStr, mealId) => set(state => ({
+        mealLog: {
+          ...state.mealLog,
+          [dateStr]: {
+            ...(state.mealLog[dateStr] || {}),
+            [mealId]: !(state.mealLog[dateStr]?.[mealId]),
+          },
+        },
+      })),
+
+      // ── user protocol (8-week custom plan) ───────────────────────────────────
+      userProtocol: defaultUserProtocol(),
+
+      setDayRest: (weekIdx, dayIdx, isRest) => set(state => {
+        const p = JSON.parse(JSON.stringify(state.userProtocol))
+        p.weeks[weekIdx].days[dayIdx].isRest = isRest
+        return { userProtocol: p }
+      }),
+
+      setDayRestSeconds: (weekIdx, dayIdx, seconds) => set(state => {
+        const p = JSON.parse(JSON.stringify(state.userProtocol))
+        p.weeks[weekIdx].days[dayIdx].restSeconds = seconds
+        return { userProtocol: p }
+      }),
+
+      addExercise: (weekIdx, dayIdx, exercise) => set(state => {
+        const p = JSON.parse(JSON.stringify(state.userProtocol))
+        p.weeks[weekIdx].days[dayIdx].exercises.push({ id: genId(), sets: [], ...exercise })
+        return { userProtocol: p }
+      }),
+
+      updateExercise: (weekIdx, dayIdx, exId, updates) => set(state => {
+        const p = JSON.parse(JSON.stringify(state.userProtocol))
+        const day = p.weeks[weekIdx].days[dayIdx]
+        day.exercises = day.exercises.map(e => e.id === exId ? { ...e, ...updates } : e)
+        return { userProtocol: p }
+      }),
+
+      removeExercise: (weekIdx, dayIdx, exId) => set(state => {
+        const p = JSON.parse(JSON.stringify(state.userProtocol))
+        const day = p.weeks[weekIdx].days[dayIdx]
+        day.exercises = day.exercises.filter(e => e.id !== exId)
+        return { userProtocol: p }
+      }),
+
+      addSet: (weekIdx, dayIdx, exId, setDef) => set(state => {
+        const p = JSON.parse(JSON.stringify(state.userProtocol))
+        const day = p.weeks[weekIdx].days[dayIdx]
+        day.exercises = day.exercises.map(e =>
+          e.id === exId
+            ? { ...e, sets: [...e.sets, { id: genId(), ...setDef }] }
+            : e
+        )
+        return { userProtocol: p }
+      }),
+
+      removeSet: (weekIdx, dayIdx, exId, setId) => set(state => {
+        const p = JSON.parse(JSON.stringify(state.userProtocol))
+        const day = p.weeks[weekIdx].days[dayIdx]
+        day.exercises = day.exercises.map(e =>
+          e.id === exId
+            ? { ...e, sets: e.sets.filter(s => s.id !== setId) }
+            : e
+        )
+        return { userProtocol: p }
+      }),
+
+      reorderExercises: (weekIdx, dayIdx, exercises) => set(state => {
+        const p = JSON.parse(JSON.stringify(state.userProtocol))
+        p.weeks[weekIdx].days[dayIdx].exercises = exercises
+        return { userProtocol: p }
+      }),
+
+      // ── active workout session ────────────────────────────────────────────────
+      activeWorkout: null,
+
+      startWorkout: (weekIdx, dayIdx) => {
+        const day = get().userProtocol.weeks[weekIdx].days[dayIdx]
+        if (!day || day.isRest) return
+        const steps = buildWorkoutSteps(day.exercises)
+        set({
+          activeWorkout: {
+            weekIdx,
+            dayIdx,
+            steps,
+            currentStepIdx: 0,
+            exerciseWeights: {},
+            setResults: {},
+            startedAt: new Date().toISOString(),
+            completedAt: null,
+          },
+        })
+      },
+
+      setExerciseWeight: (exerciseId, weight) => set(state => ({
+        activeWorkout: state.activeWorkout
+          ? {
+              ...state.activeWorkout,
+              exerciseWeights: { ...state.activeWorkout.exerciseWeights, [exerciseId]: weight },
+            }
+          : null,
+      })),
+
+      advanceWorkoutStep: () => {
+        const { activeWorkout } = get()
+        if (!activeWorkout) return
+        const next = activeWorkout.currentStepIdx + 1
+        if (next >= activeWorkout.steps.length) {
+          set({ activeWorkout: { ...activeWorkout, completedAt: new Date().toISOString() } })
+        } else {
+          set({ activeWorkout: { ...activeWorkout, currentStepIdx: next } })
+        }
+      },
+
+      saveSetResult: (stepKey, result) => set(state => ({
+        activeWorkout: state.activeWorkout
+          ? {
+              ...state.activeWorkout,
+              setResults: { ...state.activeWorkout.setResults, [stepKey]: result },
+            }
+          : null,
+      })),
+
+      completeWorkout: () => {
+        const { activeWorkout, saveLog } = get()
+        if (!activeWorkout) return
+        const { weekIdx, dayIdx, steps, exerciseWeights, setResults } = activeWorkout
+        // Build a per-exercise log entry
+        const exerciseMap = {}
+        steps.forEach((step, idx) => {
+          if (step.type !== 'WORKING_SET') return
+          const key = step.exerciseId
+          if (!exerciseMap[key]) exerciseMap[key] = { name: step.exerciseName, sets: [], kg: exerciseWeights[key] || 0 }
+          exerciseMap[key].sets.push(setResults[`${idx}`] || { kg: exerciseWeights[key] || 0 })
+        })
+        const day = get().userProtocol.weeks[weekIdx].days[dayIdx]
+        ;(day.exercises || []).forEach((ex, exIdx) => {
+          if (exerciseMap[ex.id]) {
+            saveLog(weekIdx, dayIdx, exIdx, exerciseMap[ex.id])
+          }
+        })
+        set({ activeWorkout: null })
+      },
+
+      abandonWorkout: () => set({ activeWorkout: null }),
     }),
     {
-      name: 'uw-store-v2',
+      name: 'uw-store-v3',
       partialize: (state) => ({
-        logs:        state.logs,
-        userProfile: state.userProfile,
-        foodLog:     state.foodLog,
-        microLog:    state.microLog,
+        logs:          state.logs,
+        userProfile:   state.userProfile,
+        microLog:      state.microLog,
+        mealLog:       state.mealLog,
+        userProtocol:  state.userProtocol,
+        activeWorkout: state.activeWorkout,
       }),
     }
   )

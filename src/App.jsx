@@ -2,11 +2,12 @@ import { useRef } from 'react'
 import { useStore } from './hooks/useStore'
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'
+import GlobalRestTimer from './components/GlobalRestTimer'
 import WorkoutPage from './pages/WorkoutPage'
-import TimerPage from './pages/TimerPage'
+import ProtocolPage from './pages/ProtocolPage'
+import DietPage from './pages/DietPage'
 import HistoryPage from './pages/HistoryPage'
 import SettingsPage from './pages/SettingsPage'
-import DietPage from './pages/DietPage'
 
 export default function App() {
   const activeTab = useStore((s) => s.activeTab)
@@ -24,11 +25,13 @@ export default function App() {
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {activeTab === 'workout'  && <WorkoutPage />}
-        {activeTab === 'timer'    && <TimerPage />}
+        {activeTab === 'protocol' && <ProtocolPage />}
         {activeTab === 'diet'     && <DietPage />}
         {activeTab === 'history'  && <HistoryPage />}
         {activeTab === 'settings' && <SettingsPage />}
       </main>
+
+      <GlobalRestTimer />
     </div>
   )
 }

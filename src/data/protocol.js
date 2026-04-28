@@ -1,11 +1,11 @@
 export const GER_CONFIG = {
-  7:  { label: 'GER 7',  title: 'POSSO BRINCAR PAPAIZÃO',          subtitle: '4-6 reps na reserva',        face: 'ger7'  },
-  8:  { label: 'GER 8',  title: 'NÃO QUERO ME MACHUCAR',           subtitle: '2-3 reps na reserva',        face: 'ger8'  },
-  9:  { label: 'GER 9',  title: 'EU SOU MUITO NOVO PRA MORRER',    subtitle: '1 rep na reserva',           face: 'ger9'  },
-  10: { label: 'GER 10', title: 'QUEBREI MINHA LINHA',             subtitle: 'falha com forma perfeita',   face: 'ger10' },
-  11: { label: 'GER 11', title: 'SADOMASOQUISTA',                   subtitle: 'falha após perder a forma',  face: 'ger11' },
-  12: { label: 'GER 12', title: 'VIOLÊNCIA GRATUITA',              subtitle: 'ajuda e técnicas além falha', face: 'ger12' },
-  13: { label: 'GER 13', title: 'EU SOU REINCARNAÇÃO DO LUCIFER',  subtitle: 'widowmaker territory',       face: 'ger13' },
+  7:  { label: 'GER 7',  title: 'POSSO BRINCAR PAPAIZÃO',         subtitle: '4-6 reps na reserva',         face: 'ger7'  },
+  8:  { label: 'GER 8',  title: 'NÃO QUERO ME MACHUCAR',          subtitle: '2-3 reps na reserva',         face: 'ger8'  },
+  9:  { label: 'GER 9',  title: 'EU SOU MUITO NOVO PRA MORRER',   subtitle: '1 rep na reserva',            face: 'ger9'  },
+  10: { label: 'GER 10', title: 'QUEBREI MINHA LINHA',            subtitle: 'falha com forma perfeita',    face: 'ger10' },
+  11: { label: 'GER 11', title: 'SADOMASOQUISTA',                  subtitle: 'falha após perder a forma',   face: 'ger11' },
+  12: { label: 'GER 12', title: 'VIOLÊNCIA GRATUITA',             subtitle: 'ajuda e técnicas além falha', face: 'ger12' },
+  13: { label: 'GER 13', title: 'EU SOU REINCARNAÇÃO DO LUCIFER', subtitle: 'widowmaker territory',        face: 'ger13' },
 }
 
 export const SET_TYPES = {
@@ -17,377 +17,116 @@ export const SET_TYPES = {
 }
 
 export const SET_TYPE_DESCRIPTIONS = {
-  NORMAL:       'Carga pra atingir o ponto de falha dentro do rep range indicado.',
-  REST_PAUSE:   'Carga pra 8 reps. Pausa 20s após falha, mais reps, pausa 20s, falha de novo. GER 12.',
-  MUSCLE_ROUND: 'Blocos de 4 reps com carga pra 10-12. Descansa 10s entre blocos até falhar 1x. GER 11.',
-  WIDOWMAKER:   'Carga pra falha total em 10-12 reps. Continua até 15-20 reps sem soltar a barra. GER 13.',
-  PULSE:        '5 reps completas, 5 pulsos parciais, 4 reps, 5 pulsos... até 1 rep + pulsos até a falha. GER 9.',
+  NORMAL:
+    'Carga pra atingir o ponto de falha dentro do rep range indicado.',
+  REST_PAUSE:
+    'Carga pra 8 reps. Pausa 20s após falha, mais reps, pausa 20s, falha de novo. Quando chegar 10-11 reps no primeiro bloco, progredir carga.',
+  MUSCLE_ROUND:
+    'Blocos de 4 reps com carga pra 10-12. Descansa 10s entre blocos até falhar 1x.',
+  WIDOWMAKER:
+    'Carga pra falha total em 10-12 reps. Continua até 15-20 reps sem soltar a barra ou fechar a máquina.',
+  PULSE:
+    '5 reps completas, 5 pulsos parciais, 4 reps, 5 pulsos, 3 reps, 5 pulsos, 2 reps, 5 pulsos, 1 rep, pulsos até a falha.',
 }
 
 export const JS_DAY_TO_IDX = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
 export const DAY_NAMES = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM']
 
-export const PROTOCOL = [
-  {
-    num: 1, phase: 'REVOLUME',
-    days: [
-      { name: 'SEG', exercises: [
-        { name: 'Pulldown com corda',            sets: [{ger:10,reps:'8-12'}],                         type: 'NORMAL',       rest: 120 },
-        { name: 'Remada articulada',             sets: [{ger:10,reps:'5-12'}],                         type: 'NORMAL',       rest: 120 },
-        { name: 'Puxador frente pegada pronada', sets: [{ger:10,reps:'5-12'}],                         type: 'NORMAL',       rest: 120 },
-        { name: 'Supino pra tríceps',            sets: [{ger:10,reps:'5-9'}],                          type: 'NORMAL',       rest: 120 },
-        { name: 'Voador',                        sets: [{ger:10,reps:'8-12'}],                         type: 'NORMAL',       rest: 120 },
-        { name: 'Elevação lateral no cabo',      sets: [{ger:10,reps:'8-12'}],                         type: 'NORMAL',       rest: 120 },
-      ]},
-      { name: 'TER', exercises: [
-        { name: 'Elevação pélvica',              sets: [{ger:10,reps:'5-9'}],                          type: 'NORMAL',       rest: 120 },
-        { name: 'Cadeira abdutora',              sets: [{ger:10,reps:'8-12'}],                         type: 'NORMAL',       rest: 120 },
-        { name: 'Agachamento livre',             sets: [{ger:10,reps:'5-9'}],                          type: 'NORMAL',       rest: 120 },
-        { name: 'Extensão de pernas',            sets: [{ger:10,reps:'8-12'}],                         type: 'NORMAL',       rest: 120 },
-        { name: 'Levantamento terra',            sets: [{ger:10,reps:'5-9'}],                          type: 'NORMAL',       rest: 120 },
-        { name: 'Flexora sentada',               sets: [{ger:10,reps:'8-12'}],                         type: 'NORMAL',       rest: 120 },
-        { name: 'Panturrilha sentada',           sets: [{ger:10,reps:'8-12'}],                         type: 'NORMAL',       rest: 120 },
-      ]},
-      { name: 'QUA', rest: true },
-      { name: 'QUI', exercises: [
-        { name: 'Remada articulada',             sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Puxador frente pegada aberta',  sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Supino máquina',                sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Voador',                        sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Desenvolvimento na Smith',      sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Polia para tríceps',            sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-      ]},
-      { name: 'SEX', exercises: [
-        { name: 'Leg press unilateral',          sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Extensão de pernas',            sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Flexora em pé',                 sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Panturrilha em pé',             sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Rosca scott no cabo',           sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-      ]},
-      { name: 'SAB', rest: true },
-      { name: 'DOM', rest: true },
-    ],
-  },
-  {
-    num: 2, phase: 'BASE',
-    days: [
-      { name: 'SEG', exercises: [
-        { name: 'Pulldown com barra',                  sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-        { name: 'Remada T-Bar',                        sets: [{ger:9,reps:'5-9'},{ger:10,reps:'9-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Puxador frente pegada neutra',        sets: [{ger:9,reps:'5-9'}],                        type: 'NORMAL', rest: 120 },
-        { name: 'Supino levemente inclinado na Smith', sets: [{ger:9,reps:'5-9'},{ger:10,reps:'9-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Desenvolvimento com barra',           sets: [{ger:9,reps:'5-9'},{ger:10,reps:'9-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Supino pra tríceps',                  sets: [{ger:9,reps:'5-9'},{ger:10,reps:'8-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Pec fly',                             sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-        { name: 'Elevação lateral sentada',            sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-      ]},
-      { name: 'TER', exercises: [
-        { name: 'Elevação pélvica na Smith',           sets: [{ger:9,reps:'5-9'},{ger:10,reps:'9-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Abdução no cabo',                     sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-        { name: 'Agachamento hack',                    sets: [{ger:9,reps:'5-9'},{ger:10,reps:'8-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Extensão de pernas',                  sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-        { name: 'RDL',                                 sets: [{ger:9,reps:'5-9'},{ger:10,reps:'8-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Flexora em pé',                       sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-        { name: 'Panturrilha na Smith',                sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-      ]},
-      { name: 'QUA', rest: true },
-      { name: 'QUI', exercises: [
-        { name: 'Remada articulada',            sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Puxador frente pegada aberta', sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Remada baixa',                 sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Supino máquina',               sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Voador',                       sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Desenvolvimento na Smith',     sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Elevação lateral na máquina',  sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Polia para tríceps',           sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Tríceps testa',                sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-      ]},
-      { name: 'SEX', exercises: [
-        { name: 'Leg press unilateral', sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Hack squat',           sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Extensão de pernas',   sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Flexora em pé',        sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Panturrilha em pé',    sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Rosca scott no cabo',  sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Rosca alternada',      sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-      ]},
-      { name: 'SAB', rest: true },
-      { name: 'DOM', rest: true },
-    ],
-  },
-  {
-    num: 3, phase: 'BASE',
-    days: [
-      { name: 'SEG', exercises: [
-        { name: 'Pullover no cabo',               sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-        { name: 'Remada curvada',                 sets: [{ger:9,reps:'5-9'},{ger:10,reps:'9-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Puxador frente pegada supinada', sets: [{ger:9,reps:'5-9'},{ger:10,reps:'9-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Supino articulado',              sets: [{ger:9,reps:'5-9'},{ger:10,reps:'9-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Desenvolvimento na máquina',     sets: [{ger:9,reps:'5-9'},{ger:10,reps:'9-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Paralela na máquina',            sets: [{ger:9,reps:'5-9'},{ger:10,reps:'8-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Crucifixo inclinado',            sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-        { name: 'Elevação lateral na máquina',    sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-      ]},
-      { name: 'TER', exercises: [
-        { name: 'Elevação pélvica na máquina', sets: [{ger:9,reps:'5-9'},{ger:10,reps:'9-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Hiperextensão',               sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-        { name: 'Leg Press',                   sets: [{ger:9,reps:'5-9'},{ger:10,reps:'8-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Extensão de pernas',          sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-        { name: 'Stiff',                       sets: [{ger:9,reps:'5-9'},{ger:10,reps:'8-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Flexora deitada',             sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-        { name: 'Panturrilha em pé na Smith',  sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-      ]},
-      { name: 'QUA', rest: true },
-      { name: 'QUI', exercises: [
-        { name: 'Remada articulada',            sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Puxador frente pegada aberta', sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Remada baixa',                 sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Supino máquina',               sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Voador',                       sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Desenvolvimento na Smith',     sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Elevação lateral na máquina',  sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Polia para tríceps',           sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Tríceps testa',                sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-      ]},
-      { name: 'SEX', exercises: [
-        { name: 'Leg press unilateral', sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Hack squat',           sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Extensão de pernas',   sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Flexora em pé',        sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Panturrilha em pé',    sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Rosca scott no cabo',  sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Rosca alternada',      sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-      ]},
-      { name: 'SAB', rest: true },
-      { name: 'DOM', rest: true },
-    ],
-  },
-  {
-    num: 4, phase: 'BASE',
-    days: [
-      { name: 'SEG', exercises: [
-        { name: 'Pulldown com corda',            sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-        { name: 'Remada articulada',             sets: [{ger:9,reps:'5-9'},{ger:10,reps:'9-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Puxador frente pegada pronada', sets: [{ger:9,reps:'5-9'},{ger:10,reps:'9-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Supino inclinado com halteres', sets: [{ger:9,reps:'5-9'},{ger:10,reps:'9-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Desenvolvimento com halteres',  sets: [{ger:9,reps:'5-9'},{ger:10,reps:'9-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Supino pra tríceps',            sets: [{ger:9,reps:'5-9'},{ger:10,reps:'8-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Voador',                        sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-        { name: 'Elevação lateral no cabo',      sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-      ]},
-      { name: 'TER', exercises: [
-        { name: 'Elevação pélvica',    sets: [{ger:9,reps:'5-9'},{ger:10,reps:'9-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Cadeira abdutora',    sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-        { name: 'Agachamento livre',   sets: [{ger:9,reps:'5-9'},{ger:10,reps:'8-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Extensão de pernas',  sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-        { name: 'Levantamento terra',  sets: [{ger:9,reps:'5-9'},{ger:10,reps:'8-12'}],   type: 'NORMAL', rest: 120 },
-        { name: 'Flexora sentada',     sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-        { name: 'Panturrilha sentada', sets: [{ger:10,reps:'8-12'},{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-      ]},
-      { name: 'QUA', rest: true },
-      { name: 'QUI', exercises: [
-        { name: 'Remada articulada',            sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Puxador frente pegada aberta', sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Remada baixa',                 sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Supino máquina',               sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Voador',                       sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Desenvolvimento na Smith',     sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Elevação lateral na máquina',  sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Polia para tríceps',           sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Tríceps testa',                sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-      ]},
-      { name: 'SEX', exercises: [
-        { name: 'Leg press unilateral', sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Hack squat',           sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Extensão de pernas',   sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Flexora em pé',        sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Panturrilha em pé',    sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Rosca scott no cabo',  sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Rosca alternada',      sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-      ]},
-      { name: 'SAB', rest: true },
-      { name: 'DOM', rest: true },
-    ],
-  },
-  {
-    num: 5, phase: 'PEAK',
-    days: [
-      { name: 'SEG', exercises: [
-        { name: 'Pulldown com barra',                  sets: [{ger:12,reps:''}],                        type: 'REST_PAUSE', rest: 120 },
-        { name: 'Remada T-Bar',                        sets: [{ger:9,reps:'5-9'},{ger:10,reps:'9-12'}], type: 'NORMAL',     rest: 120 },
-        { name: 'Puxador frente pegada neutra',        sets: [{ger:10,reps:'9-12'}],                    type: 'NORMAL',     rest: 120 },
-        { name: 'Supino levemente inclinado na Smith', sets: [{ger:9,reps:'5-9'},{ger:10,reps:'9-12'}], type: 'NORMAL',     rest: 120 },
-        { name: 'Desenvolvimento com barra',           sets: [{ger:9,reps:'5-9'},{ger:10,reps:'9-12'}], type: 'NORMAL',     rest: 120 },
-        { name: 'Supino pra tríceps',                  sets: [{ger:9,reps:'5-9'},{ger:10,reps:'8-12'}], type: 'NORMAL',     rest: 120 },
-        { name: 'Pec fly',                             sets: [{ger:12,reps:''}],                        type: 'REST_PAUSE', rest: 120 },
-        { name: 'Elevação lateral sentada',            sets: [{ger:12,reps:''}],                        type: 'REST_PAUSE', rest: 120 },
-      ]},
-      { name: 'TER', exercises: [
-        { name: 'Elevação pélvica na Smith', sets: [{ger:9,reps:'5-9'},{ger:10,reps:'9-12'}], type: 'NORMAL',     rest: 120 },
-        { name: 'Abdução no cabo',           sets: [{ger:12,reps:''}],                        type: 'REST_PAUSE', rest: 120 },
-        { name: 'Agachamento hack',          sets: [{ger:9,reps:'5-9'},{ger:10,reps:'8-12'}], type: 'NORMAL',     rest: 120 },
-        { name: 'Extensão de pernas',        sets: [{ger:12,reps:''}],                        type: 'REST_PAUSE', rest: 120 },
-        { name: 'RDL',                       sets: [{ger:9,reps:'5-9'},{ger:10,reps:'8-12'}], type: 'NORMAL',     rest: 120 },
-        { name: 'Flexora em pé',             sets: [{ger:12,reps:''}],                        type: 'REST_PAUSE', rest: 120 },
-        { name: 'Panturrilha em pé na Smith',sets: [{ger:12,reps:''}],                        type: 'REST_PAUSE', rest: 120 },
-      ]},
-      { name: 'QUA', rest: true },
-      { name: 'QUI', exercises: [
-        { name: 'Remada articulada',            sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Remada baixa',                 sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Puxador frente pegada neutra', sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Puxador frente pegada aberta', sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Supino máquina',               sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Voador',                       sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Desenvolvimento na Smith',     sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Elevação lateral na máquina',  sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Polia para tríceps',           sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Tríceps testa',                sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-      ]},
-      { name: 'SEX', exercises: [
-        { name: 'Hack squat',           sets: [{ger:13,reps:'10-12'}], type: 'WIDOWMAKER',   rest: 120 },
-        { name: 'Leg press unilateral', sets: [{ger:11,reps:''}],      type: 'MUSCLE_ROUND', rest: 10  },
-        { name: 'Extensão de pernas',   sets: [{ger:11,reps:''}],      type: 'MUSCLE_ROUND', rest: 10  },
-        { name: 'Flexora em pé',        sets: [{ger:11,reps:''}],      type: 'MUSCLE_ROUND', rest: 10  },
-        { name: 'Panturrilha em pé',    sets: [{ger:11,reps:''}],      type: 'MUSCLE_ROUND', rest: 10  },
-        { name: 'Rosca scott no cabo',  sets: [{ger:11,reps:''}],      type: 'MUSCLE_ROUND', rest: 10  },
-        { name: 'Rosca alternada',      sets: [{ger:11,reps:''}],      type: 'MUSCLE_ROUND', rest: 10  },
-      ]},
-      { name: 'SAB', rest: true },
-      { name: 'DOM', rest: true },
-    ],
-  },
-  {
-    num: 6, phase: 'DEVOLUME',
-    days: [
-      { name: 'SEG', exercises: [
-        { name: 'Pullover no cabo',               sets: [{ger:10,reps:'8-12'}],                        type: 'NORMAL', rest: 120 },
-        { name: 'Remada curvada',                 sets: [{ger:10,reps:'5-9'}],                         type: 'NORMAL', rest: 120 },
-        { name: 'Puxador frente pegada supinada', sets: [{ger:10,reps:'5-9'}],                         type: 'NORMAL', rest: 120 },
-        { name: 'Supino articulado',              sets: [{ger:10,reps:'5-9'}],                         type: 'NORMAL', rest: 120 },
-        { name: 'Desenvolvimento na máquina',     sets: [{ger:10,reps:'5-9'}],                         type: 'NORMAL', rest: 120 },
-        { name: 'Paralela na máquina',            sets: [{ger:10,reps:'5-9'},{ger:10,reps:'8-12'}],    type: 'NORMAL', rest: 120 },
-        { name: 'Crucifixo inclinado',            sets: [{ger:10,reps:'8-12'}],                        type: 'NORMAL', rest: 120 },
-        { name: 'Elevação lateral na máquina',    sets: [{ger:10,reps:'8-12'}],                        type: 'NORMAL', rest: 120 },
-      ]},
-      { name: 'TER', exercises: [
-        { name: 'Elevação pélvica na máquina', sets: [{ger:10,reps:'5-9'}],  type: 'NORMAL', rest: 120 },
-        { name: 'Hiperextensão',               sets: [{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-        { name: 'Leg press',                   sets: [{ger:10,reps:'5-9'}],  type: 'NORMAL', rest: 120 },
-        { name: 'Extensão de pernas',          sets: [{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-        { name: 'Stiff',                       sets: [{ger:10,reps:'5-9'}],  type: 'NORMAL', rest: 120 },
-        { name: 'Flexora deitada',             sets: [{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-        { name: 'Panturrilha em pé na Smith',  sets: [{ger:10,reps:'8-12'}], type: 'NORMAL', rest: 120 },
-      ]},
-      { name: 'QUA', rest: true },
-      { name: 'QUI', exercises: [
-        { name: 'Remada articulada',            sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Puxador frente pegada aberta', sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Supino máquina',               sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Desenvolvimento na Smith',     sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Polia para tríceps',           sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-      ]},
-      { name: 'SEX', exercises: [
-        { name: 'Hack squat',           sets: [{ger:13,reps:'10-12'}], type: 'WIDOWMAKER',   rest: 120 },
-        { name: 'Leg press unilateral', sets: [{ger:11,reps:''}],      type: 'MUSCLE_ROUND', rest: 10  },
-        { name: 'Extensão de pernas',   sets: [{ger:11,reps:''}],      type: 'MUSCLE_ROUND', rest: 10  },
-        { name: 'Flexora em pé',        sets: [{ger:11,reps:''}],      type: 'MUSCLE_ROUND', rest: 10  },
-        { name: 'Panturrilha em pé',    sets: [{ger:11,reps:''}],      type: 'MUSCLE_ROUND', rest: 10  },
-        { name: 'Rosca scott no cabo',  sets: [{ger:11,reps:''}],      type: 'MUSCLE_ROUND', rest: 10  },
-        { name: 'Rosca alternada',      sets: [{ger:11,reps:''}],      type: 'MUSCLE_ROUND', rest: 10  },
-      ]},
-      { name: 'SAB', rest: true },
-      { name: 'DOM', rest: true },
-    ],
-  },
-  {
-    num: 7, phase: 'DELOAD',
-    days: [
-      { name: 'SEG', rest: true },
-      { name: 'TER', exercises: [
-        { name: 'Leg press unilateral', sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Extensão de pernas',   sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Flexora sentada',      sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Panturrilha em pé',    sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Rosca scott no cabo',  sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-      ]},
-      { name: 'QUA', rest: true },
-      { name: 'QUI', rest: true },
-      { name: 'SEX', exercises: [
-        { name: 'Remada articulada',            sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Puxador frente pegada aberta', sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Supino máquina',               sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Voador',                       sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Polia para tríceps',           sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-      ]},
-      { name: 'SAB', rest: true },
-      { name: 'DOM', rest: true },
-    ],
-  },
-  {
-    num: 8, phase: 'DELOAD',
-    days: [
-      { name: 'SEG', rest: true },
-      { name: 'TER', exercises: [
-        { name: 'Leg press unilateral', sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Extensão de pernas',   sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Flexora sentada',      sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Panturrilha em pé',    sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Rosca scott no cabo',  sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-      ]},
-      { name: 'QUA', rest: true },
-      { name: 'QUI', rest: true },
-      { name: 'SEX', exercises: [
-        { name: 'Remada articulada',            sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Puxador frente pegada aberta', sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Supino máquina',               sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Voador',                       sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-        { name: 'Polia para tríceps',           sets: [{ger:11,reps:''}], type: 'MUSCLE_ROUND', rest: 10 },
-      ]},
-      { name: 'SAB', rest: true },
-      { name: 'DOM', rest: true },
-    ],
-  },
+export const MUSCLE_GROUP_LIST = [
+  'COSTAS', 'PEITO', 'OMBROS', 'TRÍCEPS', 'BÍCEPS',
+  'GLÚTEOS', 'POSTERIOR', 'QUADRÍCEPS', 'ISQUIOS', 'PANTURRILHA',
+  'CORE', 'OUTRO',
 ]
 
-export const MUSCLE_GROUPS = {
-  // Costas
-  'Pulldown com barra': 'COSTAS', 'Pullover no cabo': 'COSTAS',
-  'Pulldown com corda': 'COSTAS', 'Remada T-Bar': 'COSTAS',
-  'Remada curvada': 'COSTAS', 'Remada articulada': 'COSTAS',
-  'Remada baixa': 'COSTAS', 'Puxador frente pegada neutra': 'COSTAS',
-  'Puxador frente pegada aberta': 'COSTAS', 'Puxador frente pegada supinada': 'COSTAS',
-  'Puxador frente pegada pronada': 'COSTAS',
-  // Peito
-  'Supino levemente inclinado na Smith': 'PEITO', 'Supino articulado': 'PEITO',
-  'Supino inclinado com halteres': 'PEITO', 'Supino máquina': 'PEITO',
-  'Pec fly': 'PEITO', 'Voador': 'PEITO', 'Crucifixo inclinado': 'PEITO',
-  // Ombros
-  'Desenvolvimento com barra': 'OMBROS', 'Desenvolvimento com halteres': 'OMBROS',
-  'Desenvolvimento na máquina': 'OMBROS', 'Desenvolvimento na Smith': 'OMBROS',
-  'Elevação lateral sentada': 'OMBROS', 'Elevação lateral na máquina': 'OMBROS',
-  'Elevação lateral no cabo': 'OMBROS',
-  // Tríceps
-  'Supino pra tríceps': 'TRÍCEPS', 'Paralela na máquina': 'TRÍCEPS',
-  'Polia para tríceps': 'TRÍCEPS', 'Tríceps testa': 'TRÍCEPS',
-  // Bíceps
-  'Rosca scott no cabo': 'BÍCEPS', 'Rosca alternada': 'BÍCEPS',
-  // Glúteos
-  'Elevação pélvica na Smith': 'GLÚTEOS', 'Elevação pélvica na máquina': 'GLÚTEOS',
-  'Elevação pélvica': 'GLÚTEOS', 'Abdução no cabo': 'GLÚTEOS',
-  'Cadeira abdutora': 'GLÚTEOS',
-  // Posterior
-  'Hiperextensão': 'POSTERIOR', 'RDL': 'POSTERIOR',
-  'Stiff': 'POSTERIOR', 'Levantamento terra': 'POSTERIOR',
-  // Quadríceps
-  'Agachamento hack': 'QUADRÍCEPS', 'Agachamento livre': 'QUADRÍCEPS',
-  'Leg Press': 'QUADRÍCEPS', 'Leg press': 'QUADRÍCEPS',
-  'Hack squat': 'QUADRÍCEPS', 'Leg press unilateral': 'QUADRÍCEPS',
-  'Extensão de pernas': 'QUADRÍCEPS',
-  // Isquiotibiais
-  'Flexora em pé': 'ISQUIOS', 'Flexora sentada': 'ISQUIOS', 'Flexora deitada': 'ISQUIOS',
-  // Panturrilha
-  'Panturrilha em pé na Smith': 'PANTURRILHA', 'Panturrilha em pé': 'PANTURRILHA',
-  'Panturrilha na Smith': 'PANTURRILHA', 'Panturrilha na smith': 'PANTURRILHA',
-  'Panturrilha sentada': 'PANTURRILHA',
+// Default protocol template for 8 weeks × 7 days
+export function defaultUserProtocol() {
+  return {
+    weeks: Array(8).fill(null).map(() => ({
+      days: Array(7).fill(null).map(() => ({
+        isRest: false,
+        restSeconds: 120,
+        exercises: [],
+      })),
+    })),
+  }
+}
+
+// Returns the question to calibrate working weight for a given set definition
+export function getWeightQuestion(setDef) {
+  if (!setDef) return 'Qual será o peso de trabalho para este exercício?'
+  const { type, repRange, ger } = setDef
+  switch (type) {
+    case 'NORMAL': {
+      const reps = repRange || '8-12'
+      const maxReps = reps.split('-').pop()
+      if (ger <= 9)  return `Com que peso você faz ${reps} reps deixando 1 rep na reserva?`
+      if (ger === 10) return `Com que peso você faz ${reps} reps indo até a falha?`
+      return `Com que peso você faria ${maxReps} reps além da falha (GER ${ger})?`
+    }
+    case 'REST_PAUSE':
+      return 'Com que peso você faria ~8 reps chegando perto da falha total (GER 12)?'
+    case 'MUSCLE_ROUND':
+      return 'Com que peso você normalmente falharia em 10-12 reps (GER 11)?'
+    case 'WIDOWMAKER':
+      return 'Com que peso você chegaria na falha TOTAL em 10-12 reps (GER 13)?'
+    case 'PULSE':
+      return 'Com que peso você completaria a sequência completa de pulsos até a falha?'
+    default:
+      return 'Qual será o peso de trabalho para este exercício?'
+  }
+}
+
+// Build the ordered step list for an active workout session
+export function buildWorkoutSteps(exercises) {
+  if (!exercises || exercises.length === 0) return []
+
+  const steps = []
+  const muscleCount = {}
+
+  exercises.forEach((exercise) => {
+    const muscle = exercise.muscle || 'OUTRO'
+    const muscleIdx = muscleCount[muscle] ?? 0
+    muscleCount[muscle] = muscleIdx + 1
+
+    const firstSet = exercise.sets?.[0] || { type: 'NORMAL', ger: 10, repRange: '8-12' }
+
+    // Step 1: ask for the working weight
+    steps.push({
+      type: 'WEIGHT_QUESTION',
+      exerciseId: exercise.id,
+      exerciseName: exercise.name,
+      muscle,
+      setDef: firstSet,
+    })
+
+    // Warmup only for first exercise of each muscle group
+    if (muscleIdx === 0) {
+      steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 1, pct: 0.45, reps: '15-20' })
+      steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 2, pct: 0.50, reps: '15-20' })
+    }
+
+    // 3 feeder sets for 1st and 2nd exercise of each muscle; 1 for the rest
+    if (muscleIdx <= 1) {
+      steps.push({ type: 'FEEDER', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 1, pct: 0.70, reps: '4-8' })
+      steps.push({ type: 'FEEDER', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 2, pct: 0.75, reps: '4-8' })
+      steps.push({ type: 'FEEDER', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 3, pct: 0.80, reps: '4-8' })
+    } else {
+      steps.push({ type: 'FEEDER', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 1, pct: 0.70, reps: '4-8' })
+    }
+
+    // Working sets
+    ;(exercise.sets || []).forEach((setDef, setIdx) => {
+      steps.push({
+        type: 'WORKING_SET',
+        exerciseId: exercise.id,
+        exerciseName: exercise.name,
+        muscle,
+        setDef,
+        setNum: setIdx + 1,
+        totalSets: exercise.sets.length,
+      })
+    })
+  })
+
+  return steps
 }
