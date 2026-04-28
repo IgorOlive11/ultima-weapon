@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { LuMenu, LuChevronDown } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 import { DAY_NAMES } from '../data/protocol'
@@ -24,8 +24,9 @@ export default function Header({ scrollRef }) {
     if (!el) return
     const onScroll = () => {
       const y = el.scrollTop
-      if (y > lastY.current && y > 50) setHidden(true)
-      else if (y < lastY.current) setHidden(false)
+      const delta = y - lastY.current
+      if (delta > 0 && y > 50) setHidden(true)
+      else if (delta < -8) setHidden(false)
       lastY.current = y
     }
     el.addEventListener('scroll', onScroll, { passive: true })
