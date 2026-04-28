@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react'
 import { LuPlay, LuPause, LuRotateCcw } from 'react-icons/lu'
 import DoomFace from '../components/DoomFace'
 import { SET_TYPES, SET_TYPE_DESCRIPTIONS, GER_CONFIG } from '../data/protocol'
+import { useStore } from '../hooks/useStore'
 
 const PRESETS = [
   { label: '2:00', secs: 120 },
@@ -10,7 +10,7 @@ const PRESETS = [
   { label: '0:20', secs: 20 },
 ]
 
-const R = 90
+const R    = 90
 const CIRC = 2 * Math.PI * R
 
 function fmt(s) {
@@ -18,54 +18,16 @@ function fmt(s) {
 }
 
 export default function TimerPage() {
-  const [preset,  setPreset]  = useState(120)
-  const [secs,    setSecs]    = useState(120)
-  const [running, setRunning] = useState(false)
-  const [done,    setDone]    = useState(false)
-  const interval = useRef(null)
+  const restTimer      = useStore(s => s.restTimer)
+  const startRestTimer = useStore(s => s.startRestTimer)
+  const stopRestTimer  = useStore(s => s.stopRestTimer)
+  const resetRestTimer = useStore(s => s.resetRestTimer)
 
-  const pct    = 1 - secs / preset
+  const { running, seconds, preset } = restTimer
+  const done   = !running && seconds === 0
+  const pct    = preset > 0 ? 1 - seconds / preset : 0
   const offset = CIRC * (1 - pct)
-  const color  = done ? '#ff2d2d' : secs <= 10 ? '#ff2d2d' : secs <= 30 ? '#ffaa00' : '#39FF14'
-
-  useEffect(() => () => clearInterval(interval.current), [])
-
-  const start = () => {
-    setDone(false)
-    setRunning(true)
-    interval.current = setInterval(() => {
-      setSecs((s) => {
-        if (s <= 1) {
-          clearInterval(interval.current)
-          setRunning(false)
-          setDone(true)
-          if (navigator.vibrate) navigator.vibrate([200, 100, 200])
-          return 0
-        }
-        return s - 1
-      })
-    }, 1000)
-  }
-
-  const pause = () => {
-    clearInterval(interval.current)
-    setRunning(false)
-  }
-
-  const reset = () => {
-    clearInterval(interval.current)
-    setRunning(false)
-    setDone(false)
-    setSecs(preset)
-  }
-
-  const changePreset = (s) => {
-    clearInterval(interval.current)
-    setRunning(false)
-    setDone(false)
-    setPreset(s)
-    setSecs(s)
-  }
+  const color  = done ? '#ff2d2d' : seconds <= 10 ? '#ff2d2d' : seconds <= 30 ? '#ffaa00' : '#39FF14'
 
   return (
     <div className="p-4 pb-10 space-y-3">
@@ -95,10 +57,10 @@ export default function TimerPage() {
               className="font-display text-[58px] leading-none tracking-widest transition-colors duration-300"
               style={{ color }}
             >
-              {done ? 'GO!' : fmt(secs)}
+              {done ? 'GO!' : fmt(seconds)}
             </div>
             <div className="font-mono text-[9px] text-muted tracking-[0.2em] mt-1">
-              {done ? 'VAMOS!' : 'RESTANTE'}
+              {done ? 'VAMOS!' : running ? 'RESTANTE' : 'PRONTO'}
             </div>
           </div>
         </div>
@@ -108,7 +70,7 @@ export default function TimerPage() {
           {PRESETS.map((p) => (
             <button
               key={p.secs}
-              onClick={() => changePreset(p.secs)}
+              onClick={() => resetRestTimer(p.secs)}
               className={`px-3.5 py-1.5 font-display text-sm tracking-wider border transition-all
                 ${preset === p.secs
                   ? 'border-orange text-orange bg-orange/5'
@@ -123,7 +85,7 @@ export default function TimerPage() {
         {/* Controls */}
         <div className="flex gap-2 w-full">
           <button
-            onClick={reset}
+            onClick={() => resetRestTimer()}
             className="flex-1 flex items-center justify-center gap-2
               bg-s2 border border-border2 text-muted font-display text-base tracking-wider py-3
               hover:text-ink transition-colors active:opacity-70"
@@ -132,14 +94,14 @@ export default function TimerPage() {
             RESET
           </button>
           <button
-            onClick={running ? pause : start}
+            onClick={running ? stopRestTimer : () => startRestTimer(preset)}
             className="flex-[2] flex items-center justify-center gap-2
               bg-neon text-bg font-display text-lg tracking-widest py-3
               transition-all active:opacity-80 active:scale-[0.99]"
           >
             {running
               ? <><LuPause size={18} />PAUSAR</>
-              : <><LuPlay size={18} />{secs === preset ? 'INICIAR' : 'RETOMAR'}</>
+              : <><LuPlay size={18} />{seconds < preset ? 'RETOMAR' : 'INICIAR'}</>
             }
           </button>
         </div>

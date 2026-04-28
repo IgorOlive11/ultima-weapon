@@ -1,28 +1,46 @@
-import React, { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import {
   LuZap, LuCircleX, LuPlay, LuRotateCcw,
-  LuCircleCheck, LuArrowDownToLine,
+  LuCircleCheck, LuArrowDownToLine, LuLayers, LuCheckCheck,
 } from 'react-icons/lu'
 import DoomFace from './DoomFace'
 import { fmtKg, calcLoads } from '../utils/loads'
 import { GER_CONFIG } from '../data/protocol'
+import { useStore } from '../hooks/useStore'
 
 const MAX_BLOCKS = 12
+const TYPE_COLOR = '#ff2d2d'
+
+function fmt(s) {
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
 
 export default function MuscleRoundCard({ exercise, weekIdx, dayIdx, exIdx, onSave, savedLog, isFirst }) {
-  const [open, setOpen]         = useState(false)
-  const [topKg, setTopKg]       = useState(savedLog?.kg || '')
+  const [open, setOpen]               = useState(false)
+  const [topKg, setTopKg]             = useState(savedLog?.kg || '')
   const [blocksCompleted, setBlocksCompleted] = useState(savedLog?.blocks || 0)
-  const [failed, setFailed]     = useState(false)
+  const [failed, setFailed]           = useState(false)
   const [failedBlock, setFailedBlock] = useState(savedLog?.failedBlock || null)
-  const [timerSecs, setTimerSecs] = useState(10)
+  const [timerSecs, setTimerSecs]     = useState(10)
   const [timerRunning, setTimerRunning] = useState(false)
-  const [obs, setObs]           = useState(savedLog?.obs || '')
-  const [saved, setSaved]       = useState(false)
-  const intervalRef             = useRef(null)
+  const [obs, setObs]                 = useState(savedLog?.obs || '')
+  const [saved, setSaved]             = useState(false)
+  const [roundDone, setRoundDone]     = useState(false)
+  const intervalRef                   = useRef(null)
 
-  const loads = calcLoads(parseFloat(topKg))
+  const restTimer      = useStore(s => s.restTimer)
+  const startRestTimer = useStore(s => s.startRestTimer)
+
+  const loads   = calcLoads(parseFloat(topKg))
   const gerConf = GER_CONFIG[11]
+
+  // Clear roundDone 2s after rest completes
+  useEffect(() => {
+    if (roundDone && !restTimer.running && restTimer.seconds === 0) {
+      const t = setTimeout(() => setRoundDone(false), 2000)
+      return () => clearTimeout(t)
+    }
+  }, [restTimer.running, restTimer.seconds, roundDone])
 
   const startTimer = useCallback(() => {
     clearInterval(intervalRef.current)
@@ -45,7 +63,10 @@ export default function MuscleRoundCard({ exercise, weekIdx, dayIdx, exIdx, onSa
     if (failed) return
     const next = blocksCompleted + 1
     setBlocksCompleted(next)
-    if (next < MAX_BLOCKS) startTimer()
+    if (next < MAX_BLOCKS) {
+      startTimer()
+      startRestTimer(10)
+    }
   }
 
   const handleFail = () => {
@@ -62,6 +83,7 @@ export default function MuscleRoundCard({ exercise, weekIdx, dayIdx, exIdx, onSa
     setFailedBlock(null)
     setBlocksCompleted(0)
     setTimerSecs(10)
+    setRoundDone(false)
   }
 
   const handleSave = () => {
@@ -73,11 +95,15 @@ export default function MuscleRoundCard({ exercise, weekIdx, dayIdx, exIdx, onSa
 
   const timerColor = timerSecs <= 3 ? '#ff2d2d' : '#39FF14'
 
+  const restIsActive = roundDone && restTimer.running
+  const restIsDone   = roundDone && !restTimer.running && restTimer.seconds === 0
+  const restPct      = restTimer.preset > 0 ? restTimer.seconds / restTimer.preset : 0
+
   return (
     <div
       className={`bg-s1 border mb-1.5 overflow-hidden transition-all duration-200
         ${open ? 'border-[#ff2d2d]' : 'border-border1'}`}
-      style={{ borderLeftWidth: 3, borderLeftColor: open ? '#ff2d2d' : '#2a2a2a' }}
+      style={{ borderLeftWidth: 3, borderLeftColor: open ? TYPE_COLOR : '#2a2a2a' }}
     >
       {/* Header row */}
       <button
@@ -96,9 +122,7 @@ export default function MuscleRoundCard({ exercise, weekIdx, dayIdx, exIdx, onSa
         {savedLog?.kg && (
           <LuCircleCheck size={14} className="text-neon flex-shrink-0" />
         )}
-        <span
-          className="font-mono text-[10px] font-bold text-[#ff2d2d] flex-shrink-0"
-        >GER11</span>
+        <span className="font-mono text-[10px] font-bold text-[#ff2d2d] flex-shrink-0">GER11</span>
         <LuZap
           size={14}
           className={`flex-shrink-0 text-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
@@ -108,9 +132,10 @@ export default function MuscleRoundCard({ exercise, weekIdx, dayIdx, exIdx, onSa
       {/* Body */}
       {open && (
         <div className="px-3 pb-3 animate-slide-down">
-          {/* Type chip */}
+
+          {/* type chip — icon + label, no DoomFace */}
           <div className="inline-flex items-center gap-2 border border-[#ff2d2d] bg-[#ff2d2d]/5 px-2.5 py-1 mb-3">
-            <DoomFace ger={11} size={16} />
+            <LuLayers size={11} color={TYPE_COLOR} />
             <span className="font-mono text-[10px] text-[#ff2d2d] font-bold tracking-widest">
               MUSCLE ROUND
             </span>
@@ -165,7 +190,7 @@ export default function MuscleRoundCard({ exercise, weekIdx, dayIdx, exIdx, onSa
               <div className="set-row mb-3">
                 <span className="font-mono text-[10px] text-muted w-4">F</span>
                 <span className="font-mono text-[10px] text-muted2 flex-1">4-8 reps · 70% · GER 7</span>
-                <span className={`calc-chip ${loads ? 'calc-chip-dim' : 'calc-chip-dim'}`}>
+                <span className="calc-chip calc-chip-dim">
                   {loads ? fmtKg(loads.feeder1) : '—'}
                 </span>
               </div>
@@ -262,6 +287,46 @@ export default function MuscleRoundCard({ exercise, weekIdx, dayIdx, exIdx, onSa
                 {blocksCompleted} BLOCOS COMPLETOS
                 {failed && ` · FALHOU NO ${failedBlock + 1}º`}
               </span>
+            </div>
+          )}
+
+          {/* MUSCLE ROUND CONCLUÍDO — shown after fail */}
+          {failed && (
+            <div className="mb-3 space-y-1.5">
+              <button
+                className="w-full flex items-center justify-center gap-2 py-2.5 font-display text-[14px] tracking-widest border transition-all active:opacity-80"
+                style={roundDone
+                  ? { background: TYPE_COLOR, color: '#080808', borderColor: TYPE_COLOR }
+                  : { borderColor: TYPE_COLOR+'55', background: TYPE_COLOR+'0d', color: TYPE_COLOR }}
+                onClick={() => { setRoundDone(true); startRestTimer(120) }}
+              >
+                <LuCheckCheck size={14} />
+                MUSCLE ROUND CONCLUÍDO — 2:00
+              </button>
+
+              {/* inline rest indicator */}
+              {roundDone && (
+                restIsDone ? (
+                  <div className="flex items-center justify-center gap-2 py-1" style={{ color: TYPE_COLOR }}>
+                    <span className="font-mono text-[11px] tracking-widest">DESCANSO CONCLUÍDO ✓</span>
+                  </div>
+                ) : restIsActive ? (
+                  <div className="border px-2.5 py-1.5" style={{ borderColor: TYPE_COLOR+'33', background: TYPE_COLOR+'08' }}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <DoomFace ger={11} size={16} />
+                      <span className="font-mono text-[11px] tracking-widest" style={{ color: TYPE_COLOR }}>
+                        DESCANSANDO {fmt(restTimer.seconds)}
+                      </span>
+                    </div>
+                    <div className="h-[2px] w-full overflow-hidden" style={{ background: TYPE_COLOR+'22' }}>
+                      <div
+                        className="h-full transition-all duration-1000 ease-linear"
+                        style={{ width: `${restPct * 100}%`, background: TYPE_COLOR }}
+                      />
+                    </div>
+                  </div>
+                ) : null
+              )}
             </div>
           )}
 

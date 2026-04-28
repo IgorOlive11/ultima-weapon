@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { JS_DAY_TO_IDX } from '../data/protocol'
+import { timerManager } from '../utils/timerManager'
 
 function detectWeekDay() {
   const saved = localStorage.getItem('uw_start_date')
@@ -66,6 +67,32 @@ export const useStore = create(
         localStorage.setItem('uw_start_date', date)
         const { week, day } = detectWeekDay()
         set({ startDate: date, currentWeek: week, currentDay: day })
+      },
+
+      // --- rest timer ---
+      restTimer: { running: false, seconds: 120, preset: 120 },
+
+      startRestTimer: (seconds) => {
+        set(state => ({ restTimer: { ...state.restTimer, running: true, preset: seconds, seconds } }))
+        timerManager.start(
+          seconds,
+          (s) => set(state => ({ restTimer: { ...state.restTimer, running: true, seconds: s } })),
+          () => {
+            set(state => ({ restTimer: { ...state.restTimer, running: false, seconds: 0 } }))
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200])
+          }
+        )
+      },
+
+      stopRestTimer: () => {
+        timerManager.clear()
+        set(state => ({ restTimer: { ...state.restTimer, running: false } }))
+      },
+
+      resetRestTimer: (seconds) => {
+        timerManager.clear()
+        const s = seconds ?? get().restTimer.preset
+        set(state => ({ restTimer: { ...state.restTimer, running: false, seconds: s, preset: s } }))
       },
     }),
     {
