@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { JS_DAY_TO_IDX, defaultUserProtocol, buildWorkoutSteps } from '../data/protocol'
 import { timerManager } from '../utils/timerManager'
+import { round25 } from '../utils/loads'
 
 function detectWeekDay() {
   const saved = localStorage.getItem('uw_start_date')
@@ -21,6 +22,17 @@ const { week: initWeek, day: initDay } = detectWeekDay()
 
 function genId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
+}
+
+function startTimerTick(seconds, endsAt, set) {
+  timerManager.start(
+    seconds,
+    (s) => set(state => ({ restTimer: { ...state.restTimer, running: true, seconds: s } })),
+    () => {
+      set(state => ({ restTimer: { ...state.restTimer, running: false, seconds: 0 } }))
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200])
+    }
+  )
 }
 
 export const useStore = create(
@@ -77,19 +89,13 @@ export const useStore = create(
       },
 
       // ── rest timer ───────────────────────────────────────────────────────────
-      restTimer: { running: false, seconds: 120, preset: 120 },
+      restTimer: { running: false, seconds: 120, preset: 120, endsAt: 0 },
 
       startRestTimer: (seconds) => {
         timerManager.clear()
-        set(state => ({ restTimer: { ...state.restTimer, running: true, preset: seconds, seconds } }))
-        timerManager.start(
-          seconds,
-          (s) => set(state => ({ restTimer: { ...state.restTimer, running: true, seconds: s } })),
-          () => {
-            set(state => ({ restTimer: { ...state.restTimer, running: false, seconds: 0 } }))
-            if (navigator.vibrate) navigator.vibrate([200, 100, 200])
-          }
-        )
+        const endsAt = Date.now() + seconds * 1000
+        set(state => ({ restTimer: { ...state.restTimer, running: true, preset: seconds, seconds, endsAt } }))
+        startTimerTick(seconds, endsAt, set)
       },
 
       stopRestTimer: () => {
@@ -100,7 +106,20 @@ export const useStore = create(
       resetRestTimer: (seconds) => {
         timerManager.clear()
         const s = seconds ?? get().restTimer.preset
-        set(state => ({ restTimer: { ...state.restTimer, running: false, seconds: s, preset: s } }))
+        set(state => ({ restTimer: { ...state.restTimer, running: false, seconds: s, preset: s, endsAt: 0 } }))
+      },
+
+      // Restores the timer after a page reload / background return
+      resumeRestTimer: () => {
+        const { restTimer } = get()
+        if (!restTimer.running || !restTimer.endsAt) return
+        const remaining = Math.max(0, Math.round((restTimer.endsAt - Date.now()) / 1000))
+        if (remaining <= 0) {
+          set(state => ({ restTimer: { ...state.restTimer, running: false, seconds: 0 } }))
+          return
+        }
+        set(state => ({ restTimer: { ...state.restTimer, seconds: remaining } }))
+        startTimerTick(remaining, restTimer.endsAt, set)
       },
 
       // ── user profile ─────────────────────────────────────────────────────────
@@ -141,6 +160,19 @@ export const useStore = create(
           },
         },
       })),
+
+      // ── exercise history (cross-session, keyed by exercise name) ─────────────
+      exerciseHistory: {},
+
+      saveExerciseHistory: (name, entry) => set(state => ({
+        exerciseHistory: {
+          ...state.exerciseHistory,
+          [name.toUpperCase().trim()]: entry,
+        },
+      })),
+
+      getExerciseHistory: (name) =>
+        get().exerciseHistory[name?.toUpperCase()?.trim()] || null,
 
       // ── user protocol (8-week custom plan) ───────────────────────────────────
       userProtocol: defaultUserProtocol(),
@@ -268,22 +300,54 @@ export const useStore = create(
       })),
 
       completeWorkout: () => {
-        const { activeWorkout, saveLog } = get()
+        const { activeWorkout, saveLog, saveExerciseHistory } = get()
         if (!activeWorkout) return
         const { weekIdx, dayIdx, steps, exerciseWeights, setResults } = activeWorkout
-        // Build a per-exercise log entry
+
+        // Build per-exercise data for logs and history
         const exerciseMap = {}
         steps.forEach((step, idx) => {
-          if (step.type !== 'WORKING_SET') return
           const key = step.exerciseId
-          if (!exerciseMap[key]) exerciseMap[key] = { name: step.exerciseName, sets: [], kg: exerciseWeights[key] || 0 }
-          exerciseMap[key].sets.push(setResults[`${idx}`] || { kg: exerciseWeights[key] || 0 })
+          if (!exerciseMap[key]) {
+            exerciseMap[key] = {
+              name: step.exerciseName,
+              kg: exerciseWeights[key] || 0,
+              warmups: [],
+              feeders: [],
+              sets: [],
+            }
+          }
+          const result = setResults[String(idx)]
+          if (step.type === 'WARMUP') {
+            exerciseMap[key].warmups.push({
+              reps: result?.reps || 0,
+              kg: round25((exerciseWeights[key] || 0) * step.pct),
+            })
+          } else if (step.type === 'FEEDER') {
+            exerciseMap[key].feeders.push({
+              reps: result?.reps || 0,
+              kg: round25((exerciseWeights[key] || 0) * step.pct),
+            })
+          } else if (step.type === 'WORKING_SET') {
+            exerciseMap[key].sets.push({
+              setType: step.setDef?.type || 'NORMAL',
+              ...(result || { kg: exerciseWeights[key] || 0 }),
+            })
+          }
         })
+
         const day = get().userProtocol.weeks[weekIdx].days[dayIdx]
         ;(day.exercises || []).forEach((ex, exIdx) => {
-          if (exerciseMap[ex.id]) {
-            saveLog(weekIdx, dayIdx, exIdx, exerciseMap[ex.id])
-          }
+          const data = exerciseMap[ex.id]
+          if (!data) return
+          saveLog(weekIdx, dayIdx, exIdx, { name: data.name, sets: data.sets, kg: data.kg })
+          saveExerciseHistory(data.name, {
+            date: new Date().toISOString(),
+            kg: data.kg,
+            warmups: data.warmups,
+            feeders: data.feeders,
+            sets: data.sets,
+          })
         })
         set({ activeWorkout: null })
       },
@@ -293,12 +357,14 @@ export const useStore = create(
     {
       name: 'uw-store-v3',
       partialize: (state) => ({
-        logs:          state.logs,
-        userProfile:   state.userProfile,
-        microLog:      state.microLog,
-        mealLog:       state.mealLog,
-        userProtocol:  state.userProtocol,
-        activeWorkout: state.activeWorkout,
+        logs:            state.logs,
+        userProfile:     state.userProfile,
+        microLog:        state.microLog,
+        mealLog:         state.mealLog,
+        userProtocol:    state.userProtocol,
+        activeWorkout:   state.activeWorkout,
+        restTimer:       state.restTimer,
+        exerciseHistory: state.exerciseHistory,
       }),
     }
   )

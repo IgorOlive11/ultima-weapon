@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { useStore } from './hooks/useStore'
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'
@@ -10,8 +10,11 @@ import HistoryPage from './pages/HistoryPage'
 import SettingsPage from './pages/SettingsPage'
 
 export default function App() {
-  const activeTab = useStore((s) => s.activeTab)
-  const scrollRef = useRef(null)
+  const activeTab        = useStore((s) => s.activeTab)
+  const resumeRestTimer  = useStore((s) => s.resumeRestTimer)
+  const scrollRef        = useRef(null)
+
+  useEffect(() => { resumeRestTimer() }, [])
 
   return (
     <div className="scanlines flex flex-col h-dvh max-w-[430px] mx-auto bg-bg overflow-hidden relative">

@@ -123,13 +123,15 @@ function AddSetModal({ onAdd, onClose }) {
       <motion.div
         initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-        className="w-full max-w-[430px] bg-s1 border-t border-border1 p-5 pb-8"
+        className="w-full max-w-[430px] bg-s1 border-t border-border1 max-h-[90vh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between p-5 pb-3 flex-shrink-0">
           <span className="font-display text-lg tracking-[0.15em] text-neon">TIPO DE SÉRIE</span>
           <button onClick={onClose} className="text-muted hover:text-ink p-1"><LuX size={18}/></button>
         </div>
+
+        <div className="overflow-y-auto flex-1 px-5 pb-8">
 
         {/* Type selector */}
         <div className="flex flex-col gap-1.5 mb-4">
@@ -227,6 +229,8 @@ function AddSetModal({ onAdd, onClose }) {
         >
           ADICIONAR SÉRIE
         </button>
+
+        </div>{/* end scrollable area */}
       </motion.div>
     </motion.div>
   )
@@ -418,15 +422,15 @@ function DayEditor({ weekIdx, dayIdx }) {
               opts: [45, 60, 90, 120],
             },
           ].map(({ label, sub, field, set: setter, opts }) => (
-            <div key={field} className="flex items-center justify-between bg-s2 border border-border2 px-3 py-2.5 mb-2">
-              <div className="flex items-center gap-2 min-w-0 mr-2">
+            <div key={field} className="bg-s2 border border-border2 px-3 py-2.5 mb-2">
+              <div className="flex items-center gap-2 mb-2">
                 <LuClock size={13} className="text-muted flex-shrink-0"/>
-                <div className="min-w-0">
+                <div>
                   <div className="font-display text-[12px] tracking-wider text-ink leading-tight">{label}</div>
                   <div className="font-mono text-[9px] text-muted mt-0.5">{sub}</div>
                 </div>
               </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
+              <div className="flex flex-wrap gap-1">
                 {opts.map(s => {
                   const m = Math.floor(s / 60), sec = s % 60
                   const lbl = m === 0 ? `${s}s` : sec ? `${m}'${String(sec).padStart(2,'0')}` : `${m}'`
@@ -435,7 +439,7 @@ function DayEditor({ weekIdx, dayIdx }) {
                     <button
                       key={s}
                       onClick={() => setter(s)}
-                      className={`px-2 py-1 font-mono text-[10px] border transition-all ${
+                      className={`px-3 py-1.5 font-mono text-[11px] border transition-all ${
                         current === s
                           ? 'bg-neon text-bg border-neon'
                           : 'bg-s1 border-border1 text-muted hover:text-ink'

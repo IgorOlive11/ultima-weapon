@@ -15,7 +15,7 @@ function SaveBtn({ saved, onClick }) {
 }
 
 function inputCls() {
-  return 'w-full bg-s2 border border-border2 text-ink px-3 py-3 font-mono text-sm tracking-wider outline-none focus:border-neon transition-colors'
+  return 'w-full min-w-0 bg-s2 border border-border2 text-ink px-3 py-3 font-mono text-sm tracking-wider outline-none focus:border-neon transition-colors'
 }
 
 export default function SettingsPage() {
@@ -125,10 +125,12 @@ export default function SettingsPage() {
           Define quando você começou o protocolo.<br />
           A semana atual é calculada automaticamente.
         </p>
-        <input
-          type="date" value={dateInput} onChange={e => setDateInput(e.target.value)}
-          className={inputCls() + ' mb-3'} style={{ colorScheme: 'dark' }}
-        />
+        <div className="overflow-hidden mb-3">
+          <input
+            type="date" value={dateInput} onChange={e => setDateInput(e.target.value)}
+            className={inputCls()} style={{ colorScheme: 'dark', maxWidth: '100%' }}
+          />
+        </div>
         <SaveBtn saved={dateSaved} onClick={saveDate} />
       </div>
 
@@ -174,19 +176,23 @@ export default function SettingsPage() {
         <div className="space-y-3">
           <div>
             <div className="font-mono text-[9px] text-muted tracking-widest mb-1">HORÁRIO DO TREINO</div>
-            <input
-              type="time" value={times.workoutTime}
-              onChange={e => setTimes(t => ({ ...t, workoutTime: e.target.value }))}
-              className={inputCls()} style={{ colorScheme: 'dark' }}
-            />
+            <div className="overflow-hidden">
+              <input
+                type="time" value={times.workoutTime}
+                onChange={e => setTimes(t => ({ ...t, workoutTime: e.target.value }))}
+                className={inputCls()} style={{ colorScheme: 'dark', maxWidth: '100%' }}
+              />
+            </div>
           </div>
           <div>
             <div className="font-mono text-[9px] text-muted tracking-widest mb-1">HORÁRIO DE DORMIR</div>
-            <input
-              type="time" value={times.sleepTime}
-              onChange={e => setTimes(t => ({ ...t, sleepTime: e.target.value }))}
-              className={inputCls()} style={{ colorScheme: 'dark' }}
-            />
+            <div className="overflow-hidden">
+              <input
+                type="time" value={times.sleepTime}
+                onChange={e => setTimes(t => ({ ...t, sleepTime: e.target.value }))}
+                className={inputCls()} style={{ colorScheme: 'dark', maxWidth: '100%' }}
+              />
+            </div>
           </div>
         </div>
         <div className="mt-4">

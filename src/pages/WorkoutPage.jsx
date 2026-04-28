@@ -28,7 +28,7 @@ function cardVariants(dir) {
 
 // ─── ConfirmFinishModal ───────────────────────────────────────────────────────
 
-function ConfirmFinishModal({ onConfirm, onCancel }) {
+function ConfirmModal({ title, subtitle, confirmLabel, confirmClass, onConfirm, onCancel }) {
   return (
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -42,10 +42,8 @@ function ConfirmFinishModal({ onConfirm, onCancel }) {
         onClick={e => e.stopPropagation()}
       >
         <div className="text-center mb-6">
-          <div className="font-display text-xl tracking-[0.2em] text-neon mb-2">CONCLUIR TREINO?</div>
-          <div className="font-mono text-[11px] text-muted">
-            Isso encerrará a sessão e salvará todos os registros.
-          </div>
+          <div className="font-display text-xl tracking-[0.2em] text-neon mb-2">{title}</div>
+          <div className="font-mono text-[11px] text-muted">{subtitle}</div>
         </div>
         <div className="flex gap-3">
           <button
@@ -56,9 +54,9 @@ function ConfirmFinishModal({ onConfirm, onCancel }) {
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 py-3 font-display text-sm tracking-[0.15em] bg-neon text-bg"
+            className={`flex-1 py-3 font-display text-sm tracking-[0.15em] ${confirmClass}`}
           >
-            CONCLUIR
+            {confirmLabel}
           </button>
         </div>
       </motion.div>
@@ -68,7 +66,25 @@ function ConfirmFinishModal({ onConfirm, onCancel }) {
 
 // ─── step cards ───────────────────────────────────────────────────────────────
 
-function WeightQuestionCard({ step, onConfirm }) {
+function fmtSetResult(s) {
+  if (!s) return ''
+  switch (s.setType) {
+    case 'REST_PAUSE':
+      return s.blocks?.length
+        ? s.blocks.map((b, i) => `B${i+1}: ${b.reps}r`).join(', ') + ` · ${fmtKg(s.kg)}`
+        : `${fmtKg(s.kg)}`
+    case 'MUSCLE_ROUND':
+      return `${s.blocks ?? '?'} blocos · ${fmtKg(s.kg)}`
+    case 'WIDOWMAKER':
+      return `${s.reps ?? '?'} reps · ${fmtKg(s.kg)}`
+    case 'PULSE':
+      return fmtKg(s.kg)
+    default:
+      return s.reps ? `${s.reps} reps · ${fmtKg(s.kg)}` : fmtKg(s.kg)
+  }
+}
+
+function WeightQuestionCard({ step, onConfirm, history }) {
   const [weight, setWeight] = useState('')
   const question = getWeightQuestion(step.setDef)
   const typeInfo = SET_TYPES[step.setDef?.type] || SET_TYPES.NORMAL
@@ -94,11 +110,39 @@ function WeightQuestionCard({ step, onConfirm }) {
           {typeInfo.label}
         </div>
 
-        <div className="bg-s2 border border-border1 px-4 py-4 mb-5">
+        <div className="bg-s2 border border-border1 px-4 py-4 mb-4">
           <div className="font-mono text-[11px] text-muted tracking-wider leading-relaxed">
             {question}
           </div>
         </div>
+
+        {/* last session history */}
+        {history && (
+          <div className="bg-s2 border border-border1 px-3 py-3 mb-4">
+            <div className="font-mono text-[9px] text-neon tracking-[0.2em] mb-2">ÚLTIMO REGISTRO</div>
+            <div className="font-mono text-[10px] text-muted/70 mb-2">
+              {new Date(history.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+              {history.kg > 0 && <span className="text-neon ml-2">{fmtKg(history.kg)}</span>}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {history.warmups?.filter(w => w.reps > 0).map((w, i) => (
+                <div key={`w${i}`} className="font-mono text-[10px] text-muted">
+                  Aquec. {i+1}: {w.reps} reps · {fmtKg(w.kg)}
+                </div>
+              ))}
+              {history.feeders?.filter(f => f.reps > 0).map((f, i) => (
+                <div key={`f${i}`} className="font-mono text-[10px] text-muted">
+                  Feeder {i+1}: {f.reps} reps · {fmtKg(f.kg)}
+                </div>
+              ))}
+              {history.sets?.map((s, i) => (
+                <div key={`s${i}`} className="font-mono text-[10px] text-ink/80">
+                  Série {i+1}: {fmtSetResult(s)}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* weight input */}
         <div className="flex items-center gap-3 mb-5">
@@ -142,8 +186,13 @@ function WeightQuestionCard({ step, onConfirm }) {
 }
 
 function WarmupFeederCard({ step, workingWeight, onDone, isLocked }) {
+  const [reps, setReps] = useState('')
   const isWarmup = step.type === 'WARMUP'
   const weight = round25(workingWeight * step.pct)
+
+  const handleDone = () => {
+    onDone({ reps: parseInt(reps) || 0, kg: weight })
+  }
 
   return (
     <div className="bg-s1 border border-border2 rounded-sm overflow-hidden">
@@ -154,13 +203,13 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked }) {
         <div className="font-display text-xl tracking-wider text-ink mb-1">
           {isWarmup ? `AQUECIMENTO ${step.setNum} DE 2` : `FEEDER ${step.setNum} DE ${step.setNum <= 1 ? '1-3' : '3'}`}
         </div>
-        <div className="font-mono text-[11px] text-muted/60 tracking-wider mb-5">
+        <div className="font-mono text-[11px] text-muted/60 tracking-wider mb-4">
           {isWarmup ? 'Prepare os tecidos' : 'Ativação progressiva — GER 7'}
         </div>
 
-        <div className="bg-s2 border border-border1 px-4 py-4 mb-5 flex items-center justify-between">
+        <div className="bg-s2 border border-border1 px-4 py-4 mb-4 flex items-center justify-between">
           <div>
-            <div className="font-mono text-[10px] text-muted tracking-wider mb-1">REP RANGE</div>
+            <div className="font-mono text-[10px] text-muted tracking-wider mb-1">ALVO</div>
             <div className="font-display text-2xl tracking-wider text-ink">{step.reps} REPS</div>
           </div>
           <div className="text-right">
@@ -179,8 +228,30 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked }) {
           </div>
         )}
 
+        {/* reps done */}
+        <div className="mb-4">
+          <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">REPS REALIZADAS</label>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setReps(r => String(Math.max(0, (parseInt(r)||0) - 1)))}
+              className="w-11 h-11 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
+            ><LuMinus size={16}/></button>
+            <input
+              type="number" inputMode="numeric"
+              className="flex-1 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-2.5 focus:border-neon outline-none transition-colors"
+              placeholder="0"
+              value={reps}
+              onChange={e => setReps(e.target.value)}
+            />
+            <button
+              onClick={() => setReps(r => String((parseInt(r)||0) + 1))}
+              className="w-11 h-11 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
+            ><LuPlus size={16}/></button>
+          </div>
+        </div>
+
         <button
-          onClick={onDone}
+          onClick={handleDone}
           disabled={isLocked}
           className="w-full py-3.5 font-display text-sm tracking-[0.2em] bg-s2 border border-border2 text-muted hover:text-ink hover:border-neon disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
         >
@@ -279,12 +350,12 @@ function RestPauseCard({ step, workingWeight, onDone, isLocked }) {
   const typeInfo  = SET_TYPES.REST_PAUSE
 
   const currentBlock = blocks.length - 1
-  const isDone = blocks.length >= 3 && blocks[blocks.length-1].reps !== null
+  const isDone = blocks.length >= 2 && blocks[blocks.length-1].reps !== null
 
   const handleBlockDone = (reps) => {
     const updated = blocks.map((b, i) => i === currentBlock ? { reps } : b)
     setBlocks(updated)
-    if (updated.length < 3) {
+    if (updated.length < 2) {
       // start 20s inter-block rest
       setPhase('rest20')
       let t = 20
@@ -320,7 +391,7 @@ function RestPauseCard({ step, workingWeight, onDone, isLocked }) {
 
         {/* instructions */}
         <div className="bg-s2 border border-border1 px-3 py-3 mb-4 font-mono text-[10px] text-muted leading-relaxed">
-          Carga para ~8 reps. <span className="text-orange-400">Pausa 20s</span> após falha → mais reps → <span className="text-orange-400">pausa 20s</span> → falha.
+          Carga para ~8 reps. Vai até a falha → <span className="text-orange-400">Pausa 20s</span> → vai até a falha de novo.
           <br/>Quando chegar 10-11 reps no bloco 1: progride carga.
         </div>
 
@@ -823,7 +894,9 @@ function ActiveWorkout() {
   const userProtocol        = useStore(s => s.userProtocol)
   const startRestTimer      = useStore(s => s.startRestTimer)
   const stopRestTimer       = useStore(s => s.stopRestTimer)
+  const exerciseHistory     = useStore(s => s.exerciseHistory)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showAbandon, setShowAbandon] = useState(false)
   const [dir, setDir]       = useState(1)
   const [isResting, setIsResting] = useState(false)
 
@@ -836,7 +909,7 @@ function ActiveWorkout() {
   const workingWeight = step ? exerciseWeights[step.exerciseId] || 0 : 0
 
   const advance = useCallback((result) => {
-    if (result && step?.type === 'WORKING_SET') {
+    if (result) {
       saveSetResult(String(currentStepIdx), result)
     }
 
@@ -916,10 +989,10 @@ function ActiveWorkout() {
       {/* top bar */}
       <div className="flex items-center gap-2 mb-4">
         <button
-          onClick={() => setShowConfirm(true)}
+          onClick={() => setShowAbandon(true)}
           className="font-mono text-[10px] text-muted hover:text-red-400 tracking-wider transition-colors"
         >
-          ABANDONAR
+          CANCELAR
         </button>
         <div className="flex-1 h-[3px] bg-border1">
           <div
@@ -944,7 +1017,11 @@ function ActiveWorkout() {
           transition={{ type: 'spring', stiffness: 350, damping: 30 }}
         >
           {step?.type === 'WEIGHT_QUESTION' && (
-            <WeightQuestionCard step={step} onConfirm={handleWeightConfirm}/>
+            <WeightQuestionCard
+              step={step}
+              onConfirm={handleWeightConfirm}
+              history={exerciseHistory?.[step.exerciseName?.toUpperCase()?.trim()]}
+            />
           )}
 
           {(step?.type === 'WARMUP' || step?.type === 'FEEDER') && (
@@ -1007,9 +1084,26 @@ function ActiveWorkout() {
 
       <AnimatePresence>
         {showConfirm && (
-          <ConfirmFinishModal
+          <ConfirmModal
+            title="CONCLUIR TREINO?"
+            subtitle="Isso encerrará a sessão e salvará todos os registros."
+            confirmLabel="CONCLUIR"
+            confirmClass="bg-neon text-bg"
             onConfirm={() => { setShowConfirm(false); completeWorkout() }}
             onCancel={() => setShowConfirm(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showAbandon && (
+          <ConfirmModal
+            title="CANCELAR TREINO?"
+            subtitle="O progresso desta sessão será perdido."
+            confirmLabel="CANCELAR TREINO"
+            confirmClass="bg-red-500 text-white"
+            onConfirm={() => { setShowAbandon(false); stopRestTimer(); abandonWorkout() }}
+            onCancel={() => setShowAbandon(false)}
           />
         )}
       </AnimatePresence>
