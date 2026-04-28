@@ -45,6 +45,8 @@ export function defaultUserProtocol() {
       days: Array(7).fill(null).map(() => ({
         isRest: false,
         restSeconds: 120,
+        warmupRestSeconds: 60,
+        feederRestSeconds: 60,
         exercises: [],
       })),
     })),

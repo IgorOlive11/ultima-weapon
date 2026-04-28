@@ -141,7 +141,7 @@ function WeightQuestionCard({ step, onConfirm }) {
   )
 }
 
-function WarmupFeederCard({ step, workingWeight, onDone }) {
+function WarmupFeederCard({ step, workingWeight, onDone, isLocked }) {
   const isWarmup = step.type === 'WARMUP'
   const weight = round25(workingWeight * step.pct)
 
@@ -181,7 +181,8 @@ function WarmupFeederCard({ step, workingWeight, onDone }) {
 
         <button
           onClick={onDone}
-          className="w-full py-3.5 font-display text-sm tracking-[0.2em] bg-s2 border border-border2 text-muted hover:text-ink hover:border-neon transition-colors flex items-center justify-center gap-2"
+          disabled={isLocked}
+          className="w-full py-3.5 font-display text-sm tracking-[0.2em] bg-s2 border border-border2 text-muted hover:text-ink hover:border-neon disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
         >
           <LuCheck size={16}/> CONCLUÍDO
         </button>
@@ -190,15 +191,12 @@ function WarmupFeederCard({ step, workingWeight, onDone }) {
   )
 }
 
-function NormalSetCard({ step, workingWeight, restSeconds, onDone }) {
+function NormalSetCard({ step, workingWeight, onDone, isLocked }) {
   const [repsHit, setRepsHit] = useState('')
-  const startRestTimer = useStore(s => s.startRestTimer)
-  const restTimer = useStore(s => s.restTimer)
   const typeInfo  = SET_TYPES[step.setDef.type] || SET_TYPES.NORMAL
   const gerCfg    = GER_CONFIG[step.setDef.ger] || GER_CONFIG[10]
 
   const handleDone = () => {
-    startRestTimer(restSeconds)
     onDone({ kg: workingWeight, reps: parseInt(repsHit) || 0 })
   }
 
@@ -263,7 +261,7 @@ function NormalSetCard({ step, workingWeight, restSeconds, onDone }) {
 
         <button
           onClick={handleDone}
-          disabled={restTimer.running}
+          disabled={isLocked}
           className="w-full py-3.5 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-opacity"
           style={{ background: typeInfo.color }}
         >
@@ -274,12 +272,10 @@ function NormalSetCard({ step, workingWeight, restSeconds, onDone }) {
   )
 }
 
-function RestPauseCard({ step, workingWeight, restSeconds, onDone }) {
+function RestPauseCard({ step, workingWeight, onDone, isLocked }) {
   const [blocks, setBlocks]   = useState([{ reps: null }])
   const [phase, setPhase]     = useState('block') // 'block' | 'rest20'
   const [timer20, setTimer20] = useState(null)
-  const startRestTimer = useStore(s => s.startRestTimer)
-  const restTimer = useStore(s => s.restTimer)
   const typeInfo  = SET_TYPES.REST_PAUSE
 
   const currentBlock = blocks.length - 1
@@ -307,7 +303,6 @@ function RestPauseCard({ step, workingWeight, restSeconds, onDone }) {
   }
 
   const handleFinish = () => {
-    startRestTimer(restSeconds)
     onDone({ kg: workingWeight, blocks })
   }
 
@@ -396,7 +391,7 @@ function RestPauseCard({ step, workingWeight, restSeconds, onDone }) {
         {isDone && (
           <button
             onClick={handleFinish}
-            disabled={restTimer.running}
+            disabled={isLocked}
             className="w-full py-3.5 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 flex items-center justify-center gap-2"
             style={{ background: typeInfo.color }}
           >
@@ -408,14 +403,12 @@ function RestPauseCard({ step, workingWeight, restSeconds, onDone }) {
   )
 }
 
-function MuscleRoundCard({ step, workingWeight, restSeconds, onDone }) {
+function MuscleRoundCard({ step, workingWeight, onDone, isLocked }) {
   const TOTAL_BLOCKS = 12
   const [completedBlocks, setCompletedBlocks] = useState(0)
   const [failedBlock, setFailedBlock]         = useState(null)
   const [blockTimer, setBlockTimer]           = useState(null)
   const [phase, setPhase]                     = useState('ready') // ready | rest10 | done
-  const startRestTimer = useStore(s => s.startRestTimer)
-  const restTimer = useStore(s => s.restTimer)
   const typeInfo  = SET_TYPES.MUSCLE_ROUND
 
   const handleBlockDone = () => {
@@ -442,7 +435,6 @@ function MuscleRoundCard({ step, workingWeight, restSeconds, onDone }) {
   }
 
   const handleFinish = () => {
-    startRestTimer(restSeconds)
     onDone({ kg: workingWeight, blocks: completedBlocks, failedBlock })
   }
 
@@ -523,7 +515,7 @@ function MuscleRoundCard({ step, workingWeight, restSeconds, onDone }) {
         {(phase === 'done' || failedBlock !== null) && (
           <button
             onClick={handleFinish}
-            disabled={restTimer.running}
+            disabled={isLocked}
             className="w-full py-3.5 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 flex items-center justify-center gap-2"
             style={{ background: typeInfo.color }}
           >
@@ -535,11 +527,9 @@ function MuscleRoundCard({ step, workingWeight, restSeconds, onDone }) {
   )
 }
 
-function WidowmakerCard({ step, workingWeight, restSeconds, onDone }) {
+function WidowmakerCard({ step, workingWeight, onDone, isLocked }) {
   const [reps, setReps]   = useState(0)
   const [phase, setPhase] = useState('working') // 'working' | 'extending'
-  const startRestTimer    = useStore(s => s.startRestTimer)
-  const restTimer         = useStore(s => s.restTimer)
   const typeInfo          = SET_TYPES.WIDOWMAKER
 
   const handleFail = () => {
@@ -547,7 +537,6 @@ function WidowmakerCard({ step, workingWeight, restSeconds, onDone }) {
   }
 
   const handleFinish = () => {
-    startRestTimer(restSeconds)
     onDone({ kg: workingWeight, reps })
   }
 
@@ -614,7 +603,7 @@ function WidowmakerCard({ step, workingWeight, restSeconds, onDone }) {
         {phase === 'extending' && reps >= 15 && (
           <button
             onClick={handleFinish}
-            disabled={restTimer.running}
+            disabled={isLocked}
             className="w-full py-3.5 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 flex items-center justify-center gap-2"
             style={{ background: typeInfo.color }}
           >
@@ -626,7 +615,7 @@ function WidowmakerCard({ step, workingWeight, restSeconds, onDone }) {
   )
 }
 
-function PulseSetCard({ step, workingWeight, restSeconds, onDone }) {
+function PulseSetCard({ step, workingWeight, onDone, isLocked }) {
   const SEQUENCE = [
     { reps: 5, pulses: 5 },
     { reps: 4, pulses: 5 },
@@ -636,8 +625,6 @@ function PulseSetCard({ step, workingWeight, restSeconds, onDone }) {
   ]
   const [current, setCurrent] = useState(0)
   const [phase, setPhase]     = useState('reps') // 'reps' | 'pulses'
-  const startRestTimer         = useStore(s => s.startRestTimer)
-  const restTimer              = useStore(s => s.restTimer)
   const typeInfo               = SET_TYPES.PULSE
   const isDone = current >= SEQUENCE.length
 
@@ -655,7 +642,6 @@ function PulseSetCard({ step, workingWeight, restSeconds, onDone }) {
   }
 
   const handleFinish = () => {
-    startRestTimer(restSeconds)
     onDone({ kg: workingWeight })
   }
 
@@ -725,7 +711,7 @@ function PulseSetCard({ step, workingWeight, restSeconds, onDone }) {
         {isDone && (
           <button
             onClick={handleFinish}
-            disabled={restTimer.running}
+            disabled={isLocked}
             className="w-full py-3.5 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 flex items-center justify-center gap-2"
             style={{ background: typeInfo.color }}
           >
@@ -737,11 +723,84 @@ function PulseSetCard({ step, workingWeight, restSeconds, onDone }) {
   )
 }
 
+// ─── InlineRestTimer ─────────────────────────────────────────────────────────
+
+function InlineRestTimer({ onNext }) {
+  const restTimer     = useStore(s => s.restTimer)
+  const stopRestTimer = useStore(s => s.stopRestTimer)
+
+  const isDone  = !restTimer.running && restTimer.seconds === 0
+  const pct     = restTimer.preset > 0 ? restTimer.seconds / restTimer.preset : 0
+  const barColor = pct > 0.5 ? '#39FF14' : pct > 0.2 ? '#ffaa00' : '#ff2d2d'
+  const fmtTime  = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+
+  const handleNext = () => {
+    stopRestTimer()
+    onNext()
+  }
+
+  return (
+    <motion.div
+      initial={{ y: 16, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: 16, opacity: 0 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+      className="mt-3 bg-s1 border border-border2 overflow-hidden"
+    >
+      {/* progress bar */}
+      <div className="h-[3px] bg-border1">
+        <motion.div
+          className="h-full"
+          animate={{ width: `${pct * 100}%` }}
+          transition={{ duration: 1, ease: 'linear' }}
+          style={{ background: barColor }}
+        />
+      </div>
+
+      <div className="flex items-center gap-4 px-4 py-3">
+        <div>
+          <div className="font-mono text-[9px] text-muted tracking-[0.2em]">
+            {isDone ? 'PRONTO' : 'DESCANSO'}
+          </div>
+          <motion.div
+            key={restTimer.seconds}
+            initial={{ scale: 1.1, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className={`font-display text-3xl leading-none tracking-wider ${isDone ? 'text-neon' : 'text-ink'}`}
+          >
+            {isDone ? 'GO!' : fmtTime(restTimer.seconds)}
+          </motion.div>
+        </div>
+
+        <div className="flex-1 h-2 bg-border1 rounded-full overflow-hidden">
+          <motion.div
+            className="h-full rounded-full"
+            animate={{ width: `${pct * 100}%` }}
+            transition={{ duration: 1, ease: 'linear' }}
+            style={{ background: barColor }}
+          />
+        </div>
+
+        <button
+          onClick={handleNext}
+          className={`px-4 py-2 font-display text-xs tracking-[0.15em] border transition-colors ${
+            isDone
+              ? 'border-neon text-bg bg-neon'
+              : 'border-border2 text-muted hover:text-ink hover:border-neon'
+          }`}
+        >
+          {isDone ? 'PRONTO →' : 'PULAR'}
+        </button>
+      </div>
+    </motion.div>
+  )
+}
+
 // ─── WorkingSetCard (dispatcher) ─────────────────────────────────────────────
 
-function WorkingSetCard({ step, workingWeight, restSeconds, onDone }) {
+function WorkingSetCard({ step, workingWeight, onDone, isLocked }) {
   const { type } = step.setDef
-  const props = { step, workingWeight, restSeconds, onDone }
+  const props = { step, workingWeight, onDone, isLocked }
 
   switch (type) {
     case 'REST_PAUSE':   return <RestPauseCard {...props}/>
@@ -762,9 +821,11 @@ function ActiveWorkout() {
   const completeWorkout     = useStore(s => s.completeWorkout)
   const abandonWorkout      = useStore(s => s.abandonWorkout)
   const userProtocol        = useStore(s => s.userProtocol)
-  const restTimer           = useStore(s => s.restTimer)
+  const startRestTimer      = useStore(s => s.startRestTimer)
+  const stopRestTimer       = useStore(s => s.stopRestTimer)
   const [showConfirm, setShowConfirm] = useState(false)
   const [dir, setDir]       = useState(1)
+  const [isResting, setIsResting] = useState(false)
 
   if (!activeWorkout) return null
 
@@ -772,16 +833,44 @@ function ActiveWorkout() {
   const day     = userProtocol.weeks[weekIdx].days[dayIdx]
   const step    = steps[currentStepIdx]
   const isLast  = currentStepIdx === steps.length - 1
-  const restSec = day.restSeconds || 120
   const workingWeight = step ? exerciseWeights[step.exerciseId] || 0 : 0
 
   const advance = useCallback((result) => {
     if (result && step?.type === 'WORKING_SET') {
       saveSetResult(String(currentStepIdx), result)
     }
+
+    // Skip rest after the last working set of the entire workout
+    const isLastWorkingSet =
+      step?.type === 'WORKING_SET' &&
+      !steps.slice(currentStepIdx + 1).some(s => s.type === 'WORKING_SET')
+
+    if (isLastWorkingSet) {
+      setDir(1)
+      advanceWorkoutStep()
+      return
+    }
+
+    let restSec = 0
+    if (step?.type === 'WARMUP')       restSec = day.warmupRestSeconds ?? 60
+    else if (step?.type === 'FEEDER')  restSec = day.feederRestSeconds ?? 60
+    else if (step?.type === 'WORKING_SET') restSec = day.restSeconds ?? 120
+
+    if (restSec > 0) {
+      startRestTimer(restSec)
+      setIsResting(true)
+    } else {
+      setDir(1)
+      advanceWorkoutStep()
+    }
+  }, [step, currentStepIdx, steps, day, advanceWorkoutStep, saveSetResult, startRestTimer])
+
+  const handleRestDone = useCallback(() => {
+    stopRestTimer()
+    setIsResting(false)
     setDir(1)
     advanceWorkoutStep()
-  }, [step, currentStepIdx, advanceWorkoutStep, saveSetResult])
+  }, [stopRestTimer, advanceWorkoutStep])
 
   const handleWeightConfirm = (weight) => {
     setExerciseWeight(step.exerciseId, weight)
@@ -863,6 +952,7 @@ function ActiveWorkout() {
               step={step}
               workingWeight={workingWeight}
               onDone={() => advance()}
+              isLocked={isResting}
             />
           )}
 
@@ -870,11 +960,16 @@ function ActiveWorkout() {
             <WorkingSetCard
               step={step}
               workingWeight={workingWeight}
-              restSeconds={restSec}
               onDone={(result) => advance(result)}
+              isLocked={isResting}
             />
           )}
         </motion.div>
+      </AnimatePresence>
+
+      {/* inline rest timer */}
+      <AnimatePresence>
+        {isResting && <InlineRestTimer onNext={handleRestDone}/>}
       </AnimatePresence>
 
       {/* finish button (shows on last working set) */}

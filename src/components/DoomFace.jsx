@@ -1,17 +1,21 @@
-
-const GER_FILES = {
-  7: 'ger7.png', 8: 'ger8.png', 9: 'ger9.png', 10: 'ger10.png',
-  11: 'ger11.png', 12: 'ger12.png', 13: 'ger13.png',
-}
-
 const ASPECT = 31 / 24
 
-export default function DoomFace({ ger, size = 32, className = '' }) {
-  const g = Math.max(7, Math.min(13, Math.round(ger)))
+// Accepts either:
+//   ger={10}         (number)
+//   face="ger10"     (string from GER_CONFIG[n].face)
+export default function DoomFace({ ger, face, size = 32, className = '' }) {
+  let g
+  if (face && typeof face === 'string') {
+    g = parseInt(face.replace('ger', ''), 10)
+  } else {
+    g = Math.round(Number(ger))
+  }
+  g = Math.max(7, Math.min(13, g || 10))
+
   const h = Math.round(size * ASPECT)
   return (
     <img
-      src={`/doom-faces/${GER_FILES[g]}`}
+      src={`/doom-faces/ger${g}.png`}
       width={size}
       height={h}
       alt={`GER ${g}`}

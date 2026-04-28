@@ -157,6 +157,18 @@ export const useStore = create(
         return { userProtocol: p }
       }),
 
+      setDayWarmupRestSeconds: (weekIdx, dayIdx, seconds) => set(state => {
+        const p = JSON.parse(JSON.stringify(state.userProtocol))
+        p.weeks[weekIdx].days[dayIdx].warmupRestSeconds = seconds
+        return { userProtocol: p }
+      }),
+
+      setDayFeederRestSeconds: (weekIdx, dayIdx, seconds) => set(state => {
+        const p = JSON.parse(JSON.stringify(state.userProtocol))
+        p.weeks[weekIdx].days[dayIdx].feederRestSeconds = seconds
+        return { userProtocol: p }
+      }),
+
       addExercise: (weekIdx, dayIdx, exercise) => set(state => {
         const p = JSON.parse(JSON.stringify(state.userProtocol))
         p.weeks[weekIdx].days[dayIdx].exercises.push({ id: genId(), sets: [], ...exercise })

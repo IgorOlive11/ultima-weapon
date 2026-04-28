@@ -4,9 +4,13 @@ import { LuX, LuSkipForward } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 
 export default function GlobalRestTimer() {
-  const restTimer    = useStore(s => s.restTimer)
+  const restTimer     = useStore(s => s.restTimer)
   const stopRestTimer = useStore(s => s.stopRestTimer)
-  const hasBottomPad = restTimer.running || restTimer.seconds === 0
+  const activeTab     = useStore(s => s.activeTab)
+  const activeWorkout = useStore(s => s.activeWorkout)
+
+  // On the workout tab with an active session, the timer is shown inline on the card
+  const showFooter = restTimer.running && !(activeTab === 'workout' && activeWorkout)
 
   const pct = restTimer.preset > 0
     ? Math.max(0, restTimer.seconds / restTimer.preset)
@@ -32,7 +36,7 @@ export default function GlobalRestTimer() {
     <>
       {/* spacer so content isn't hidden behind the bar */}
       <AnimatePresence>
-        {restTimer.running && (
+        {showFooter && (
           <motion.div
             key="spacer"
             initial={{ height: 0 }}
@@ -44,7 +48,7 @@ export default function GlobalRestTimer() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {restTimer.running && (
+        {showFooter && (
           <motion.div
             key="timer-bar"
             initial={{ y: 80, opacity: 0 }}

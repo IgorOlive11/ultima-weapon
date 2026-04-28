@@ -361,10 +361,12 @@ function ExerciseEditor({ exercise, weekIdx, dayIdx, index, total }) {
 
 function DayEditor({ weekIdx, dayIdx }) {
   const [showAddExercise, setShowAddExercise] = useState(false)
-  const userProtocol   = useStore(s => s.userProtocol)
-  const setDayRest     = useStore(s => s.setDayRest)
-  const setDayRestSeconds = useStore(s => s.setDayRestSeconds)
-  const addExercise    = useStore(s => s.addExercise)
+  const userProtocol          = useStore(s => s.userProtocol)
+  const setDayRest            = useStore(s => s.setDayRest)
+  const setDayRestSeconds     = useStore(s => s.setDayRestSeconds)
+  const setDayWarmupRestSeconds = useStore(s => s.setDayWarmupRestSeconds)
+  const setDayFeederRestSeconds = useStore(s => s.setDayFeederRestSeconds)
+  const addExercise           = useStore(s => s.addExercise)
 
   const day = userProtocol.weeks[weekIdx].days[dayIdx]
 
@@ -392,31 +394,60 @@ function DayEditor({ weekIdx, dayIdx }) {
 
       {!day.isRest && (
         <>
-          {/* Rest duration */}
-          <div className="flex items-center justify-between bg-s2 border border-border2 px-3 py-3 mb-3">
-            <div className="flex items-center gap-2">
-              <LuClock size={14} className="text-muted"/>
-              <div>
-                <div className="font-display text-sm tracking-wider text-ink">DESCANSO ENTRE SÉRIES</div>
-                <div className="font-mono text-[10px] text-muted mt-0.5">Timer global entre séries</div>
+          {/* Rest durations */}
+          {[
+            {
+              label: 'SÉRIES DE TRABALHO',
+              sub: 'Descanso após working sets',
+              field: 'restSeconds',
+              set: (v) => setDayRestSeconds(weekIdx, dayIdx, v),
+              opts: [60, 90, 120, 150, 180],
+            },
+            {
+              label: 'AQUECIMENTO',
+              sub: 'Descanso entre warmup sets',
+              field: 'warmupRestSeconds',
+              set: (v) => setDayWarmupRestSeconds(weekIdx, dayIdx, v),
+              opts: [30, 45, 60, 90],
+            },
+            {
+              label: 'FEEDER SETS',
+              sub: 'Descanso entre feeders',
+              field: 'feederRestSeconds',
+              set: (v) => setDayFeederRestSeconds(weekIdx, dayIdx, v),
+              opts: [45, 60, 90, 120],
+            },
+          ].map(({ label, sub, field, set: setter, opts }) => (
+            <div key={field} className="flex items-center justify-between bg-s2 border border-border2 px-3 py-2.5 mb-2">
+              <div className="flex items-center gap-2 min-w-0 mr-2">
+                <LuClock size={13} className="text-muted flex-shrink-0"/>
+                <div className="min-w-0">
+                  <div className="font-display text-[12px] tracking-wider text-ink leading-tight">{label}</div>
+                  <div className="font-mono text-[9px] text-muted mt-0.5">{sub}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {opts.map(s => {
+                  const m = Math.floor(s / 60), sec = s % 60
+                  const lbl = m === 0 ? `${s}s` : sec ? `${m}'${String(sec).padStart(2,'0')}` : `${m}'`
+                  const current = day[field] ?? opts[Math.floor(opts.length / 2)]
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => setter(s)}
+                      className={`px-2 py-1 font-mono text-[10px] border transition-all ${
+                        current === s
+                          ? 'bg-neon text-bg border-neon'
+                          : 'bg-s1 border-border1 text-muted hover:text-ink'
+                      }`}
+                    >
+                      {lbl}
+                    </button>
+                  )
+                })}
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              {[60, 90, 120, 150, 180].map(s => (
-                <button
-                  key={s}
-                  onClick={() => setDayRestSeconds(weekIdx, dayIdx, s)}
-                  className={`px-2 py-1 font-mono text-[10px] border transition-all ${
-                    day.restSeconds === s
-                      ? 'bg-neon text-bg border-neon'
-                      : 'bg-s1 border-border1 text-muted hover:text-ink'
-                  }`}
-                >
-                  {s >= 60 ? `${s/60}'` : `${s}s`}{s % 60 ? `${s%60}` : ''}
-                </button>
-              ))}
-            </div>
-          </div>
+          ))}
 
           {/* Exercises */}
           {day.exercises.length > 0 && (
