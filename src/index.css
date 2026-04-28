@@ -1,80 +1,115 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap');
 
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  -webkit-tap-highlight-color: transparent;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body, #root {
+    height: 100%;
+    background: #080808;
+    color: #e8e8e8;
+    font-family: 'Barlow Condensed', sans-serif;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+  }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  ::-webkit-scrollbar { width: 2px; height: 2px; }
+  ::-webkit-scrollbar-thumb { background: #1a7a08; }
+  button { cursor: pointer; }
 }
 
-:root {
-  --neon: #39FF14;
-  --neon-dim: #1a7a08;
-  --neon-bg: rgba(57,255,20,0.07);
-  --bg: #0a0a0a;
-  --surface: #111111;
-  --surface2: #181818;
-  --border: #2a2a2a;
-  --border-neon: rgba(57,255,20,0.3);
-  --text: #e0e0e0;
-  --muted: #666666;
-  --danger: #ff3333;
-  --warn: #ffaa00;
-  --orange: #ff6600;
-  --yellow: #ffdd00;
-  --font-display: 'Bebas Neue', sans-serif;
-  --font-mono: 'Share Tech Mono', monospace;
-  --font-body: 'Barlow Condensed', sans-serif;
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-}
+@layer components {
+  .scanlines::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+    pointer-events: none;
+    z-index: 9999;
+  }
 
-html, body, #root {
-  height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-body);
-  overscroll-behavior: none;
-}
+  .neon-glow { text-shadow: 0 0 20px rgba(57,255,20,0.4); }
 
-body {
-  -webkit-font-smoothing: antialiased;
-}
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: #555;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: #222; }
 
-button {
-  font-family: var(--font-body);
-  cursor: pointer;
-  border: none;
-  background: none;
-  color: inherit;
-}
+  .input-base {
+    width: 100%;
+    background: #1e1e1e;
+    border: 1px solid #2a2a2a;
+    color: #e8e8e8;
+    text-align: center;
+    padding: 10px 8px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 0.05em;
+    outline: none;
+    -webkit-appearance: none;
+    transition: border-color 0.15s;
+  }
+  .input-base:focus { border-color: #39FF14; }
 
-input, textarea {
-  font-family: var(--font-body);
-  color: var(--text);
-}
+  .btn-primary {
+    width: 100%;
+    padding: 13px;
+    background: #39FF14;
+    color: #080808;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.15em;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-primary:active { opacity: 0.8; transform: scale(0.99); }
+  .btn-primary.saved { background: #1a7a08; color: #39FF14; }
 
-input[type=number]::-webkit-inner-spin-button,
-input[type=number]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-}
+  .set-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    background: #161616;
+    border: 1px solid #222;
+    margin-bottom: 4px;
+  }
 
-::-webkit-scrollbar { width: 3px; height: 3px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--neon-dim); }
+  .calc-chip {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 0.05em;
+    padding: 2px 10px;
+    min-width: 64px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .calc-chip-neon { background: rgba(57,255,20,0.06); border: 1px solid rgba(57,255,20,0.18); color: #39FF14; }
+  .calc-chip-dim  { background: #1e1e1e; border: 1px solid #222; color: #555; }
+  .calc-chip-orange { background: rgba(255,102,0,0.06); border: 1px solid rgba(255,102,0,0.2); color: #ff6600; }
+  .calc-chip-yellow { background: rgba(255,221,0,0.06); border: 1px solid rgba(255,221,0,0.2); color: #ffdd00; }
 
-/* Scanline overlay for that CRT feel */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0,0,0,0.03) 2px,
-    rgba(0,0,0,0.03) 4px
-  );
-  pointer-events: none;
-  z-index: 9999;
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-slide-down { animation: slideDown 0.2s ease; }
+
+  @keyframes pulseBorder {
+    0%,100% { box-shadow: 0 0 0 0 rgba(57,255,20,0.4); }
+    50%      { box-shadow: 0 0 0 4px rgba(57,255,20,0.08); }
+  }
+  .animate-pulse-border { animation: pulseBorder 1.2s ease infinite; }
 }

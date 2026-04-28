@@ -2,7 +2,6 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { JS_DAY_TO_IDX } from '../data/protocol'
 
-// Detect current week based on start date saved in localStorage
 function detectWeekDay() {
   const saved = localStorage.getItem('uw_start_date')
   if (!saved) {
@@ -22,34 +21,37 @@ const { week: initWeek, day: initDay } = detectWeekDay()
 export const useStore = create(
   persist(
     (set, get) => ({
-      // Navigation
       currentWeek: initWeek,
-      currentDay: initDay,
-      activeTab: 'workout',
+      currentDay:  initDay,
+      activeTab:   'workout',
+      sidebarOpen: false,
+      headerVisible: true,
 
-      setWeek: (week) => set({ currentWeek: week, currentDay: 0 }),
-      setDay: (day) => set({ currentDay: day }),
-      setTab: (tab) => set({ activeTab: tab }),
+      setWeek:         (week) => set({ currentWeek: week, currentDay: 0 }),
+      setDay:          (day)  => set({ currentDay: day }),
+      setTab:          (tab)  => set({ activeTab: tab, sidebarOpen: false }),
+      setSidebar:      (v)    => set({ sidebarOpen: v }),
+      setHeaderVisible:(v)    => set({ headerVisible: v }),
 
-      // Log: { [key]: { kg, reps, obs, date, sets: [{kg, reps}] } }
       logs: {},
-
-      getLogKey: (weekIdx, dayIdx, exIdx) =>
-        `w${weekIdx}_d${dayIdx}_e${exIdx}`,
 
       saveLog: (weekIdx, dayIdx, exIdx, entry) => {
         const key = `w${weekIdx}_d${dayIdx}_e${exIdx}`
         const existing = get().logs[key] || {}
-        const newEntry = {
-          ...existing,
-          ...entry,
-          date: new Date().toISOString(),
-          history: [
-            ...(existing.history || []),
-            { ...entry, date: new Date().toISOString() },
-          ].slice(-10), // keep last 10
-        }
-        set((state) => ({ logs: { ...state.logs, [key]: newEntry } }))
+        set((state) => ({
+          logs: {
+            ...state.logs,
+            [key]: {
+              ...existing,
+              ...entry,
+              date: new Date().toISOString(),
+              history: [
+                ...(existing.history || []),
+                { ...entry, date: new Date().toISOString() },
+              ].slice(-10),
+            },
+          },
+        }))
       },
 
       getLog: (weekIdx, dayIdx, exIdx) => {
@@ -59,7 +61,6 @@ export const useStore = create(
 
       clearAllLogs: () => set({ logs: {} }),
 
-      // Start date management
       startDate: localStorage.getItem('uw_start_date') || new Date().toISOString().split('T')[0],
       setStartDate: (date) => {
         localStorage.setItem('uw_start_date', date)
@@ -68,7 +69,7 @@ export const useStore = create(
       },
     }),
     {
-      name: 'ultima-weapon-store',
+      name: 'uw-store-v2',
       partialize: (state) => ({ logs: state.logs }),
     }
   )

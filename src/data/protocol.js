@@ -420,3 +420,49 @@ export const PROTOCOL = [
     ],
   },
 ]
+
+// Maps exercise names to muscle group labels for grouping
+export const MUSCLE_GROUPS = {
+  // Costas
+  'Pulldown com barra': 'COSTAS', 'Pullover no cabo': 'COSTAS',
+  'Pulldown com corda': 'COSTAS', 'Remada Meadows': 'COSTAS',
+  'Remada curvada': 'COSTAS', 'Remada articulada': 'COSTAS',
+  'Remada baixa': 'COSTAS', 'Puxador frente pegada neutra': 'COSTAS',
+  'Puxador frente pegada aberta': 'COSTAS', 'Puxador frente pegada supinada': 'COSTAS',
+  'Puxador frente pegada pronada': 'COSTAS', 'Puxador pela frente pegada neutra': 'COSTAS',
+  'Puxador pela frente pegada aberta': 'COSTAS',
+  // Peito
+  'Supino levemente inclinado na Smith': 'PEITO', 'Supino articulado': 'PEITO',
+  'Supino inclinado com halteres': 'PEITO', 'Supino máquina': 'PEITO',
+  'Pec fly': 'PEITO', 'Voador': 'PEITO', 'Crucifixo inclinado': 'PEITO',
+  // Ombros
+  'Desenvolvimento com barra': 'OMBROS', 'Desenvolvimento com halteres': 'OMBROS',
+  'Desenvolvimento na máquina': 'OMBROS', 'Desenvolvimento na smith machine': 'OMBROS',
+  'Desenvolvimento na Smith machine': 'OMBROS',
+  'Elevação lateral sentada': 'OMBROS', 'Elevação lateral na máquina': 'OMBROS',
+  'Elevação lateral no cabo': 'OMBROS',
+  // Tríceps
+  'Supino para tríceps': 'TRÍCEPS', 'Supino pra tríceps': 'TRÍCEPS',
+  'Paralela na máquina': 'TRÍCEPS', 'Polia para tríceps': 'TRÍCEPS',
+  'Tríceps testa': 'TRÍCEPS',
+  // Bíceps
+  'Rosca scott no cabo': 'BÍCEPS', 'Rosca alternada': 'BÍCEPS',
+  // Glúteos / Posterior
+  'Elevação pélvica na Smith': 'GLÚTEOS', 'Elevação pélvica na smith': 'GLÚTEOS',
+  'Elevação pélvica na máquina': 'GLÚTEOS', 'Elevação pélvica': 'GLÚTEOS',
+  'Abdução no cabo': 'GLÚTEOS', 'Cadeira abdutora': 'GLÚTEOS',
+  'Hiperextensão': 'POSTERIOR', 'RDL': 'POSTERIOR',
+  'Stiff': 'POSTERIOR', 'Levantamento terra': 'POSTERIOR',
+  // Quadríceps
+  'Agachamento hack': 'QUADRÍCEPS', 'Agachamento livre': 'QUADRÍCEPS',
+  'Leg Press': 'QUADRÍCEPS', 'Leg press': 'QUADRÍCEPS',
+  'Hack squat': 'QUADRÍCEPS', 'Leg press unilateral': 'QUADRÍCEPS',
+  'Extensão de pernas': 'QUADRÍCEPS',
+  // Isquiotibiais
+  'Flexora em pé': 'ISQUIOS', 'Flexora sentada': 'ISQUIOS',
+  'Flexora deitada': 'ISQUIOS',
+  // Panturrilha
+  'Panturrilha em pé na Smith': 'PANTURRILHA', 'Panturrilha em pé na smith': 'PANTURRILHA',
+  'Panturrilha em pé': 'PANTURRILHA', 'Panturrilha na smith': 'PANTURRILHA',
+  'Panturrilha sentada': 'PANTURRILHA',
+}

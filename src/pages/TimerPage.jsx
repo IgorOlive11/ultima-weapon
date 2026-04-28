@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { LuPlay, LuPause, LuRotateCcw } from 'react-icons/lu'
 import DoomFace from '../components/DoomFace'
 import { SET_TYPES, SET_TYPE_DESCRIPTIONS, GER_CONFIG } from '../data/protocol'
-import styles from './TimerPage.module.css'
 
 const PRESETS = [
   { label: '2:00', secs: 120 },
@@ -10,54 +10,35 @@ const PRESETS = [
   { label: '0:20', secs: 20 },
 ]
 
-function fmt(secs) {
-  const m = Math.floor(secs / 60)
-  const s = secs % 60
-  return `${m}:${String(s).padStart(2, '0')}`
-}
+const R = 90
+const CIRC = 2 * Math.PI * R
 
-function useWakeLock() {
-  const wakeLock = useRef(null)
-  const acquire = async () => {
-    try {
-      if ('wakeLock' in navigator) {
-        wakeLock.current = await navigator.wakeLock.request('screen')
-      }
-    } catch (_) {}
-  }
-  const release = () => {
-    wakeLock.current?.release()
-    wakeLock.current = null
-  }
-  return { acquire, release }
+function fmt(s) {
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
 export default function TimerPage() {
-  const [preset, setPreset] = useState(120)
-  const [seconds, setSeconds] = useState(120)
+  const [preset,  setPreset]  = useState(120)
+  const [secs,    setSecs]    = useState(120)
   const [running, setRunning] = useState(false)
-  const [finished, setFinished] = useState(false)
-  const intervalRef = useRef(null)
-  const { acquire, release } = useWakeLock()
+  const [done,    setDone]    = useState(false)
+  const interval = useRef(null)
 
-  const progress = 1 - seconds / preset
+  const pct    = 1 - secs / preset
+  const offset = CIRC * (1 - pct)
+  const color  = done ? '#ff2d2d' : secs <= 10 ? '#ff2d2d' : secs <= 30 ? '#ffaa00' : '#39FF14'
 
-  useEffect(() => {
-    return () => clearInterval(intervalRef.current)
-  }, [])
+  useEffect(() => () => clearInterval(interval.current), [])
 
-  const start = async () => {
-    await acquire()
-    setFinished(false)
+  const start = () => {
+    setDone(false)
     setRunning(true)
-    intervalRef.current = setInterval(() => {
-      setSeconds((s) => {
+    interval.current = setInterval(() => {
+      setSecs((s) => {
         if (s <= 1) {
-          clearInterval(intervalRef.current)
+          clearInterval(interval.current)
           setRunning(false)
-          setFinished(true)
-          release()
-          // Vibrate
+          setDone(true)
           if (navigator.vibrate) navigator.vibrate([200, 100, 200])
           return 0
         }
@@ -67,73 +48,72 @@ export default function TimerPage() {
   }
 
   const pause = () => {
-    clearInterval(intervalRef.current)
+    clearInterval(interval.current)
     setRunning(false)
-    release()
   }
 
   const reset = () => {
-    clearInterval(intervalRef.current)
+    clearInterval(interval.current)
     setRunning(false)
-    setFinished(false)
-    setSeconds(preset)
-    release()
+    setDone(false)
+    setSecs(preset)
   }
 
-  const changePreset = (secs) => {
-    reset()
-    setPreset(secs)
-    setSeconds(secs)
+  const changePreset = (s) => {
+    clearInterval(interval.current)
+    setRunning(false)
+    setDone(false)
+    setPreset(s)
+    setSecs(s)
   }
-
-  const displayColor = finished
-    ? '#ff3333'
-    : seconds <= 10
-    ? '#ff3333'
-    : seconds <= 30
-    ? '#ffaa00'
-    : '#39FF14'
-
-  const circumference = 2 * Math.PI * 90
-  const dashOffset = circumference * (1 - progress)
 
   return (
-    <div className={styles.container}>
-      {/* Timer ring */}
-      <div className={styles.timerSection}>
-        <div className={styles.label}>DESCANSO ENTRE SÉRIES</div>
-        <div className={styles.ring}>
-          <svg width="220" height="220" viewBox="0 0 220 220">
-            {/* Track */}
-            <circle cx="110" cy="110" r="90" fill="none" stroke="#222" strokeWidth="6" />
-            {/* Progress */}
+    <div className="p-4 pb-10 space-y-3">
+      {/* Ring timer */}
+      <div className="bg-s1 border border-border1 p-5 flex flex-col items-center">
+        <div className="font-mono text-[9px] text-muted tracking-[0.25em] mb-4">
+          DESCANSO ENTRE SÉRIES
+        </div>
+
+        {/* SVG Ring */}
+        <div className="relative w-[200px] h-[200px] mb-5">
+          <svg width="200" height="200" viewBox="0 0 200 200" className="absolute inset-0">
+            <circle cx="100" cy="100" r={R} fill="none" stroke="#1e1e1e" strokeWidth="6" />
             <circle
-              cx="110" cy="110" r="90"
+              cx="100" cy="100" r={R}
               fill="none"
-              stroke={displayColor}
+              stroke={color}
               strokeWidth="6"
-              strokeLinecap="butt"
-              strokeDasharray={circumference}
-              strokeDashoffset={dashOffset}
-              transform="rotate(-90 110 110)"
+              strokeDasharray={CIRC}
+              strokeDashoffset={offset}
+              transform="rotate(-90 100 100)"
               style={{ transition: 'stroke-dashoffset 0.9s linear, stroke 0.3s' }}
             />
           </svg>
-          <div className={styles.timerInner}>
-            <div className={styles.timerDisplay} style={{ color: displayColor }}>
-              {finished ? 'GO!' : fmt(seconds)}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <div
+              className="font-display text-[58px] leading-none tracking-widest transition-colors duration-300"
+              style={{ color }}
+            >
+              {done ? 'GO!' : fmt(secs)}
             </div>
-            {finished && <div className={styles.timerSub}>DESCANSOU</div>}
+            <div className="font-mono text-[9px] text-muted tracking-[0.2em] mt-1">
+              {done ? 'VAMOS!' : 'RESTANTE'}
+            </div>
           </div>
         </div>
 
         {/* Presets */}
-        <div className={styles.presets}>
+        <div className="flex gap-2 mb-4">
           {PRESETS.map((p) => (
             <button
               key={p.secs}
-              className={`${styles.preset} ${preset === p.secs ? styles.presetActive : ''}`}
               onClick={() => changePreset(p.secs)}
+              className={`px-3.5 py-1.5 font-display text-sm tracking-wider border transition-all
+                ${preset === p.secs
+                  ? 'border-orange text-orange bg-orange/5'
+                  : 'border-border2 bg-s2 text-muted hover:text-ink'
+                }`}
             >
               {p.label}
             </button>
@@ -141,44 +121,70 @@ export default function TimerPage() {
         </div>
 
         {/* Controls */}
-        <div className={styles.controls}>
-          <button className={styles.resetBtn} onClick={reset}>RESET</button>
-          {running ? (
-            <button className={styles.mainBtn} onClick={pause}>PAUSAR</button>
-          ) : (
-            <button className={styles.mainBtn} onClick={start}>
-              {seconds === preset ? 'INICIAR' : 'RETOMAR'}
-            </button>
-          )}
+        <div className="flex gap-2 w-full">
+          <button
+            onClick={reset}
+            className="flex-1 flex items-center justify-center gap-2
+              bg-s2 border border-border2 text-muted font-display text-base tracking-wider py-3
+              hover:text-ink transition-colors active:opacity-70"
+          >
+            <LuRotateCcw size={16} />
+            RESET
+          </button>
+          <button
+            onClick={running ? pause : start}
+            className="flex-[2] flex items-center justify-center gap-2
+              bg-neon text-bg font-display text-lg tracking-widest py-3
+              transition-all active:opacity-80 active:scale-[0.99]"
+          >
+            {running
+              ? <><LuPause size={18} />PAUSAR</>
+              : <><LuPlay size={18} />{secs === preset ? 'INICIAR' : 'RETOMAR'}</>
+            }
+          </button>
         </div>
       </div>
 
       {/* Series legend */}
-      <div className={styles.legendSection}>
-        <div className={styles.legendTitle}>TIPOS DE SÉRIE</div>
-        {Object.entries(SET_TYPES).map(([key, val]) => (
-          <div key={key} className={styles.legendItem}>
-            <DoomFace ger={val.ger} size={36} />
-            <div className={styles.legendInfo}>
-              <div className={styles.legendLabel} style={{ color: val.color }}>
-                {val.label}
+      <div className="bg-s1 border border-border1 p-4">
+        <div className="font-display text-sm text-neon tracking-[0.2em] mb-3 pb-2 border-b border-border1">
+          TIPOS DE SÉRIE
+        </div>
+        <div className="space-y-3">
+          {Object.entries(SET_TYPES).map(([key, val]) => (
+            <div key={key} className="flex items-start gap-3 pb-3 border-b border-border1 last:border-0 last:pb-0">
+              <DoomFace ger={val.ger} size={32} />
+              <div>
+                <div className="font-mono text-[10px] font-bold tracking-widest mb-1" style={{ color: val.color }}>
+                  {val.label}
+                </div>
+                <div className="font-body text-[12px] text-muted2 leading-snug">
+                  {SET_TYPE_DESCRIPTIONS[key]}
+                </div>
               </div>
-              <div className={styles.legendDesc}>{SET_TYPE_DESCRIPTIONS[key]}</div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+      </div>
 
-        {/* GER scale */}
-        <div className={styles.legendTitle} style={{ marginTop: 24 }}>ESCALA GER</div>
-        {Object.entries(GER_CONFIG).map(([ger, conf]) => (
-          <div key={ger} className={styles.gerItem}>
-            <DoomFace ger={Number(ger)} size={32} />
-            <div>
-              <div className={styles.gerItemLabel}>{conf.label} — {conf.title}</div>
-              <div className={styles.gerItemSub}>{conf.subtitle}</div>
+      {/* GER scale */}
+      <div className="bg-s1 border border-border1 p-4">
+        <div className="font-display text-sm text-neon tracking-[0.2em] mb-3 pb-2 border-b border-border1">
+          ESCALA GER
+        </div>
+        <div className="space-y-2">
+          {Object.entries(GER_CONFIG).map(([ger, conf]) => (
+            <div key={ger} className="flex items-center gap-3 py-1.5 border-b border-border1 last:border-0">
+              <DoomFace ger={Number(ger)} size={28} />
+              <div>
+                <div className="font-display text-[12px] text-ink tracking-wider leading-none">
+                  {conf.label} — {conf.title}
+                </div>
+                <div className="font-mono text-[9px] text-muted mt-0.5">{conf.subtitle}</div>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   )

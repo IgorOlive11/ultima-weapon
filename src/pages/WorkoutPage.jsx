@@ -1,15 +1,38 @@
-import React from 'react'
-import { PROTOCOL, DAY_NAMES } from '../data/protocol'
+import React, { useMemo } from 'react'
 import { useStore } from '../hooks/useStore'
+import { PROTOCOL, MUSCLE_GROUPS } from '../data/protocol'
 import ExerciseCard from '../components/ExerciseCard'
-import styles from './WorkoutPage.module.css'
+import MuscleRoundCard from '../components/MuscleRoundCard'
 
 const PHASE_COLORS = {
-  REVOLUME: '#39FF14',
-  BASE:     '#ffaa00',
-  PEAK:     '#ff3333',
-  DEVOLUME: '#00aaff',
-  DELOAD:   '#888888',
+  REVOLUME: '#39FF14', BASE: '#ffaa00', PEAK: '#ff2d2d',
+  DEVOLUME: '#00aaff', DELOAD: '#888',
+}
+
+// Assign muscle group index per exercise for feeder set count logic
+function tagExercises(exercises) {
+  const groupMap = {}
+  return exercises.map((ex) => {
+    const group = MUSCLE_GROUPS[ex.name] || ex.name
+    if (groupMap[group] === undefined) groupMap[group] = 0
+    const idx = groupMap[group]
+    groupMap[group]++
+    return { ...ex, muscleGroup: group, muscleGroupIdx: idx }
+  })
+}
+
+// Group tagged exercises by muscle group preserving order
+function groupByMuscle(taggedExercises) {
+  const groups = []
+  const seen = new Set()
+  taggedExercises.forEach((ex) => {
+    if (!seen.has(ex.muscleGroup)) {
+      seen.add(ex.muscleGroup)
+      groups.push({ label: ex.muscleGroup, exercises: [] })
+    }
+    groups[groups.length - 1].exercises.push(ex)
+  })
+  return groups
 }
 
 export default function WorkoutPage() {
@@ -17,28 +40,43 @@ export default function WorkoutPage() {
   const currentDay  = useStore((s) => s.currentDay)
   const setWeek     = useStore((s) => s.setWeek)
   const setDay      = useStore((s) => s.setDay)
+  const saveLog     = useStore((s) => s.saveLog)
   const getLog      = useStore((s) => s.getLog)
 
   const week = PROTOCOL[currentWeek]
   const day  = week?.days[currentDay]
   const phaseColor = PHASE_COLORS[week?.phase] || '#39FF14'
 
-  // Count how many exercises have been logged today
-  const loggedCount = day?.exercises
-    ? day.exercises.filter((_, i) => !!getLog(currentWeek, currentDay, i)?.kg).length
-    : 0
-  const total = day?.exercises?.length || 0
+  const tagged = useMemo(
+    () => (day?.exercises ? tagExercises(day.exercises) : []),
+    [day]
+  )
+  const groups = useMemo(() => groupByMuscle(tagged), [tagged])
+
+  const loggedCount = tagged.filter((_, i) => !!getLog(currentWeek, currentDay, i)?.kg).length
+  const total = tagged.length
+
+  // find the original index in the day.exercises array for each tagged exercise
+  const exIndexMap = useMemo(() => {
+    const map = {}
+    tagged.forEach((ex, i) => { map[`${ex.muscleGroup}-${ex.muscleGroupIdx}`] = i })
+    return map
+  }, [tagged])
 
   return (
-    <div className={styles.container}>
+    <div className="p-3 pb-8">
       {/* Week selector */}
-      <div className={styles.weekRow}>
+      <div className="flex gap-1 overflow-x-auto pb-1 mb-2 scrollbar-none">
         {PROTOCOL.map((w, i) => (
           <button
             key={i}
-            className={`${styles.weekChip} ${i === currentWeek ? styles.weekChipActive : ''}`}
-            style={i === currentWeek ? { background: phaseColor, color: '#000', borderColor: phaseColor } : {}}
             onClick={() => setWeek(i)}
+            className={`flex-shrink-0 px-2.5 py-1 font-display text-[13px] tracking-wider border transition-all
+              ${i === currentWeek
+                ? 'text-bg border-transparent'
+                : 'bg-s2 border-border2 text-muted hover:text-ink'
+              }`}
+            style={i === currentWeek ? { background: phaseColor } : {}}
           >
             S{String(w.num).padStart(2, '0')}
           </button>
@@ -46,65 +84,100 @@ export default function WorkoutPage() {
       </div>
 
       {/* Day selector */}
-      <div className={styles.dayRow}>
+      <div className="flex gap-1 mb-3 overflow-x-auto scrollbar-none">
         {week.days.map((d, i) => (
           <button
             key={i}
-            className={`${styles.dayChip} ${i === currentDay ? styles.dayChipActive : ''} ${d.rest ? styles.dayChipRest : ''}`}
             onClick={() => setDay(i)}
+            className={`flex-shrink-0 px-3 py-1.5 font-body font-bold text-xs tracking-wider border transition-all
+              ${i === currentDay
+                ? 'text-bg border-transparent'
+                : d.rest
+                ? 'bg-s2 border-border2 border-dashed text-muted/40'
+                : 'bg-s2 border-border2 text-muted hover:text-ink'
+              }`}
+            style={i === currentDay ? { background: phaseColor } : {}}
           >
             {d.name}
           </button>
         ))}
       </div>
 
-      {/* Phase / progress bar */}
-      <div className={styles.phaseBanner} style={{ borderColor: phaseColor }}>
-        <div className={styles.phaseLeft}>
-          <span className={styles.phaseLabel} style={{ color: phaseColor }}>
-            SEMANA {week.num} — {week.phase}
-          </span>
-          {!day?.rest && total > 0 && (
-            <span className={styles.phaseProgress}>
-              {loggedCount}/{total} exercícios
-            </span>
-          )}
+      {/* Phase banner */}
+      <div
+        className="flex items-center gap-3 bg-s2 border border-border1 px-3 py-2 mb-4"
+        style={{ borderLeftWidth: 3, borderLeftColor: phaseColor }}
+      >
+        <div className="font-display text-[13px] tracking-[0.15em]" style={{ color: phaseColor }}>
+          SEMANA {week.num} — {week.phase}
         </div>
         {!day?.rest && total > 0 && (
-          <div className={styles.progressBar}>
-            <div
-              className={styles.progressFill}
-              style={{ width: `${(loggedCount / total) * 100}%`, background: phaseColor }}
-            />
+          <div className="ml-auto flex items-center gap-2">
+            <span className="font-mono text-[10px] text-muted">{loggedCount}/{total}</span>
+            <div className="w-16 h-[2px] bg-border1">
+              <div
+                className="h-full transition-all duration-500"
+                style={{ width: `${(loggedCount / total) * 100}%`, background: phaseColor }}
+              />
+            </div>
           </div>
         )}
       </div>
 
       {/* Rest day */}
       {day?.rest && (
-        <div className={styles.restDay}>
-          <div className={styles.restTitle}>DESCANSO</div>
-          <div className={styles.restSub}>RECUPERE-SE. CRESÇA.</div>
-          <div className={styles.restSub} style={{ marginTop: 8, fontSize: 12 }}>
-            "A hipertrofia acontece fora da academia."
+        <div className="text-center py-16">
+          <div className="font-display text-6xl neon-glow tracking-[0.3em] leading-none" style={{ color: phaseColor }}>
+            DESCANSO
+          </div>
+          <div className="font-mono text-[11px] text-muted tracking-[0.25em] mt-4 uppercase">
+            Recupere-se. Cresça.
           </div>
         </div>
       )}
 
-      {/* Exercises */}
-      {!day?.rest && day?.exercises && (
-        <div className={styles.exerciseList}>
-          {day.exercises.map((ex, i) => (
-            <ExerciseCard
-              key={i}
-              exercise={ex}
-              weekIdx={currentWeek}
-              dayIdx={currentDay}
-              exIdx={i}
-            />
-          ))}
+      {/* Exercise groups */}
+      {!day?.rest && groups.map((group) => (
+        <div key={group.label} className="mb-2">
+          {/* Muscle group label */}
+          <div className="section-label mb-2" style={{ color: '#555' }}>
+            {group.label}
+          </div>
+
+          {group.exercises.map((ex) => {
+            const exIdx = exIndexMap[`${ex.muscleGroup}-${ex.muscleGroupIdx}`]
+            const log   = getLog(currentWeek, currentDay, exIdx)
+
+            if (ex.type === 'MUSCLE_ROUND') {
+              return (
+                <MuscleRoundCard
+                  key={exIdx}
+                  exercise={ex}
+                  weekIdx={currentWeek}
+                  dayIdx={currentDay}
+                  exIdx={exIdx}
+                  savedLog={log}
+                  isFirst={ex.muscleGroupIdx === 0}
+                  onSave={(entry) => saveLog(currentWeek, currentDay, exIdx, entry)}
+                />
+              )
+            }
+
+            return (
+              <ExerciseCard
+                key={exIdx}
+                exercise={ex}
+                weekIdx={currentWeek}
+                dayIdx={currentDay}
+                exIdx={exIdx}
+                savedLog={log}
+                muscleGroupIdx={ex.muscleGroupIdx}
+                onSave={(entry) => saveLog(currentWeek, currentDay, exIdx, entry)}
+              />
+            )
+          })}
         </div>
-      )}
+      ))}
     </div>
   )
 }

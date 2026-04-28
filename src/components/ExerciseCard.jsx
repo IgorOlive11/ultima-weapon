@@ -1,155 +1,174 @@
 import React, { useState } from 'react'
+import { LuChevronDown, LuCircleCheck, LuArrowDownToLine, LuFlame, LuZap, LuArrowDown, LuSave } from 'react-icons/lu'
 import DoomFace from './DoomFace'
 import { GER_CONFIG, SET_TYPES, SET_TYPE_DESCRIPTIONS } from '../data/protocol'
-import { useStore } from '../hooks/useStore'
-import styles from './ExerciseCard.module.css'
+import { calcLoads, fmtKg, numFeeders } from '../utils/loads'
 
-export default function ExerciseCard({ exercise, weekIdx, dayIdx, exIdx }) {
-  const [open, setOpen] = useState(false)
-  const [kg, setKg] = useState('')
-  const [reps, setReps] = useState('')
-  const [obs, setObs] = useState('')
+const TYPE_COLORS = { NORMAL:'#39FF14', REST_PAUSE:'#ff6600', WIDOWMAKER:'#ffdd00', BACKOFF:'#00aaff', PULSE:'#ff44ff' }
+const CALC_CLS    = { NORMAL:'calc-chip-neon', REST_PAUSE:'calc-chip-orange', WIDOWMAKER:'calc-chip-yellow', BACKOFF:'calc-chip-orange', PULSE:'calc-chip-neon' }
+
+export default function ExerciseCard({ exercise, weekIdx, dayIdx, exIdx, onSave, savedLog, muscleGroupIdx }) {
+  const [open, setOpen]   = useState(false)
+  const [topKg, setTopKg] = useState(savedLog?.kg || '')
+  const [reps, setReps]   = useState(savedLog?.reps || '')
+  const [obs, setObs]     = useState(savedLog?.obs || '')
   const [saved, setSaved] = useState(false)
 
-  const saveLog = useStore((s) => s.saveLog)
-  const getLog = useStore((s) => s.getLog)
-
-  const log = getLog(weekIdx, dayIdx, exIdx)
-  const setType = SET_TYPES[exercise.type] || SET_TYPES.NORMAL
-  const gerConf = GER_CONFIG[exercise.ger] || GER_CONFIG[9]
-
-  const handleOpen = () => {
-    if (!open && log) {
-      setKg(log.kg || '')
-      setReps(log.reps || '')
-      setObs(log.obs || '')
-    }
-    setOpen((v) => !v)
-    setSaved(false)
-  }
+  const loads     = calcLoads(parseFloat(topKg))
+  const feeders   = numFeeders(muscleGroupIdx ?? 0)
+  const gerConf   = GER_CONFIG[exercise.ger] || GER_CONFIG[9]
+  const setType   = SET_TYPES[exercise.type] || SET_TYPES.NORMAL
+  const typeColor = TYPE_COLORS[exercise.type] || '#39FF14'
+  const calcCls   = CALC_CLS[exercise.type] || 'calc-chip-neon'
 
   const handleSave = () => {
-    if (!kg && !reps) return
-    saveLog(weekIdx, dayIdx, exIdx, { kg, reps, obs })
+    if (!topKg) return
+    onSave({ kg: topKg, reps, obs })
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
 
-  const typeColor = setType.color
+  const feederPcts = [0.70, 0.75, 0.80].slice(0, feeders)
 
   return (
-    <div className={styles.card} style={{ '--type-color': typeColor }}>
-      <button className={styles.header} onClick={handleOpen}>
-        <DoomFace ger={exercise.ger} size={36} />
-        <div className={styles.info}>
-          <div className={styles.name}>{exercise.name}</div>
-          <div className={styles.meta}>
-            {exercise.sets}
-            {exercise.reps ? ` · ${exercise.reps} reps` : ''}
-            {' · '}
-            <span className={styles.gerLabel}>GER {exercise.ger}</span>
+    <div className="bg-s1 border mb-1.5 overflow-hidden"
+      style={{ borderLeftWidth:3, borderLeftColor: open ? typeColor : '#2a2a2a', borderColor: open ? typeColor+'44' : '#222' }}>
+
+      <button className="w-full flex items-center gap-2 px-3 py-2.5 text-left" onClick={() => setOpen(v=>!v)}>
+        <DoomFace ger={exercise.ger} size={30} />
+        <div className="flex-1 min-w-0">
+          <div className="font-body font-bold text-sm text-ink leading-tight truncate">{exercise.name}</div>
+          <div className="font-mono text-[10px] text-muted mt-0.5">
+            {exercise.sets}{exercise.reps ? ` · ${exercise.reps} reps` : ''} · <span style={{color:typeColor}}>GER {exercise.ger}</span>
           </div>
         </div>
-        <div className={styles.gerBadge}>GER{exercise.ger}</div>
-        {log?.kg && <div className={styles.loggedDot} title="Registrado" />}
-        <span className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}>▾</span>
+        {savedLog?.kg && <LuCircleCheck size={14} className="text-neon flex-shrink-0" />}
+        <span className="font-mono text-[10px] font-bold flex-shrink-0" style={{color:typeColor}}>GER{exercise.ger}</span>
+        <LuChevronDown size={14} className={`flex-shrink-0 text-muted transition-transform duration-200 ${open?'rotate-180':''}`} />
       </button>
 
       {open && (
-        <div className={styles.body}>
-          {/* Set type tag */}
-          <div className={styles.typeTag}>
-            <DoomFace ger={exercise.ger} size={20} />
+        <div className="px-3 pb-3 animate-slide-down">
+          {/* type chip */}
+          <div className="inline-flex items-center gap-2 border px-2.5 py-1 mb-3"
+            style={{borderColor:typeColor+'66', background:typeColor+'0d', color:typeColor}}>
+            <DoomFace ger={exercise.ger} size={16} />
+            <span className="font-mono text-[10px] font-bold tracking-widest">{setType.label}</span>
+          </div>
+
+          {/* GER info */}
+          <div className="flex items-center gap-2.5 bg-s2 border border-border1 p-2.5 mb-3">
+            <DoomFace ger={exercise.ger} size={36} />
             <div>
-              <div className={styles.typeLabel}>{setType.label}</div>
-              <div className={styles.typeDesc}>{SET_TYPE_DESCRIPTIONS[exercise.type]}</div>
+              <div className="font-display text-[13px] tracking-wider" style={{color:typeColor}}>
+                GER {exercise.ger} — {gerConf.title}
+              </div>
+              <div className="font-mono text-[10px] text-muted2 mt-1 leading-relaxed">{SET_TYPE_DESCRIPTIONS[exercise.type]}</div>
+              <div className="font-mono text-[9px] text-muted mt-0.5">{gerConf.subtitle}</div>
             </div>
           </div>
 
-          {/* GER description */}
-          <div className={styles.gerInfo}>
-            <span className={styles.gerInfoLabel}>{gerConf.label}</span>
-            <span className={styles.gerInfoTitle}>{gerConf.title}</span>
-            <span className={styles.gerInfoSub}>{gerConf.subtitle}</span>
-          </div>
-
-          {/* Previous log */}
-          {log?.kg && (
-            <div className={styles.prevLog}>
-              <span className={styles.prevLogLabel}>ÚLTIMO REGISTRO</span>
-              <span className={styles.prevLogVal}>{log.kg}kg × {log.reps || '?'} reps</span>
+          {/* prev log */}
+          {savedLog?.kg && (
+            <div className="flex items-center justify-between bg-neon/5 border border-neon/15 px-2.5 py-1.5 mb-3">
+              <span className="font-mono text-[9px] text-muted tracking-widest">ÚLTIMO</span>
+              <span className="font-display text-sm text-neon tracking-wider">{savedLog.kg}KG × {savedLog.reps||'?'} REPS</span>
             </div>
           )}
 
-          {/* Input fields */}
-          <div className={styles.inputs}>
-            <label className={styles.inputGroup}>
-              <span className={styles.inputLabel}>CARGA</span>
-              <div className={styles.inputRow}>
-                <input
-                  className={styles.input}
-                  type="number"
-                  inputMode="decimal"
-                  step="0.5"
-                  min="0"
-                  placeholder="—"
-                  value={kg}
-                  onChange={(e) => setKg(e.target.value)}
-                />
-                <span className={styles.unit}>kg</span>
+          {/* top set */}
+          <div className="section-label"><LuZap size={10}/>TOP SET — CARGA FINAL</div>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <div>
+              <div className="font-mono text-[9px] text-muted tracking-widest mb-1">CARGA</div>
+              <div className="flex items-center gap-1.5">
+                <input className="input-base flex-1" type="number" inputMode="decimal" step="0.5" min="0" placeholder="—" value={topKg} onChange={e=>setTopKg(e.target.value)} />
+                <span className="font-mono text-[10px] text-muted">kg</span>
               </div>
-            </label>
-            <label className={styles.inputGroup}>
-              <span className={styles.inputLabel}>REPS</span>
-              <div className={styles.inputRow}>
-                <input
-                  className={styles.input}
-                  type="number"
-                  inputMode="numeric"
-                  min="0"
-                  placeholder="—"
-                  value={reps}
-                  onChange={(e) => setReps(e.target.value)}
-                />
-                <span className={styles.unit}>reps</span>
+            </div>
+            <div>
+              <div className="font-mono text-[9px] text-muted tracking-widest mb-1">
+                {exercise.type==='REST_PAUSE' ? 'REPS BLOCO 1' : 'REPS'}
               </div>
-            </label>
+              <div className="flex items-center gap-1.5">
+                <input className="input-base flex-1" type="number" inputMode="numeric" min="0" placeholder="—" value={reps} onChange={e=>setReps(e.target.value)} />
+                <span className="font-mono text-[10px] text-muted">reps</span>
+              </div>
+            </div>
           </div>
 
-          <label className={styles.inputGroup} style={{ display: 'block' }}>
-            <span className={styles.inputLabel}>OBSERVAÇÕES</span>
-            <input
-              className={styles.input}
-              style={{ width: '100%' }}
-              type="text"
-              placeholder="notas, sensações..."
-              value={obs}
-              onChange={(e) => setObs(e.target.value)}
-            />
-          </label>
+          {/* aquecimento */}
+          <div className="section-label"><LuFlame size={10}/>AQUECIMENTO</div>
+          {[1,2].map(n => (
+            <div key={n} className="set-row">
+              <span className="font-mono text-[10px] text-muted w-4">{n}</span>
+              <span className="font-mono text-[10px] text-muted2 flex-1">15-20 reps · 45% · GER 7</span>
+              <span className="calc-chip calc-chip-dim">{loads ? fmtKg(loads.warmup) : '—'}</span>
+            </div>
+          ))}
 
-          <button
-            className={`${styles.saveBtn} ${saved ? styles.saveBtnSaved : ''}`}
-            onClick={handleSave}
-          >
-            {saved ? '✓ SALVO!' : 'REGISTRAR SÉRIE'}
-          </button>
+          {/* feeders */}
+          <div className="section-label mt-2"><LuArrowDownToLine size={10}/>FEEDER SETS · GER 7</div>
+          {feederPcts.map((pct, i) => (
+            <div key={i} className="set-row">
+              <span className="font-mono text-[10px] text-muted w-4">F{i+1}</span>
+              <span className="font-mono text-[10px] text-muted2 flex-1">4-8 reps · {Math.round(pct*100)}%</span>
+              <span className="calc-chip calc-chip-dim">{loads ? fmtKg(loads[`feeder${i+1}`]) : '—'}</span>
+            </div>
+          ))}
 
-          {/* History */}
-          {log?.history?.length > 1 && (
-            <div className={styles.history}>
-              <div className={styles.historyTitle}>HISTÓRICO</div>
-              {log.history.slice(-5).reverse().map((h, i) => (
-                <div key={i} className={styles.historyRow}>
-                  <span className={styles.historyDate}>
-                    {new Date(h.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+          {/* working */}
+          <div className="section-label mt-2"><LuZap size={10}/>WORKING SET</div>
+          <div className="set-row">
+            <span className="font-mono text-[10px] text-muted w-4">W</span>
+            <span className="font-mono text-[10px] text-muted2 flex-1">
+              {exercise.type==='REST_PAUSE' && 'falha → 20s → reps → 20s → falha'}
+              {exercise.type==='WIDOWMAKER' && 'falha 10-12 → continua até 15-20 sem soltar'}
+              {exercise.type==='NORMAL'     && `${exercise.reps||'?'} reps · GER ${exercise.ger}`}
+              {exercise.type==='BACKOFF'    && 'até a falha · GER 10'}
+            </span>
+            <span className={`calc-chip ${loads ? calcCls : 'calc-chip-dim'}`}>{loads ? fmtKg(loads.top) : '—'}</span>
+          </div>
+
+          {/* backoff */}
+          {(exercise.type==='NORMAL'||exercise.type==='REST_PAUSE') && (
+            <>
+              <div className="section-label mt-2"><LuArrowDown size={10}/>BACKOFF SET (opcional)</div>
+              <div className="set-row">
+                <span className="font-mono text-[10px] text-muted w-4">B</span>
+                <span className="font-mono text-[10px] text-muted2 flex-1">-20/30% · falha · GER 10</span>
+                <span className={`calc-chip ${loads ? 'calc-chip-orange' : 'calc-chip-dim'}`}>{loads ? fmtKg(loads.backoff) : '—'}</span>
+              </div>
+            </>
+          )}
+
+          {/* obs */}
+          <div className="section-label mt-3">OBSERVAÇÕES</div>
+          <input className="w-full bg-s3 border border-border2 text-ink px-3 py-2.5 font-body font-semibold text-sm tracking-wide outline-none focus:border-neon transition-colors mb-3"
+            type="text" placeholder="notas..." value={obs} onChange={e=>setObs(e.target.value)} />
+
+          {/* history */}
+          {savedLog?.history?.length > 1 && (
+            <div className="mb-3 border-t border-border1 pt-2">
+              <div className="font-mono text-[9px] text-muted tracking-[0.25em] mb-1.5">HISTÓRICO</div>
+              {savedLog.history.slice(-4).reverse().map((h,i) => (
+                <div key={i} className="flex gap-2 items-baseline py-1 border-b border-border1/50 last:border-0">
+                  <span className="font-mono text-[10px] text-muted w-10 flex-shrink-0">
+                    {new Date(h.date).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}
                   </span>
-                  <span className={styles.historyVal}>{h.kg}kg × {h.reps || '?'} reps</span>
-                  {h.obs && <span className={styles.historyObs}>{h.obs}</span>}
+                  <span className="font-mono text-[11px] text-neon font-bold">{h.kg}kg × {h.reps||'?'}</span>
+                  {h.obs && <span className="font-mono text-[10px] text-muted truncate">{h.obs}</span>}
                 </div>
               ))}
             </div>
           )}
+
+          <button className={`btn-primary ${saved?'saved':''}`} onClick={handleSave}>
+            {saved
+              ? <span className="flex items-center justify-center gap-2"><LuCircleCheck size={16}/>SALVO!</span>
+              : <span className="flex items-center justify-center gap-2"><LuSave size={16}/>REGISTRAR</span>
+            }
+          </button>
         </div>
       )}
     </div>
