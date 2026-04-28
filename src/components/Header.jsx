@@ -18,26 +18,6 @@ export default function Header({ scrollRef }) {
   const lastY = useRef(0)
 
   const isInWorkout = !!activeWorkout
-
-  useEffect(() => {
-    const el = scrollRef?.current
-    if (!el) return
-    const onScroll = () => {
-      const y = el.scrollTop
-      const delta = y - lastY.current
-      if (delta > 0 && y > 50) setHidden(true)
-      else if (delta < -8) setHidden(false)
-      lastY.current = y
-    }
-    el.addEventListener('scroll', onScroll, { passive: true })
-    return () => el.removeEventListener('scroll', onScroll)
-  }, [scrollRef])
-
-  const showHeader = () => {
-    setHidden(false)
-    scrollRef?.current?.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
   const accentColor = isInWorkout ? '#ff6600' : '#39FF14'
 
   return (
