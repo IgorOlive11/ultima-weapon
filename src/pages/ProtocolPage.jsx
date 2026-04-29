@@ -40,9 +40,8 @@ function AddExerciseModal({ onAdd, onClose }) {
   })
 
   const pickSaved = (ex) => {
-    setName(ex.name)
-    setMuscle(ex.muscle)
-    setShowLibrary(false)
+    onAdd({ name: ex.name, muscle: ex.muscle })
+    onClose()
   }
 
   const submit = () => {
