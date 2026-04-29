@@ -19,7 +19,7 @@ export default function DoomFace({ ger, face, size = 32, className = '' }) {
       width={size}
       height={h}
       alt={`GER ${g}`}
-      className={className}
+      className={`doom-face-anim ${className}`}
       style={{ width: size, height: h, imageRendering: 'pixelated', flexShrink: 0, display: 'block' }}
     />
   )

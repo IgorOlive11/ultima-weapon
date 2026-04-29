@@ -4,9 +4,9 @@ export default {
   theme: {
     extend: {
       colors: {
-        neon:       '#39FF14',
-        'neon-dim': '#1a7a08',
-        'neon-bg':  'rgba(57,255,20,0.06)',
+        neon:       '#FF1414',
+        'neon-dim': '#7a0808',
+        'neon-bg':  'rgba(255,20,20,0.06)',
         bg:         '#080808',
         s1:         '#0f0f0f',
         s2:         '#161616',
