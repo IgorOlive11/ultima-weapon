@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LuPlay, LuCheck, LuChevronRight, LuSwords, LuTriangleAlert,
@@ -72,9 +72,11 @@ function fmtSetResult(s) {
     case 'REST_PAUSE':
       return s.blocks?.length
         ? s.blocks.map((b, i) => `B${i+1}: ${b.reps}r`).join(', ') + ` · ${fmtKg(s.kg)}`
-        : `${fmtKg(s.kg)}`
-    case 'MUSCLE_ROUND':
-      return `${s.blocks ?? '?'} blocos · ${fmtKg(s.kg)}`
+        : fmtKg(s.kg)
+    case 'MUSCLE_ROUND': {
+      const partial = s.failedReps > 0 ? ` (${s.failedReps}r parcial)` : ''
+      return `${s.blocks ?? '?'} blocos${partial} · ${fmtKg(s.kg)}`
+    }
     case 'WIDOWMAKER':
       return `${s.reps ?? '?'} reps · ${fmtKg(s.kg)}`
     case 'PULSE':
@@ -82,6 +84,52 @@ function fmtSetResult(s) {
     default:
       return s.reps ? `${s.reps} reps · ${fmtKg(s.kg)}` : fmtKg(s.kg)
   }
+}
+
+// Compact last-session badge shown on all exercise cards
+function PrevRecord({ prevData, setDef }) {
+  if (!prevData) return null
+
+  let text
+  if (prevData.setType) {
+    text = fmtSetResult(prevData)
+  } else {
+    text = prevData.reps ? `${prevData.reps} reps · ${fmtKg(prevData.kg)}` : fmtKg(prevData.kg)
+  }
+
+  let alert = null
+  if (setDef?.type === 'NORMAL' && setDef?.repRange && prevData.reps > 0) {
+    const parts = setDef.repRange.split('-')
+    const min = parseInt(parts[0])
+    const max = parseInt(parts[parts.length - 1])
+    if (!isNaN(max) && prevData.reps > max)       alert = 'over'
+    else if (!isNaN(min) && prevData.reps < min)  alert = 'under'
+  }
+
+  return (
+    <div className={`border px-3 py-2 mb-3 ${
+      alert === 'over'  ? 'border-neon/30 bg-neon/5' :
+      alert === 'under' ? 'border-yellow-500/30 bg-yellow-500/5' :
+      'border-border1 bg-s2/50'
+    }`}>
+      <div className={`font-mono text-[9px] tracking-[0.2em] mb-0.5 ${
+        alert === 'over' ? 'text-neon' : alert === 'under' ? 'text-yellow-400' : 'text-muted/60'
+      }`}>
+        ÚLTIMO REGISTRO
+      </div>
+      <div className="font-mono text-[10px] text-muted">{text}</div>
+      {alert === 'over' && (
+        <div className="font-mono text-[10px] text-neon mt-1.5 leading-relaxed">
+          Você superou as expectativas no último treino. Progrida a carga e cresça.
+        </div>
+      )}
+      {alert === 'under' && (
+        <div className="font-mono text-[10px] text-yellow-400 mt-1.5 leading-relaxed">
+          Você foi egoísta com esse peso no último treino. Reduz a carga e para de fugir do exercício.
+        </div>
+      )}
+    </div>
+  )
 }
 
 function WeightQuestionCard({ step, onConfirm, history }) {
@@ -118,27 +166,32 @@ function WeightQuestionCard({ step, onConfirm, history }) {
 
         {/* last session history */}
         {history && (
-          <div className="bg-s2 border border-border1 px-3 py-3 mb-4">
-            <div className="font-mono text-[9px] text-neon tracking-[0.2em] mb-2">ÚLTIMO REGISTRO</div>
-            <div className="font-mono text-[10px] text-muted/70 mb-2">
-              {new Date(history.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
-              {history.kg > 0 && <span className="text-neon ml-2">{fmtKg(history.kg)}</span>}
+          <div className="border border-border1 bg-s2/50 px-3 py-2.5 mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-mono text-[9px] text-neon tracking-[0.2em]">ÚLTIMO REGISTRO</div>
+              <div className="font-mono text-[9px] text-muted/50">
+                {new Date(history.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                {history.kg > 0 && <span className="text-neon/70 ml-1.5">{fmtKg(history.kg)}</span>}
+              </div>
             </div>
-            <div className="flex flex-col gap-0.5">
+            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
               {history.warmups?.filter(w => w.reps > 0).map((w, i) => (
-                <div key={`w${i}`} className="font-mono text-[10px] text-muted">
-                  Aquec. {i+1}: {w.reps} reps · {fmtKg(w.kg)}
-                </div>
+                <>
+                  <span key={`wl${i}`} className="font-mono text-[9px] text-muted/50">AQUEC. {i+1}</span>
+                  <span key={`wr${i}`} className="font-mono text-[10px] text-muted">{w.reps}r · {fmtKg(w.kg)}</span>
+                </>
               ))}
               {history.feeders?.filter(f => f.reps > 0).map((f, i) => (
-                <div key={`f${i}`} className="font-mono text-[10px] text-muted">
-                  Feeder {i+1}: {f.reps} reps · {fmtKg(f.kg)}
-                </div>
+                <>
+                  <span key={`fl${i}`} className="font-mono text-[9px] text-muted/50">FEEDER {i+1}</span>
+                  <span key={`fr${i}`} className="font-mono text-[10px] text-muted">{f.reps}r · {fmtKg(f.kg)}</span>
+                </>
               ))}
               {history.sets?.map((s, i) => (
-                <div key={`s${i}`} className="font-mono text-[10px] text-ink/80">
-                  Série {i+1}: {fmtSetResult(s)}
-                </div>
+                <>
+                  <span key={`sl${i}`} className="font-mono text-[9px] text-muted/50">SÉRIE {i+1}</span>
+                  <span key={`sr${i}`} className="font-mono text-[10px] text-ink/80">{fmtSetResult(s)}</span>
+                </>
               ))}
             </div>
           </div>
@@ -185,7 +238,7 @@ function WeightQuestionCard({ step, onConfirm, history }) {
   )
 }
 
-function WarmupFeederCard({ step, workingWeight, onDone, isLocked }) {
+function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData }) {
   const [reps, setReps] = useState('')
   const isWarmup = step.type === 'WARMUP'
   const weight = round25(workingWeight * step.pct)
@@ -228,6 +281,8 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked }) {
           </div>
         )}
 
+        <PrevRecord prevData={prevData} />
+
         {/* reps done */}
         <div className="mb-4">
           <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">REPS REALIZADAS</label>
@@ -262,7 +317,7 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked }) {
   )
 }
 
-function NormalSetCard({ step, workingWeight, onDone, isLocked }) {
+function NormalSetCard({ step, workingWeight, onDone, isLocked, prevData }) {
   const [repsHit, setRepsHit] = useState('')
   const typeInfo  = SET_TYPES[step.setDef.type] || SET_TYPES.NORMAL
   const gerCfg    = GER_CONFIG[step.setDef.ger] || GER_CONFIG[10]
@@ -307,6 +362,8 @@ function NormalSetCard({ step, workingWeight, onDone, isLocked }) {
           )}
         </div>
 
+        <PrevRecord prevData={prevData} setDef={step.setDef} />
+
         {/* reps hit input */}
         <div className="mb-4">
           <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">REPS REALIZADAS</label>
@@ -343,34 +400,43 @@ function NormalSetCard({ step, workingWeight, onDone, isLocked }) {
   )
 }
 
-function RestPauseCard({ step, workingWeight, onDone, isLocked }) {
+function RestPauseCard({ step, workingWeight, onDone, isLocked, prevData }) {
   const [blocks, setBlocks]   = useState([{ reps: null }])
   const [phase, setPhase]     = useState('block') // 'block' | 'rest20'
   const [timer20, setTimer20] = useState(null)
+  const ivRef = useRef(null)
   const typeInfo  = SET_TYPES.REST_PAUSE
 
   const currentBlock = blocks.length - 1
   const isDone = blocks.length >= 2 && blocks[blocks.length-1].reps !== null
 
+  const advanceToNextBlock = () => {
+    setPhase('block')
+    setTimer20(null)
+    setBlocks(prev => [...prev, { reps: null }])
+  }
+
   const handleBlockDone = (reps) => {
     const updated = blocks.map((b, i) => i === currentBlock ? { reps } : b)
     setBlocks(updated)
     if (updated.length < 2) {
-      // start 20s inter-block rest
       setPhase('rest20')
       let t = 20
       setTimer20(t)
-      const iv = setInterval(() => {
+      ivRef.current = setInterval(() => {
         t--
         setTimer20(t)
         if (t <= 0) {
-          clearInterval(iv)
-          setPhase('block')
-          setTimer20(null)
-          setBlocks(prev => [...prev, { reps: null }])
+          clearInterval(ivRef.current)
+          advanceToNextBlock()
         }
       }, 1000)
     }
+  }
+
+  const handleSkipRest = () => {
+    if (ivRef.current) { clearInterval(ivRef.current); ivRef.current = null }
+    advanceToNextBlock()
   }
 
   const handleFinish = () => {
@@ -428,11 +494,23 @@ function RestPauseCard({ step, workingWeight, onDone, isLocked }) {
           ))}
         </div>
 
+        <PrevRecord prevData={prevData} />
+
         {/* 20s inter-block countdown */}
         {phase === 'rest20' && timer20 !== null && (
-          <div className="bg-orange-500/10 border border-orange-500/30 px-4 py-4 text-center mb-4">
-            <div className="font-mono text-[10px] text-orange-400 tracking-wider mb-1">PAUSA 20s</div>
-            <div className="font-display text-4xl tracking-wider text-orange-400">{timer20}</div>
+          <div className="bg-orange-500/10 border border-orange-500/30 px-4 py-4 mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-mono text-[10px] text-orange-400 tracking-wider mb-1">PAUSA 20s</div>
+                <div className="font-display text-4xl tracking-wider text-orange-400">{timer20}</div>
+              </div>
+              <button
+                onClick={handleSkipRest}
+                className="px-3 py-2 font-display text-xs tracking-wider border border-orange-500/40 text-orange-400 hover:bg-orange-500/10 transition-colors"
+              >
+                PULAR
+              </button>
+            </div>
           </div>
         )}
 
@@ -485,45 +563,47 @@ function RestPauseCard({ step, workingWeight, onDone, isLocked }) {
   )
 }
 
-function MuscleRoundCard({ step, workingWeight, onDone, isLocked }) {
+function MuscleRoundCard({ step, workingWeight, onDone, isLocked, prevData }) {
   const TOTAL_BLOCKS = 12
   const [completedBlocks, setCompletedBlocks] = useState(0)
-  const [failedBlock, setFailedBlock]         = useState(null)
+  const [failedInfo, setFailedInfo]           = useState(null) // { block, reps }
   const [blockTimer, setBlockTimer]           = useState(null)
   const [phase, setPhase]                     = useState('ready') // ready | rest10 | done
-  const [lastBlockReps, setLastBlockReps]     = useState(0)
-  const typeInfo  = SET_TYPES.MUSCLE_ROUND
+  const [currentReps, setCurrentReps]         = useState('')
+  const ivRef = useRef(null)
+  const typeInfo = SET_TYPES.MUSCLE_ROUND
+
+  const resumeReady = () => { setPhase('ready'); setBlockTimer(null); setCurrentReps('') }
 
   const handleBlockDone = () => {
     if (phase !== 'ready') return
     const next = completedBlocks + 1
     setCompletedBlocks(next)
-    if (next >= TOTAL_BLOCKS) {
-      setPhase('done')
-      return
-    }
-    setLastBlockReps(0)
+    setCurrentReps('')
+    if (next >= TOTAL_BLOCKS) { setPhase('done'); return }
     setPhase('rest10')
     let t = 10
     setBlockTimer(t)
-    const iv = setInterval(() => {
+    ivRef.current = setInterval(() => {
       t--
       setBlockTimer(t)
-      if (t <= 0) {
-        clearInterval(iv)
-        setPhase('ready')
-        setBlockTimer(null)
-      }
+      if (t <= 0) { clearInterval(ivRef.current); resumeReady() }
     }, 1000)
   }
 
+  const handleSkipRest = () => {
+    if (ivRef.current) { clearInterval(ivRef.current); ivRef.current = null }
+    resumeReady()
+  }
+
   const handleFail = () => {
-    setFailedBlock(completedBlocks + 1)
+    const reps = parseInt(currentReps) || 0
+    setFailedInfo({ block: completedBlocks + 1, reps })
     setPhase('done')
   }
 
   const handleFinish = () => {
-    onDone({ kg: workingWeight, blocks: completedBlocks, failedBlock, lastBlockReps: lastBlockReps || null })
+    onDone({ kg: workingWeight, blocks: completedBlocks, failedBlock: failedInfo?.block, failedReps: failedInfo?.reps || 0 })
   }
 
   return (
@@ -536,28 +616,19 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked }) {
           MUSCLE ROUND · {fmtKg(workingWeight)}
         </div>
 
-        {/* GER face */}
-        <div className="flex items-center gap-3 bg-s2 border border-border1 px-4 py-3 mb-4">
-          <DoomFace face={GER_CONFIG[typeInfo.ger].face} size={40}/>
-          <div>
-            <div className="font-display text-sm tracking-wider" style={{ color: typeInfo.color }}>
-              {GER_CONFIG[typeInfo.ger].label}
-            </div>
-            <div className="font-mono text-[11px] text-muted">{GER_CONFIG[typeInfo.ger].title}</div>
-          </div>
-        </div>
-
         <div className="bg-s2 border border-border1 px-3 py-3 mb-4 font-mono text-[10px] text-muted leading-relaxed">
           Blocos de <span className="text-red-400 font-bold">4 reps</span> com 10s de descanso entre blocos.
           Continue até falhar uma vez.
         </div>
 
+        <PrevRecord prevData={prevData} />
+
         {/* block grid */}
         <div className="grid grid-cols-6 gap-1.5 mb-4">
           {Array(TOTAL_BLOCKS).fill(null).map((_, i) => {
             const done   = i < completedBlocks
-            const isFail = failedBlock !== null && i === failedBlock - 1
-            const isCurr = i === completedBlocks && phase === 'ready' && failedBlock === null
+            const isFail = failedInfo !== null && i === failedInfo.block - 1
+            const isCurr = i === completedBlocks && phase === 'ready' && failedInfo === null
             return (
               <div
                 key={i}
@@ -576,66 +647,81 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked }) {
 
         {/* 10s inter-block rest */}
         {phase === 'rest10' && blockTimer !== null && (
-          <div className="bg-red-500/10 border border-red-500/30 px-4 py-4 text-center mb-4">
-            <div className="font-mono text-[10px] text-red-400 tracking-wider mb-1">DESCANSO 10s</div>
-            <div className="font-display text-4xl tracking-wider text-red-400">{blockTimer}</div>
-          </div>
-        )}
-
-        {phase === 'done' && failedBlock !== null && (
-          <div className="bg-red-500/10 border border-red-500/30 px-3 py-2.5 mb-4 text-center">
-            <div className="font-mono text-[11px] text-red-400">
-              Falha no bloco {failedBlock} — {completedBlocks} blocos completos
-            </div>
-          </div>
-        )}
-
-        {/* current block reps input */}
-        {phase === 'ready' && failedBlock === null && (
-          <div className="mb-3">
-            <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">REPS NO BLOCO {completedBlocks + 1}</label>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setLastBlockReps(r => Math.max(0, r - 1))}
-                className="w-11 h-11 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
-              ><LuMinus size={16}/></button>
-              <div className="flex-1 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-2.5">
-                {lastBlockReps}
+          <div className="bg-red-500/10 border border-red-500/30 px-4 py-3 mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-mono text-[10px] text-red-400 tracking-wider mb-1">DESCANSO 10s</div>
+                <div className="font-display text-4xl tracking-wider text-red-400">{blockTimer}</div>
               </div>
               <button
-                onClick={() => setLastBlockReps(r => r + 1)}
-                className="w-11 h-11 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
-              ><LuPlus size={16}/></button>
+                onClick={handleSkipRest}
+                className="px-3 py-2 font-display text-xs tracking-wider border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-colors"
+              >
+                PULAR
+              </button>
             </div>
           </div>
         )}
 
-        {/* actions */}
-        {phase !== 'done' && failedBlock === null && (
-          <div className="flex gap-2 mb-0">
-            <button
-              onClick={handleBlockDone}
-              disabled={phase !== 'ready'}
-              className="flex-1 py-3 font-display text-sm tracking-[0.15em] text-bg disabled:opacity-40 transition-opacity"
-              style={{ background: typeInfo.color }}
-            >
-              {phase === 'rest10' ? `10s...` : `BLOCO ${completedBlocks+1} FEITO`}
-            </button>
-            <button
-              onClick={handleFail}
-              disabled={phase !== 'ready'}
-              className="px-4 py-3 border border-red-500/40 text-red-400 font-display text-xs tracking-wider disabled:opacity-40 hover:bg-red-500/10 transition-colors"
-            >
-              FALHOU
-            </button>
+        {phase === 'done' && failedInfo && (
+          <div className="bg-red-500/10 border border-red-500/30 px-3 py-2.5 mb-4 text-center">
+            <div className="font-mono text-[11px] text-red-400">
+              Falha no bloco {failedInfo.block}
+              {failedInfo.reps > 0 && ` · ${failedInfo.reps} reps`}
+              {' '}— {completedBlocks} blocos completos
+            </div>
           </div>
         )}
 
-        {(phase === 'done' || failedBlock !== null) && (
+        {/* current block reps input + actions */}
+        {phase === 'ready' && failedInfo === null && (
+          <>
+            <div className="mb-3">
+              <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">
+                REPS NO BLOCO {completedBlocks + 1} (deixe 0 se não iniciou)
+              </label>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setCurrentReps(r => String(Math.max(0, (parseInt(r)||0) - 1)))}
+                  className="w-11 h-11 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
+                ><LuMinus size={16}/></button>
+                <input
+                  type="number" inputMode="numeric"
+                  className="flex-1 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-2.5 focus:border-neon outline-none transition-colors"
+                  placeholder="0"
+                  value={currentReps}
+                  onChange={e => setCurrentReps(e.target.value)}
+                />
+                <button
+                  onClick={() => setCurrentReps(r => String((parseInt(r)||0) + 1))}
+                  className="w-11 h-11 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
+                ><LuPlus size={16}/></button>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleBlockDone}
+                className="flex-1 py-3 font-display text-sm tracking-[0.15em] text-bg"
+                style={{ background: typeInfo.color }}
+              >
+                BLOCO {completedBlocks+1} FEITO
+              </button>
+              <button
+                onClick={handleFail}
+                className="px-4 py-3 border border-red-500/40 text-red-400 font-display text-xs tracking-wider hover:bg-red-500/10 transition-colors"
+              >
+                FALHOU
+              </button>
+            </div>
+          </>
+        )}
+
+        {phase === 'done' && (
           <button
             onClick={handleFinish}
             disabled={isLocked}
-            className="w-full py-3.5 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 flex items-center justify-center gap-2"
+            className="w-full py-3.5 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 flex items-center justify-center gap-2 mt-3"
             style={{ background: typeInfo.color }}
           >
             <LuCheck size={16}/> MUSCLE ROUND CONCLUÍDO
@@ -646,7 +732,7 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked }) {
   )
 }
 
-function WidowmakerCard({ step, workingWeight, onDone, isLocked }) {
+function WidowmakerCard({ step, workingWeight, onDone, isLocked, prevData }) {
   const [reps, setReps]   = useState(0)
   const [phase, setPhase] = useState('working') // 'working' | 'extending'
   const typeInfo          = SET_TYPES.WIDOWMAKER
@@ -694,18 +780,32 @@ function WidowmakerCard({ step, workingWeight, onDone, isLocked }) {
           </div>
         )}
 
+        <PrevRecord prevData={prevData} />
+
         {/* rep counter */}
         <div className="bg-s2 border border-border1 px-4 py-5 mb-4 text-center">
           <div className="font-mono text-[10px] text-muted tracking-wider mb-2">REPS TOTAIS</div>
           <div className="font-display text-5xl tracking-wider" style={{ color: typeInfo.color }}>{reps}</div>
-          {reps >= 10 && reps <= 12 && phase === 'working' && (
-            <div className="font-mono text-[10px] text-yellow-400 mt-2">Zona de falha — ótimo!</div>
-          )}
-          {reps >= 15 && (
-            <div className="font-mono text-[10px] text-yellow-400 mt-2">
-              {reps >= 20 ? '🏆 WIDOWMAKER COMPLETO!' : `${20 - reps} reps até 20`}
-            </div>
-          )}
+          <div className="font-mono text-[10px] mt-2">
+            {phase === 'working' && reps < 8 && reps > 0 && (
+              <span className="text-muted">{8 - reps} reps para a zona de falha</span>
+            )}
+            {phase === 'working' && reps >= 8 && reps < 10 && (
+              <span className="text-yellow-400">Zona de falha se aproximando</span>
+            )}
+            {phase === 'working' && reps >= 10 && reps <= 12 && (
+              <span className="text-yellow-400">Zona de falha — ótimo!</span>
+            )}
+            {phase === 'working' && reps > 12 && (
+              <span className="text-yellow-400">Passou da zona — vá para fase 2!</span>
+            )}
+            {phase === 'extending' && reps < 20 && (
+              <span className="text-yellow-400">{20 - reps} reps até 20</span>
+            )}
+            {phase === 'extending' && reps >= 20 && (
+              <span className="text-neon">WIDOWMAKER COMPLETO!</span>
+            )}
+          </div>
         </div>
 
         <div className="flex gap-2 mb-4">
@@ -745,7 +845,7 @@ function WidowmakerCard({ step, workingWeight, onDone, isLocked }) {
   )
 }
 
-function PulseSetCard({ step, workingWeight, onDone, isLocked }) {
+function PulseSetCard({ step, workingWeight, onDone, isLocked, prevData }) {
   const SEQUENCE = [
     { reps: 5, pulses: 5 },
     { reps: 4, pulses: 5 },
@@ -786,6 +886,8 @@ function PulseSetCard({ step, workingWeight, onDone, isLocked }) {
         <div className="font-display text-xs tracking-[0.2em] mb-4" style={{ color: typeInfo.color }}>
           DC STYLE PULSE SET · {fmtKg(workingWeight)}
         </div>
+
+        <PrevRecord prevData={prevData} />
 
         {/* sequence display */}
         <div className="flex flex-col gap-1 mb-4">
@@ -928,9 +1030,9 @@ function InlineRestTimer({ onNext }) {
 
 // ─── WorkingSetCard (dispatcher) ─────────────────────────────────────────────
 
-function WorkingSetCard({ step, workingWeight, onDone, isLocked }) {
+function WorkingSetCard({ step, workingWeight, onDone, isLocked, prevData }) {
   const { type } = step.setDef
-  const props = { step, workingWeight, onDone, isLocked }
+  const props = { step, workingWeight, onDone, isLocked, prevData }
 
   switch (type) {
     case 'REST_PAUSE':   return <RestPauseCard {...props}/>
@@ -967,26 +1069,32 @@ function ActiveWorkout() {
   const isLast  = currentStepIdx === steps.length - 1
   const workingWeight = step ? exerciseWeights[step.exerciseId] || 0 : 0
 
-  const advance = useCallback((result) => {
-    if (result) {
-      saveSetResult(String(currentStepIdx), result)
-    }
+  const history = exerciseHistory?.[step?.exerciseName?.toUpperCase()?.trim()]
+  const prevData = step?.type === 'WARMUP'      ? (history?.warmups?.[step.setNum - 1] ?? null)
+                 : step?.type === 'FEEDER'      ? (history?.feeders?.[step.setNum - 1] ?? null)
+                 : step?.type === 'WORKING_SET' ? (history?.sets?.[step.setNum - 1] ?? null)
+                 : null
 
-    // Skip rest after the last working set of the entire workout
+  const advance = useCallback((result) => {
+    if (result) saveSetResult(String(currentStepIdx), result)
+
+    // No rest after weight question or last working set
     const isLastWorkingSet =
       step?.type === 'WORKING_SET' &&
       !steps.slice(currentStepIdx + 1).some(s => s.type === 'WORKING_SET')
 
-    if (isLastWorkingSet) {
+    if (isLastWorkingSet || step?.type === 'WEIGHT_QUESTION') {
       setDir(1)
       advanceWorkoutStep()
       return
     }
 
+    // Rest duration based on what comes NEXT (not current)
+    const nextStep = steps[currentStepIdx + 1]
     let restSec = 0
-    if (step?.type === 'WARMUP')       restSec = day.warmupRestSeconds ?? 60
-    else if (step?.type === 'FEEDER')  restSec = day.feederRestSeconds ?? 60
-    else if (step?.type === 'WORKING_SET') restSec = day.restSeconds ?? 120
+    if (nextStep?.type === 'WARMUP')        restSec = day.warmupRestSeconds ?? 60
+    else if (nextStep?.type === 'FEEDER')   restSec = day.feederRestSeconds ?? 60
+    else if (nextStep?.type === 'WORKING_SET') restSec = day.restSeconds ?? 120
 
     if (restSec > 0) {
       startRestTimer(restSec)
@@ -1079,7 +1187,7 @@ function ActiveWorkout() {
             <WeightQuestionCard
               step={step}
               onConfirm={handleWeightConfirm}
-              history={exerciseHistory?.[step.exerciseName?.toUpperCase()?.trim()]}
+              history={history}
             />
           )}
 
@@ -1087,8 +1195,9 @@ function ActiveWorkout() {
             <WarmupFeederCard
               step={step}
               workingWeight={workingWeight}
-              onDone={() => advance()}
+              onDone={(result) => advance(result)}
               isLocked={isResting}
+              prevData={prevData}
             />
           )}
 
@@ -1098,6 +1207,7 @@ function ActiveWorkout() {
               workingWeight={workingWeight}
               onDone={(result) => advance(result)}
               isLocked={isResting}
+              prevData={prevData}
             />
           )}
         </motion.div>

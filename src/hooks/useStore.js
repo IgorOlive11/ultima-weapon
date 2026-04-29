@@ -161,6 +161,26 @@ export const useStore = create(
         },
       })),
 
+      // ── saved exercise library ───────────────────────────────────────────────
+      savedExercises: [],
+
+      addSavedExercise: (exercise) => set(state => {
+        const exists = state.savedExercises.some(
+          e => e.name.toLowerCase() === exercise.name.toLowerCase()
+        )
+        if (exists) return {}
+        return {
+          savedExercises: [
+            ...state.savedExercises,
+            { id: genId(), name: exercise.name, muscle: exercise.muscle },
+          ],
+        }
+      }),
+
+      removeSavedExercise: (id) => set(state => ({
+        savedExercises: state.savedExercises.filter(e => e.id !== id),
+      })),
+
       // ── exercise history (cross-session, keyed by exercise name) ─────────────
       exerciseHistory: {},
 
@@ -357,14 +377,15 @@ export const useStore = create(
     {
       name: 'uw-store-v3',
       partialize: (state) => ({
-        logs:            state.logs,
-        userProfile:     state.userProfile,
-        microLog:        state.microLog,
-        mealLog:         state.mealLog,
-        userProtocol:    state.userProtocol,
-        activeWorkout:   state.activeWorkout,
-        restTimer:       state.restTimer,
-        exerciseHistory: state.exerciseHistory,
+        logs:             state.logs,
+        userProfile:      state.userProfile,
+        microLog:         state.microLog,
+        mealLog:          state.mealLog,
+        userProtocol:     state.userProtocol,
+        activeWorkout:    state.activeWorkout,
+        restTimer:        state.restTimer,
+        exerciseHistory:  state.exerciseHistory,
+        savedExercises:   state.savedExercises,
       }),
     }
   )

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LuPlus, LuTrash2, LuChevronDown, LuChevronUp, LuBed,
-  LuDumbbell, LuClock, LuCheck, LuGripVertical, LuX,
+  LuDumbbell, LuClock, LuCheck, LuGripVertical, LuX, LuBookmark, LuSearch,
 } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 import {
@@ -25,11 +25,29 @@ const SET_TYPE_GER_DEFAULTS = {
 // ─── AddExerciseModal ─────────────────────────────────────────────────────────
 
 function AddExerciseModal({ onAdd, onClose }) {
-  const [name, setName]   = useState('')
-  const [muscle, setMuscle] = useState(MUSCLE_GROUP_LIST[0])
+  const [name, setName]       = useState('')
+  const [muscle, setMuscle]   = useState(MUSCLE_GROUP_LIST[0])
+  const [saveEx, setSaveEx]   = useState(true)
+  const [showLibrary, setShowLibrary] = useState(false)
+  const [search, setSearch]   = useState('')
+
+  const savedExercises    = useStore(s => s.savedExercises)
+  const addSavedExercise  = useStore(s => s.addSavedExercise)
+
+  const filtered = savedExercises.filter(e => {
+    const q = search.toLowerCase()
+    return e.name.toLowerCase().includes(q) || e.muscle.toLowerCase().includes(q)
+  })
+
+  const pickSaved = (ex) => {
+    setName(ex.name)
+    setMuscle(ex.muscle)
+    setShowLibrary(false)
+  }
 
   const submit = () => {
     if (!name.trim()) return
+    if (saveEx) addSavedExercise({ name: name.trim(), muscle })
     onAdd({ name: name.trim(), muscle })
     onClose()
   }
@@ -43,52 +61,143 @@ function AddExerciseModal({ onAdd, onClose }) {
       <motion.div
         initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-        className="w-full max-w-[430px] bg-s1 border-t border-border1 p-5 pb-8"
+        className="w-full max-w-[430px] bg-s1 border-t border-border1 max-h-[90vh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
-          <span className="font-display text-lg tracking-[0.15em] text-neon">NOVO EXERCÍCIO</span>
-          <button onClick={onClose} className="text-muted hover:text-ink p-1"><LuX size={18}/></button>
-        </div>
-
-        <div className="mb-3">
-          <label className="section-label block mb-1">NOME DO EXERCÍCIO</label>
-          <input
-            autoFocus
-            className="w-full bg-s2 border border-border2 px-3 py-2.5 font-body text-sm text-ink focus:border-neon outline-none transition-colors"
-            placeholder="Ex: Agachamento livre"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && submit()}
-          />
-        </div>
-
-        <div className="mb-5">
-          <label className="section-label block mb-1">GRUPO MUSCULAR</label>
-          <div className="flex flex-wrap gap-1.5">
-            {MUSCLE_GROUP_LIST.map(m => (
+        <div className="flex items-center justify-between p-5 pb-3 flex-shrink-0">
+          <span className="font-display text-lg tracking-[0.15em] text-neon">
+            {showLibrary ? 'EXERCÍCIOS SALVOS' : 'NOVO EXERCÍCIO'}
+          </span>
+          <div className="flex items-center gap-2">
+            {!showLibrary && savedExercises.length > 0 && (
               <button
-                key={m}
-                onClick={() => setMuscle(m)}
-                className={`px-2.5 py-1 font-mono text-[11px] tracking-wider border transition-all ${
-                  muscle === m
-                    ? 'bg-neon text-bg border-neon'
-                    : 'bg-s2 border-border2 text-muted hover:text-ink'
-                }`}
+                onClick={() => setShowLibrary(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 border border-neon/40 text-neon font-mono text-[10px] tracking-wider hover:bg-neon/5 transition-colors"
               >
-                {m}
+                <LuBookmark size={12}/> SALVOS ({savedExercises.length})
               </button>
-            ))}
+            )}
+            <button onClick={onClose} className="text-muted hover:text-ink p-1"><LuX size={18}/></button>
           </div>
         </div>
 
-        <button
-          onClick={submit}
-          disabled={!name.trim()}
-          className="w-full py-3 font-display text-sm tracking-[0.2em] bg-neon text-bg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-        >
-          ADICIONAR EXERCÍCIO
-        </button>
+        {showLibrary ? (
+          <div className="flex flex-col flex-1 overflow-hidden px-5 pb-6">
+            {/* search */}
+            <div className="relative mb-3">
+              <LuSearch size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted/50"/>
+              <input
+                autoFocus
+                className="w-full bg-s2 border border-border2 pl-8 pr-3 py-2 font-mono text-sm text-ink focus:border-neon outline-none transition-colors"
+                placeholder="Nome ou grupamento..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+
+            {/* muscle filter pills */}
+            <div className="flex gap-1 flex-wrap mb-3">
+              {['', ...MUSCLE_GROUP_LIST].map(m => (
+                <button
+                  key={m || 'all'}
+                  onClick={() => setSearch(m)}
+                  className={`px-2 py-0.5 font-mono text-[10px] border transition-all ${
+                    search === m ? 'bg-neon text-bg border-neon' : 'bg-s2 border-border2 text-muted hover:text-ink'
+                  }`}
+                >
+                  {m || 'TODOS'}
+                </button>
+              ))}
+            </div>
+
+            <div className="overflow-y-auto flex-1">
+              {filtered.length === 0 && (
+                <div className="text-center py-8 font-mono text-[11px] text-muted/40">
+                  {savedExercises.length === 0 ? 'Nenhum exercício salvo ainda.' : 'Nenhum resultado.'}
+                </div>
+              )}
+              {filtered.map(ex => (
+                <button
+                  key={ex.id}
+                  onClick={() => pickSaved(ex)}
+                  className="w-full flex items-center gap-3 bg-s2 border border-border2 px-3 py-2.5 mb-1.5 text-left hover:border-neon/50 transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-display text-sm tracking-wider text-ink truncate">{ex.name}</div>
+                    <div className="font-mono text-[10px] text-muted">{ex.muscle}</div>
+                  </div>
+                  <LuPlus size={14} className="text-neon flex-shrink-0"/>
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setShowLibrary(false)}
+              className="mt-3 w-full py-2.5 font-display text-sm tracking-[0.15em] border border-border2 text-muted hover:text-ink transition-colors"
+            >
+              ← VOLTAR
+            </button>
+          </div>
+        ) : (
+          <div className="overflow-y-auto flex-1 px-5 pb-8">
+            <div className="mb-3">
+              <label className="section-label block mb-1">NOME DO EXERCÍCIO</label>
+              <input
+                autoFocus
+                className="w-full bg-s2 border border-border2 px-3 py-2.5 font-body text-sm text-ink focus:border-neon outline-none transition-colors"
+                placeholder="Ex: Agachamento livre"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && submit()}
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="section-label block mb-1">GRUPO MUSCULAR</label>
+              <div className="flex flex-wrap gap-1.5">
+                {MUSCLE_GROUP_LIST.map(m => (
+                  <button
+                    key={m}
+                    onClick={() => setMuscle(m)}
+                    className={`px-2.5 py-1 font-mono text-[11px] tracking-wider border transition-all ${
+                      muscle === m
+                        ? 'bg-neon text-bg border-neon'
+                        : 'bg-s2 border-border2 text-muted hover:text-ink'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* save toggle */}
+            <div className="flex items-center justify-between bg-s2 border border-border2 px-3 py-2.5 mb-5">
+              <div>
+                <div className="font-display text-sm tracking-wider text-ink">SALVAR NA BIBLIOTECA</div>
+                <div className="font-mono text-[10px] text-muted">Reutilizar em outros treinos</div>
+              </div>
+              <button
+                onClick={() => setSaveEx(v => !v)}
+                className={`w-10 h-5 rounded-full border-2 relative transition-all ${saveEx ? 'bg-neon/20 border-neon' : 'bg-s1 border-border2'}`}
+              >
+                <motion.div
+                  animate={{ x: saveEx ? 20 : 2 }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                  className={`absolute top-0.5 w-3 h-3 rounded-full ${saveEx ? 'bg-neon' : 'bg-muted'}`}
+                />
+              </button>
+            </div>
+
+            <button
+              onClick={submit}
+              disabled={!name.trim()}
+              className="w-full py-3 font-display text-sm tracking-[0.2em] bg-neon text-bg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+            >
+              ADICIONAR EXERCÍCIO
+            </button>
+          </div>
+        )}
       </motion.div>
     </motion.div>
   )
