@@ -139,7 +139,7 @@ export default function Sidebar() {
           )}
           <div className="flex items-center gap-1.5">
             <LuFlame size={12} className="text-neon"/>
-            <span className="font-mono text-[9px] text-muted tracking-wider">BY MR. SAIZEN</span>
+            <span className="font-mono text-[9px] text-muted tracking-wider">BY IGOR OLIVEIRA</span>
           </div>
         </div>
       </aside>
