@@ -183,18 +183,34 @@ function SectionPlano({ userProfile, currentWeek, currentDay }) {
   const userProtocol = useStore(s => s.userProtocol)
 
   const day = userProtocol.weeks[currentWeek]?.days[currentDay]
-  const isTrainingDay = !day?.isRest && (day?.exercises?.length || 0) > 0
+  const autoIsDayOff = !!day?.isRest
 
-  const meals   = buildMealSchedule(userProfile.workoutTime, userProfile.sleepTime, isTrainingDay)
-  const marked  = mealLog[dateKey] || {}
+  const [isDayOff, setIsDayOff] = useState(autoIsDayOff)
+
+  const isTrainingDay = !isDayOff
+  const meals  = buildMealSchedule(userProfile.workoutTime, userProfile.sleepTime, isTrainingDay)
+  const marked = mealLog[dateKey] || {}
 
   return (
     <div className="p-3 pb-8 space-y-2">
-      {!isTrainingDay && (
-        <div className="bg-s2 border border-border1 px-3 py-2 font-mono text-[10px] text-muted tracking-widest text-center">
-          DIA DE DESCANSO — pré/pós-treino ocultados
+      <div className="bg-s1 border border-border1 px-3 py-2.5 flex items-center justify-between">
+        <div>
+          <div className="font-mono text-[10px] text-ink tracking-widest">DIA DE DESCANSO</div>
+          <div className="font-mono text-[9px] text-muted tracking-wider mt-0.5">
+            {autoIsDayOff !== isDayOff ? 'ajustado manualmente' : 'detectado pelo protocolo'}
+          </div>
         </div>
-      )}
+        <button
+          onClick={() => setIsDayOff(v => !v)}
+          className="relative w-11 h-6 flex-shrink-0 transition-colors duration-200"
+          style={{ background: isDayOff ? '#39FF1433' : '#222', border: `1px solid ${isDayOff ? '#39FF14' : '#333'}`, borderRadius: 999 }}
+        >
+          <span
+            className="absolute top-0.5 w-5 h-5 rounded-full transition-all duration-200"
+            style={{ left: isDayOff ? '1.375rem' : '0.125rem', background: isDayOff ? '#39FF14' : '#555' }}
+          />
+        </button>
+      </div>
       {meals.map(meal => {
         const done = !!marked[meal.id]
         const { Icon } = meal

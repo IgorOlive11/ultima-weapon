@@ -58,8 +58,7 @@ export default function Sidebar() {
       }`}>
         <div className="flex items-start justify-between p-4 border-b border-border1">
           <div>
-            <div className="font-display text-xl text-neon tracking-[0.15em] leading-none">ULTIMA WEAPON</div>
-            <div className="font-mono text-[9px] text-muted tracking-[0.2em] mt-1">WEAPONS OF MASS CONSTRUCTION</div>
+            <div className="font-display text-xl text-neon tracking-[0.15em] leading-none">OVERLOAD</div>
           </div>
           <button onClick={() => setSidebar(false)} className="text-muted hover:text-ink transition-colors p-1">
             <LuX size={18}/>

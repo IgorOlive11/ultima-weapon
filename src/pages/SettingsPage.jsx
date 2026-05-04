@@ -244,8 +244,8 @@ export default function SettingsPage() {
           SOBRE
         </div>
         <p className="font-mono text-[10px] text-muted tracking-wider leading-relaxed">
-          Ultima Weapon — 8 Week Low Volume Training<br />
-          by Mr. Saizen · Weapons of Mass Construction<br /><br />
+          Overload — Seu app de treino<br />
+          por Igor Oliveira<br /><br />
           <span className="text-muted/60">
             iOS: Safari → Compartilhar → Adicionar à Tela de Início
           </span>

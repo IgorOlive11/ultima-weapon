@@ -8,8 +8,7 @@ function Header() {
   return (
     <div className="text-center">
       <LuSwords size={28} className="text-neon mx-auto mb-2" />
-      <div className="font-display text-2xl text-neon tracking-[0.15em]">ULTIMA WEAPON</div>
-      <div className="font-mono text-[9px] text-muted tracking-[0.2em] mt-1">WEAPONS OF MASS CONSTRUCTION</div>
+      <div className="font-display text-2xl text-neon tracking-[0.15em]">OVERLOAD</div>
     </div>
   )
 }
@@ -29,6 +28,24 @@ export default function AuthPage() {
     setError('')
   }
 
+  function translateError(msg) {
+    if (!msg) return 'Erro desconhecido.'
+    const m = msg.toLowerCase()
+    if (m.includes('rate limit') || m.includes('email rate'))
+      return 'Limite de e-mails atingido. Aguarde alguns minutos e tente novamente.'
+    if (m.includes('invalid login') || m.includes('invalid email or password') || m.includes('email not confirmed'))
+      return 'E-mail ou senha incorretos.'
+    if (m.includes('user already registered') || m.includes('already been registered'))
+      return 'Este e-mail já está cadastrado. Faça login ou recupere sua senha.'
+    if (m.includes('password should be'))
+      return 'A senha deve ter no mínimo 6 caracteres.'
+    if (m.includes('unable to validate email'))
+      return 'E-mail inválido.'
+    if (m.includes('network') || m.includes('fetch'))
+      return 'Erro de conexão. Verifique sua internet.'
+    return msg
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
@@ -36,20 +53,20 @@ export default function AuthPage() {
     try {
       if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) setError(error.message)
+        if (error) setError(translateError(error.message))
       } else if (mode === 'register') {
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: { data: { name, role: 'student' } },
         })
-        if (error) setError(error.message)
+        if (error) setError(translateError(error.message))
         else { setDoneMsg('Verifique seu e-mail para confirmar o cadastro, depois faça login.'); setDone(true) }
       } else if (mode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: window.location.origin,
         })
-        if (error) setError(error.message)
+        if (error) setError(translateError(error.message))
         else { setDoneMsg('Enviamos um link de recuperação para o seu e-mail.'); setDone(true) }
       }
     } finally {
