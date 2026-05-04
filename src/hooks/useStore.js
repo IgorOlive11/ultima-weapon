@@ -89,7 +89,6 @@ export const useStore = create(
 
       clearAuth: () => {
         Object.values(syncTimers).forEach(t => clearTimeout(t))
-        supabase.auth.signOut()
         set({
           authUser:        null,
           authLoading:     false,
@@ -103,6 +102,11 @@ export const useStore = create(
           microLog:        {},
           activeWorkout:   null,
         })
+      },
+
+      signOut: async () => {
+        await supabase.auth.signOut()
+        // clearAuth is called automatically via onAuthStateChange(SIGNED_OUT)
       },
 
       setViewingUser: async (userId, userName = null) => {

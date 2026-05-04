@@ -24,7 +24,7 @@ export default function Sidebar() {
   const userProtocol  = useStore(s => s.userProtocol)
   const activeWorkout = useStore(s => s.activeWorkout)
   const authUser      = useStore(s => s.authUser)
-  const clearAuth     = useStore(s => s.clearAuth)
+  const signOut       = useStore(s => s.signOut)
 
   const week = userProtocol.weeks[currentWeek]
   const day  = week?.days[currentDay]
@@ -130,7 +130,7 @@ export default function Sidebar() {
                 </div>
               </div>
               <button
-                onClick={clearAuth}
+                onClick={signOut}
                 className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] tracking-widest border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-all flex-shrink-0"
               >
                 <LuLogOut size={12}/>
