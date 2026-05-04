@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { JS_DAY_TO_IDX, defaultUserProtocol, buildWorkoutSteps } from '../data/protocol'
 import { timerManager } from '../utils/timerManager'
 import { round25 } from '../utils/loads'
+import { supabase } from '../lib/supabase'
 
 function detectWeekDay() {
   const saved = localStorage.getItem('uw_start_date')
@@ -22,6 +23,30 @@ const { week: initWeek, day: initDay } = detectWeekDay()
 
 function genId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
+}
+
+const syncTimers = {}
+function scheduleSyncSection(section, get) {
+  if (syncTimers[section]) clearTimeout(syncTimers[section])
+  syncTimers[section] = setTimeout(async () => {
+    const state = get()
+    const userId = state.viewingUserId || state.authUser?.id
+    if (!userId) return
+    const data = {
+      logs:            state.logs,
+      userProtocol:    state.userProtocol,
+      userProfile:     state.userProfile,
+      exerciseHistory: state.exerciseHistory,
+      savedExercises:  state.savedExercises,
+      mealLog:         state.mealLog,
+      microLog:        state.microLog,
+    }[section]
+    if (data === undefined) return
+    await supabase.from('user_data').upsert(
+      { user_id: userId, section, data, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id,section' }
+    )
+  }, 1500)
 }
 
 function startTimerTick(seconds, endsAt, set) {
@@ -51,6 +76,65 @@ export const useStore = create(
       setSidebar:       (v)    => set({ sidebarOpen: v }),
       setHeaderVisible: (v)    => set({ headerVisible: v }),
 
+      // ── auth ─────────────────────────────────────────────────────────────────
+      authUser:        null,
+      authLoading:     true,
+      viewingUserId:   null,
+      viewingUserName: null,
+
+      setAuthUser: async (user) => {
+        set({ authUser: user, authLoading: false })
+        await get().hydrateFromSupabase(user.id)
+      },
+
+      clearAuth: () => {
+        Object.values(syncTimers).forEach(t => clearTimeout(t))
+        supabase.auth.signOut()
+        set({
+          authUser:        null,
+          authLoading:     false,
+          viewingUserId:   null,
+          viewingUserName: null,
+          logs:            {},
+          userProtocol:    defaultUserProtocol(),
+          exerciseHistory: {},
+          savedExercises:  [],
+          mealLog:         {},
+          microLog:        {},
+          activeWorkout:   null,
+        })
+      },
+
+      setViewingUser: async (userId, userName = null) => {
+        if (!userId) {
+          const { authUser } = get()
+          set({ viewingUserId: null, viewingUserName: null })
+          if (authUser) await get().hydrateFromSupabase(authUser.id)
+        } else {
+          set({ viewingUserId: userId, viewingUserName: userName })
+          await get().hydrateFromSupabase(userId)
+        }
+      },
+
+      hydrateFromSupabase: async (userId) => {
+        const { data, error } = await supabase
+          .from('user_data')
+          .select('section, data')
+          .eq('user_id', userId)
+        if (error || !data?.length) return
+        const updates = {}
+        for (const row of data) {
+          if (row.section === 'userProtocol')    updates.userProtocol    = row.data
+          if (row.section === 'userProfile')     updates.userProfile     = row.data
+          if (row.section === 'logs')            updates.logs            = row.data
+          if (row.section === 'exerciseHistory') updates.exerciseHistory = row.data
+          if (row.section === 'savedExercises')  updates.savedExercises  = row.data
+          if (row.section === 'mealLog')         updates.mealLog         = row.data
+          if (row.section === 'microLog')        updates.microLog        = row.data
+        }
+        set(updates)
+      },
+
       // ── workout logs ─────────────────────────────────────────────────────────
       logs: {},
 
@@ -71,6 +155,7 @@ export const useStore = create(
             },
           },
         }))
+        scheduleSyncSection('logs', get)
       },
 
       getLog: (weekIdx, dayIdx, exIdx) => {
@@ -109,7 +194,6 @@ export const useStore = create(
         set(state => ({ restTimer: { ...state.restTimer, running: false, seconds: s, preset: s, endsAt: 0 } }))
       },
 
-      // Restores the timer after a page reload / background return
       resumeRestTimer: () => {
         const { restTimer } = get()
         if (!restTimer.running || !restTimer.endsAt) return
@@ -124,72 +208,88 @@ export const useStore = create(
 
       // ── user profile ─────────────────────────────────────────────────────────
       userProfile: {
-        weight:       80,
-        height:       183,
-        age:          21,
-        sex:          'M',
-        workoutTime:  '16:30',
-        sleepTime:    '23:00',
-        caloricGoal:  'bulk',
+        weight:        80,
+        height:        183,
+        age:           21,
+        sex:           'M',
+        workoutTime:   '16:30',
+        sleepTime:     '23:00',
+        caloricGoal:   'bulk',
         activityLevel: 1.55,
       },
-      setUserProfile: (updates) => set(state => ({
-        userProfile: { ...state.userProfile, ...updates }
-      })),
+      setUserProfile: (updates) => {
+        set(state => ({ userProfile: { ...state.userProfile, ...updates } }))
+        scheduleSyncSection('userProfile', get)
+      },
 
       // ── micronutrient log ────────────────────────────────────────────────────
       microLog: {},
-      toggleMicro: (dateStr, microId) => set(state => ({
-        microLog: {
-          ...state.microLog,
-          [dateStr]: {
-            ...(state.microLog[dateStr] || {}),
-            [microId]: !(state.microLog[dateStr]?.[microId]),
+      toggleMicro: (dateStr, microId) => {
+        set(state => ({
+          microLog: {
+            ...state.microLog,
+            [dateStr]: {
+              ...(state.microLog[dateStr] || {}),
+              [microId]: !(state.microLog[dateStr]?.[microId]),
+            },
           },
-        },
-      })),
+        }))
+        scheduleSyncSection('microLog', get)
+      },
 
       // ── meal log (marked meals) ──────────────────────────────────────────────
       mealLog: {},
-      toggleMeal: (dateStr, mealId) => set(state => ({
-        mealLog: {
-          ...state.mealLog,
-          [dateStr]: {
-            ...(state.mealLog[dateStr] || {}),
-            [mealId]: !(state.mealLog[dateStr]?.[mealId]),
+      toggleMeal: (dateStr, mealId) => {
+        set(state => ({
+          mealLog: {
+            ...state.mealLog,
+            [dateStr]: {
+              ...(state.mealLog[dateStr] || {}),
+              [mealId]: !(state.mealLog[dateStr]?.[mealId]),
+            },
           },
-        },
-      })),
+        }))
+        scheduleSyncSection('mealLog', get)
+      },
 
       // ── saved exercise library ───────────────────────────────────────────────
       savedExercises: [],
 
-      addSavedExercise: (exercise) => set(state => {
-        const exists = state.savedExercises.some(
-          e => e.name.toLowerCase() === exercise.name.toLowerCase()
-        )
-        if (exists) return {}
-        return {
-          savedExercises: [
-            ...state.savedExercises,
-            { id: genId(), name: exercise.name, muscle: exercise.muscle },
-          ],
-        }
-      }),
+      addSavedExercise: (exercise) => {
+        set(state => {
+          const exists = state.savedExercises.some(
+            e => e.name.toLowerCase() === exercise.name.toLowerCase()
+          )
+          if (exists) return {}
+          return {
+            savedExercises: [
+              ...state.savedExercises,
+              { id: genId(), name: exercise.name, muscle: exercise.muscle },
+            ],
+          }
+        })
+        scheduleSyncSection('savedExercises', get)
+      },
 
-      removeSavedExercise: (id) => set(state => ({
-        savedExercises: state.savedExercises.filter(e => e.id !== id),
-      })),
+      removeSavedExercise: (id) => {
+        set(state => ({
+          savedExercises: state.savedExercises.filter(e => e.id !== id),
+        }))
+        scheduleSyncSection('savedExercises', get)
+      },
 
       // ── exercise history (cross-session, keyed by exercise name) ─────────────
       exerciseHistory: {},
 
-      saveExerciseHistory: (name, entry) => set(state => ({
-        exerciseHistory: {
-          ...state.exerciseHistory,
-          [name.toUpperCase().trim()]: entry,
-        },
-      })),
+      saveExerciseHistory: (name, entry) => {
+        set(state => ({
+          exerciseHistory: {
+            ...state.exerciseHistory,
+            [name.toUpperCase().trim()]: entry,
+          },
+        }))
+        scheduleSyncSection('exerciseHistory', get)
+      },
 
       getExerciseHistory: (name) =>
         get().exerciseHistory[name?.toUpperCase()?.trim()] || null,
@@ -197,77 +297,107 @@ export const useStore = create(
       // ── user protocol (8-week custom plan) ───────────────────────────────────
       userProtocol: defaultUserProtocol(),
 
-      setDayRest: (weekIdx, dayIdx, isRest) => set(state => {
-        const p = JSON.parse(JSON.stringify(state.userProtocol))
-        p.weeks[weekIdx].days[dayIdx].isRest = isRest
-        return { userProtocol: p }
-      }),
+      setDayRest: (weekIdx, dayIdx, isRest) => {
+        set(state => {
+          const p = JSON.parse(JSON.stringify(state.userProtocol))
+          p.weeks[weekIdx].days[dayIdx].isRest = isRest
+          return { userProtocol: p }
+        })
+        scheduleSyncSection('userProtocol', get)
+      },
 
-      setDayRestSeconds: (weekIdx, dayIdx, seconds) => set(state => {
-        const p = JSON.parse(JSON.stringify(state.userProtocol))
-        p.weeks[weekIdx].days[dayIdx].restSeconds = seconds
-        return { userProtocol: p }
-      }),
+      setDayRestSeconds: (weekIdx, dayIdx, seconds) => {
+        set(state => {
+          const p = JSON.parse(JSON.stringify(state.userProtocol))
+          p.weeks[weekIdx].days[dayIdx].restSeconds = seconds
+          return { userProtocol: p }
+        })
+        scheduleSyncSection('userProtocol', get)
+      },
 
-      setDayWarmupRestSeconds: (weekIdx, dayIdx, seconds) => set(state => {
-        const p = JSON.parse(JSON.stringify(state.userProtocol))
-        p.weeks[weekIdx].days[dayIdx].warmupRestSeconds = seconds
-        return { userProtocol: p }
-      }),
+      setDayWarmupRestSeconds: (weekIdx, dayIdx, seconds) => {
+        set(state => {
+          const p = JSON.parse(JSON.stringify(state.userProtocol))
+          p.weeks[weekIdx].days[dayIdx].warmupRestSeconds = seconds
+          return { userProtocol: p }
+        })
+        scheduleSyncSection('userProtocol', get)
+      },
 
-      setDayFeederRestSeconds: (weekIdx, dayIdx, seconds) => set(state => {
-        const p = JSON.parse(JSON.stringify(state.userProtocol))
-        p.weeks[weekIdx].days[dayIdx].feederRestSeconds = seconds
-        return { userProtocol: p }
-      }),
+      setDayFeederRestSeconds: (weekIdx, dayIdx, seconds) => {
+        set(state => {
+          const p = JSON.parse(JSON.stringify(state.userProtocol))
+          p.weeks[weekIdx].days[dayIdx].feederRestSeconds = seconds
+          return { userProtocol: p }
+        })
+        scheduleSyncSection('userProtocol', get)
+      },
 
-      addExercise: (weekIdx, dayIdx, exercise) => set(state => {
-        const p = JSON.parse(JSON.stringify(state.userProtocol))
-        p.weeks[weekIdx].days[dayIdx].exercises.push({ id: genId(), sets: [], ...exercise })
-        return { userProtocol: p }
-      }),
+      addExercise: (weekIdx, dayIdx, exercise) => {
+        set(state => {
+          const p = JSON.parse(JSON.stringify(state.userProtocol))
+          p.weeks[weekIdx].days[dayIdx].exercises.push({ id: genId(), sets: [], ...exercise })
+          return { userProtocol: p }
+        })
+        scheduleSyncSection('userProtocol', get)
+      },
 
-      updateExercise: (weekIdx, dayIdx, exId, updates) => set(state => {
-        const p = JSON.parse(JSON.stringify(state.userProtocol))
-        const day = p.weeks[weekIdx].days[dayIdx]
-        day.exercises = day.exercises.map(e => e.id === exId ? { ...e, ...updates } : e)
-        return { userProtocol: p }
-      }),
+      updateExercise: (weekIdx, dayIdx, exId, updates) => {
+        set(state => {
+          const p = JSON.parse(JSON.stringify(state.userProtocol))
+          const day = p.weeks[weekIdx].days[dayIdx]
+          day.exercises = day.exercises.map(e => e.id === exId ? { ...e, ...updates } : e)
+          return { userProtocol: p }
+        })
+        scheduleSyncSection('userProtocol', get)
+      },
 
-      removeExercise: (weekIdx, dayIdx, exId) => set(state => {
-        const p = JSON.parse(JSON.stringify(state.userProtocol))
-        const day = p.weeks[weekIdx].days[dayIdx]
-        day.exercises = day.exercises.filter(e => e.id !== exId)
-        return { userProtocol: p }
-      }),
+      removeExercise: (weekIdx, dayIdx, exId) => {
+        set(state => {
+          const p = JSON.parse(JSON.stringify(state.userProtocol))
+          const day = p.weeks[weekIdx].days[dayIdx]
+          day.exercises = day.exercises.filter(e => e.id !== exId)
+          return { userProtocol: p }
+        })
+        scheduleSyncSection('userProtocol', get)
+      },
 
-      addSet: (weekIdx, dayIdx, exId, setDef) => set(state => {
-        const p = JSON.parse(JSON.stringify(state.userProtocol))
-        const day = p.weeks[weekIdx].days[dayIdx]
-        day.exercises = day.exercises.map(e =>
-          e.id === exId
-            ? { ...e, sets: [...e.sets, { id: genId(), ...setDef }] }
-            : e
-        )
-        return { userProtocol: p }
-      }),
+      addSet: (weekIdx, dayIdx, exId, setDef) => {
+        set(state => {
+          const p = JSON.parse(JSON.stringify(state.userProtocol))
+          const day = p.weeks[weekIdx].days[dayIdx]
+          day.exercises = day.exercises.map(e =>
+            e.id === exId
+              ? { ...e, sets: [...e.sets, { id: genId(), ...setDef }] }
+              : e
+          )
+          return { userProtocol: p }
+        })
+        scheduleSyncSection('userProtocol', get)
+      },
 
-      removeSet: (weekIdx, dayIdx, exId, setId) => set(state => {
-        const p = JSON.parse(JSON.stringify(state.userProtocol))
-        const day = p.weeks[weekIdx].days[dayIdx]
-        day.exercises = day.exercises.map(e =>
-          e.id === exId
-            ? { ...e, sets: e.sets.filter(s => s.id !== setId) }
-            : e
-        )
-        return { userProtocol: p }
-      }),
+      removeSet: (weekIdx, dayIdx, exId, setId) => {
+        set(state => {
+          const p = JSON.parse(JSON.stringify(state.userProtocol))
+          const day = p.weeks[weekIdx].days[dayIdx]
+          day.exercises = day.exercises.map(e =>
+            e.id === exId
+              ? { ...e, sets: e.sets.filter(s => s.id !== setId) }
+              : e
+          )
+          return { userProtocol: p }
+        })
+        scheduleSyncSection('userProtocol', get)
+      },
 
-      reorderExercises: (weekIdx, dayIdx, exercises) => set(state => {
-        const p = JSON.parse(JSON.stringify(state.userProtocol))
-        p.weeks[weekIdx].days[dayIdx].exercises = exercises
-        return { userProtocol: p }
-      }),
+      reorderExercises: (weekIdx, dayIdx, exercises) => {
+        set(state => {
+          const p = JSON.parse(JSON.stringify(state.userProtocol))
+          p.weeks[weekIdx].days[dayIdx].exercises = exercises
+          return { userProtocol: p }
+        })
+        scheduleSyncSection('userProtocol', get)
+      },
 
       // ── active workout session ────────────────────────────────────────────────
       activeWorkout: null,
@@ -324,7 +454,6 @@ export const useStore = create(
         if (!activeWorkout) return
         const { weekIdx, dayIdx, steps, exerciseWeights, setResults } = activeWorkout
 
-        // Build per-exercise data for logs and history
         const exerciseMap = {}
         steps.forEach((step, idx) => {
           const key = step.exerciseId
@@ -377,15 +506,15 @@ export const useStore = create(
     {
       name: 'uw-store-v3',
       partialize: (state) => ({
-        logs:             state.logs,
-        userProfile:      state.userProfile,
-        microLog:         state.microLog,
-        mealLog:          state.mealLog,
-        userProtocol:     state.userProtocol,
-        activeWorkout:    state.activeWorkout,
-        restTimer:        state.restTimer,
-        exerciseHistory:  state.exerciseHistory,
-        savedExercises:   state.savedExercises,
+        logs:            state.logs,
+        userProfile:     state.userProfile,
+        microLog:        state.microLog,
+        mealLog:         state.mealLog,
+        userProtocol:    state.userProtocol,
+        activeWorkout:   state.activeWorkout,
+        restTimer:       state.restTimer,
+        exerciseHistory: state.exerciseHistory,
+        savedExercises:  state.savedExercises,
       }),
     }
   )

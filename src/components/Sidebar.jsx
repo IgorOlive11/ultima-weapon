@@ -2,10 +2,11 @@ import React from 'react'
 import {
   LuSwords, LuClipboardList, LuTrendingUp,
   LuSlidersHorizontal, LuX, LuCalendar, LuFlame, LuSalad,
+  LuLogOut, LuUsers, LuShield,
 } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 
-const NAV = [
+const BASE_NAV = [
   { id: 'workout',  label: 'TREINO',        Icon: LuSwords },
   { id: 'protocol', label: 'PROTOCOLO',     Icon: LuClipboardList },
   { id: 'diet',     label: 'DIETA',         Icon: LuSalad },
@@ -14,25 +15,34 @@ const NAV = [
 ]
 
 export default function Sidebar() {
-  const sidebarOpen  = useStore(s => s.sidebarOpen)
-  const setSidebar   = useStore(s => s.setSidebar)
-  const activeTab    = useStore(s => s.activeTab)
-  const setTab       = useStore(s => s.setTab)
-  const currentWeek  = useStore(s => s.currentWeek)
-  const currentDay   = useStore(s => s.currentDay)
-  const userProtocol = useStore(s => s.userProtocol)
+  const sidebarOpen   = useStore(s => s.sidebarOpen)
+  const setSidebar    = useStore(s => s.setSidebar)
+  const activeTab     = useStore(s => s.activeTab)
+  const setTab        = useStore(s => s.setTab)
+  const currentWeek   = useStore(s => s.currentWeek)
+  const currentDay    = useStore(s => s.currentDay)
+  const userProtocol  = useStore(s => s.userProtocol)
   const activeWorkout = useStore(s => s.activeWorkout)
+  const authUser      = useStore(s => s.authUser)
+  const clearAuth     = useStore(s => s.clearAuth)
 
   const week = userProtocol.weeks[currentWeek]
   const day  = week?.days[currentDay]
 
-  // progress: how many day-slots across all 8 weeks have at least 1 exercise
   const totalSlots = 8 * 7
   const filledSlots = userProtocol.weeks.reduce(
     (acc, w) => acc + w.days.filter(d => !d.isRest && d.exercises.length > 0).length,
     0
   )
   const pct = Math.round((filledSlots / totalSlots) * 100)
+
+  const nav = [...BASE_NAV]
+  if (authUser?.role === 'trainer' || authUser?.role === 'admin') {
+    nav.push({ id: 'trainer', label: 'ALUNOS', Icon: LuUsers })
+  }
+  if (authUser?.role === 'admin') {
+    nav.push({ id: 'admin', label: 'ADMIN', Icon: LuShield })
+  }
 
   return (
     <>
@@ -56,7 +66,6 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* protocol progress widget */}
         <div className="mx-3 my-3 bg-s2 border border-border2 p-3">
           <div className="flex items-center gap-2 mb-1">
             <LuCalendar size={12} className="text-muted"/>
@@ -80,10 +89,10 @@ export default function Sidebar() {
         </div>
 
         <nav className="flex-1 py-2 overflow-y-auto">
-          {NAV.map(({ id, label, Icon }) => {
-            const active = activeTab === id
+          {nav.map(({ id, label, Icon }) => {
+            const active    = activeTab === id
             const showBadge = id === 'workout' && !day?.isRest && (day?.exercises?.length || 0) > 0
-            const isActive = id === 'workout' && activeWorkout
+            const isActive  = id === 'workout' && activeWorkout
             return (
               <button
                 key={id}
@@ -111,12 +120,28 @@ export default function Sidebar() {
           })}
         </nav>
 
-        <div className="p-4 border-t border-border1">
-          <div className="flex items-center gap-1.5 mb-1">
+        <div className="p-4 border-t border-border1 space-y-3">
+          {authUser && (
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="font-mono text-[10px] text-ink tracking-wider truncate">{authUser.name}</div>
+                <div className="font-mono text-[9px] text-muted tracking-widest mt-0.5">
+                  {authUser.role === 'admin' ? 'ADMIN' : authUser.role === 'trainer' ? 'TREINADOR' : 'ALUNO'}
+                </div>
+              </div>
+              <button
+                onClick={clearAuth}
+                className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] tracking-widest border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-all flex-shrink-0"
+              >
+                <LuLogOut size={12}/>
+                SAIR
+              </button>
+            </div>
+          )}
+          <div className="flex items-center gap-1.5">
             <LuFlame size={12} className="text-neon"/>
             <span className="font-mono text-[9px] text-muted tracking-wider">BY MR. SAIZEN</span>
           </div>
-          <div className="font-mono text-[9px] text-muted/60 tracking-wider">JUNKYARD · SAIZEN SCHOOL</div>
         </div>
       </aside>
     </>
