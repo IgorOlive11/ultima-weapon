@@ -23,7 +23,7 @@ export default {
         blue:       '#00aaff',
       },
       fontFamily: {
-        display: ['"Bebas Neue"', 'sans-serif'],
+        display: ['"Metal Mania"', 'cursive'],
         mono:    ['"Share Tech Mono"', 'monospace'],
         body:    ['"Barlow Condensed"', 'sans-serif'],
       },
