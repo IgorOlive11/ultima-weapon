@@ -960,8 +960,9 @@ export default function ProtocolPage() {
   const [csvError, setCsvError]   = useState(null)
   const [csvSuccess, setCsvSuccess] = useState(false)
   const fileInputRef              = useRef(null)
-  const userProtocol   = useStore(s => s.userProtocol)
-  const setUserProtocol = useStore(s => s.setUserProtocol)
+  const userProtocol      = useStore(s => s.userProtocol)
+  const setUserProtocol   = useStore(s => s.setUserProtocol)
+  const addSavedExercise  = useStore(s => s.addSavedExercise)
 
   const handleCsvUpload = (e) => {
     const file = e.target.files?.[0]
@@ -973,6 +974,11 @@ export default function ProtocolPage() {
       try {
         const protocol = parseProtocolCsv(ev.target.result)
         setUserProtocol(protocol)
+        protocol.weeks.forEach(week =>
+          week.days.forEach(day =>
+            day.exercises.forEach(ex => addSavedExercise({ name: ex.name, muscle: ex.muscle }))
+          )
+        )
         setCsvError(null)
         setCsvSuccess(true)
         setTimeout(() => setCsvSuccess(false), 3000)
