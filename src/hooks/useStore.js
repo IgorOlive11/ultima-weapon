@@ -42,11 +42,27 @@ function scheduleSyncSection(section, get) {
       microLog:        state.microLog,
     }[section]
     if (data === undefined) return
-    // RLS permite trainer/admin escrever em qualquer user_id diretamente
-    await supabase.from('user_data').upsert(
-      { user_id: userId, section, data, updated_at: new Date().toISOString() },
-      { onConflict: 'user_id,section' }
-    )
+
+    if (state.viewingUserId) {
+      // Escrita em dados do aluno — edge function com service role (JWT pode ser stale)
+      const { data: { session } } = await supabase.auth.getSession()
+      await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-student-data`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ studentId: userId, section, data }),
+        }
+      )
+    } else {
+      await supabase.from('user_data').upsert(
+        { user_id: userId, section, data, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id,section' }
+      )
+    }
   }, 1500)
 }
 
@@ -84,8 +100,13 @@ export const useStore = create(
       viewingUserName: null,
 
       setAuthUser: async (user) => {
+        const { authUser, viewingUserId } = get()
         set({ authUser: user, authLoading: false })
-        await get().hydrateFromSupabase(user.id)
+        // Não rehidrata se estiver visualizando aluno (evita sobrescrever dados do aluno)
+        // Não rehidrata se for o mesmo usuário já carregado
+        if (!viewingUserId && authUser?.id !== user.id) {
+          await get().hydrateFromSupabase(user.id)
+        }
       },
 
       clearAuth: () => {
