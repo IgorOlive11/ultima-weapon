@@ -439,6 +439,11 @@ export const useStore = create(
       // ── user protocol (8-week custom plan) ───────────────────────────────────
       userProtocol: defaultUserProtocol(),
 
+      setUserProtocol: (protocol) => {
+        set({ userProtocol: protocol })
+        scheduleSyncSection('userProtocol', get)
+      },
+
       setDayRest: (weekIdx, dayIdx, isRest) => {
         set(state => {
           const p = JSON.parse(JSON.stringify(state.userProtocol))

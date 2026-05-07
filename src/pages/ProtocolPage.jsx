@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LuPlus, LuTrash2, LuChevronDown, LuChevronUp, LuBed,
   LuDumbbell, LuClock, LuCheck, LuGripVertical, LuX, LuBookmark, LuSearch,
+  LuDownload, LuUpload,
 } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 import {
   DAY_NAMES, MUSCLE_GROUP_LIST, SET_TYPES, SET_TYPE_DESCRIPTIONS, GER_CONFIG,
 } from '../data/protocol'
+import { downloadTemplateCsv, parseProtocolCsv } from '../utils/protocolCsv'
 import DoomFace from '../components/DoomFace'
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -618,9 +620,34 @@ function DayEditor({ weekIdx, dayIdx }) {
 // ─── ProtocolPage ─────────────────────────────────────────────────────────────
 
 export default function ProtocolPage() {
-  const [weekIdx, setWeekIdx] = useState(0)
-  const [dayIdx, setDayIdx]   = useState(0)
-  const userProtocol = useStore(s => s.userProtocol)
+  const [weekIdx, setWeekIdx]     = useState(0)
+  const [dayIdx, setDayIdx]       = useState(0)
+  const [csvError, setCsvError]   = useState(null)
+  const [csvSuccess, setCsvSuccess] = useState(false)
+  const fileInputRef              = useRef(null)
+  const userProtocol   = useStore(s => s.userProtocol)
+  const setUserProtocol = useStore(s => s.setUserProtocol)
+
+  const handleCsvUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (!fileInputRef.current) return
+    fileInputRef.current.value = ''
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const protocol = parseProtocolCsv(ev.target.result)
+        setUserProtocol(protocol)
+        setCsvError(null)
+        setCsvSuccess(true)
+        setTimeout(() => setCsvSuccess(false), 3000)
+      } catch (err) {
+        setCsvError(err.message)
+        setTimeout(() => setCsvError(null), 5000)
+      }
+    }
+    reader.readAsText(file)
+  }
 
   const day = userProtocol.weeks[weekIdx].days[dayIdx]
 
@@ -638,6 +665,30 @@ export default function ProtocolPage() {
     <div className="pb-8">
       {/* Week selector */}
       <div className="sticky top-0 z-10 bg-bg border-b border-border1 px-3 pt-3 pb-2">
+        {/* CSV import/export */}
+        <div className="flex gap-2 mb-2">
+          <button
+            onClick={downloadTemplateCsv}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-s2 border border-border2 text-muted hover:text-ink hover:border-neon/40 transition-all font-mono text-[10px] tracking-widest"
+          >
+            <LuDownload size={12}/> TEMPLATE
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className={`flex items-center gap-1.5 px-3 py-1.5 border transition-all font-mono text-[10px] tracking-widest ${
+              csvSuccess
+                ? 'bg-neon/20 border-neon text-neon'
+                : 'bg-s2 border-border2 text-muted hover:text-ink hover:border-neon/40'
+            }`}
+          >
+            <LuUpload size={12}/> {csvSuccess ? 'IMPORTADO!' : 'IMPORTAR CSV'}
+          </button>
+          <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleCsvUpload}/>
+          {csvError && (
+            <span className="flex-1 font-mono text-[9px] text-neon leading-tight self-center">{csvError}</span>
+          )}
+        </div>
+
         <div className="flex gap-1 overflow-x-auto scrollbar-none mb-2">
           {WEEK_LABELS.map((label, i) => {
             const w = userProtocol.weeks[i]
