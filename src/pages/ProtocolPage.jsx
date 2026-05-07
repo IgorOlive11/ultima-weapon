@@ -5,11 +5,19 @@ import {
   LuDumbbell, LuClock, LuCheck, LuGripVertical, LuX, LuBookmark, LuSearch,
   LuDownload, LuUpload,
 } from 'react-icons/lu'
+import {
+  DndContext, PointerSensor, TouchSensor, useSensor, useSensors,
+  closestCenter, DragOverlay,
+} from '@dnd-kit/core'
+import {
+  SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useStore } from '../hooks/useStore'
 import {
   DAY_NAMES, MUSCLE_GROUP_LIST, SET_TYPES, SET_TYPE_DESCRIPTIONS, GER_CONFIG,
 } from '../data/protocol'
-import { downloadTemplateCsv, parseProtocolCsv } from '../utils/protocolCsv'
+import { downloadTemplateCsv, parseProtocolCsv, downloadProtocolCsv } from '../utils/protocolCsv'
 import DoomFace from '../components/DoomFace'
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -88,7 +96,6 @@ function AddExerciseModal({ onAdd, onClose }) {
             <div className="relative mb-3">
               <LuSearch size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted/50"/>
               <input
-                autoFocus
                 className="w-full bg-s2 border border-border2 pl-8 pr-3 py-2 font-mono text-sm text-ink focus:border-neon outline-none transition-colors"
                 placeholder="Nome ou grupamento..."
                 value={search}
@@ -144,7 +151,6 @@ function AddExerciseModal({ onAdd, onClose }) {
             <div className="mb-3">
               <label className="section-label block mb-1">NOME DO EXERCÍCIO</label>
               <input
-                autoFocus
                 className="w-full bg-s2 border border-border2 px-3 py-2.5 font-body text-sm text-ink focus:border-neon outline-none transition-colors"
                 placeholder="Ex: Agachamento livre"
                 value={name}
@@ -346,24 +352,97 @@ function AddSetModal({ onAdd, onClose }) {
   )
 }
 
+// ─── SortableSet ─────────────────────────────────────────────────────────────
+
+function SortableSet({ s, weekIdx, dayIdx, exId, removeSet }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: s.id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  }
+  const typeInfo = SET_TYPES[s.type] || {}
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 bg-s1 border border-border1 px-2.5 py-2"
+    >
+      <button
+        className="touch-none p-1 -ml-1 text-muted/40 cursor-grab active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
+        <LuGripVertical size={13}/>
+      </button>
+      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: typeInfo.color }}/>
+      <div className="flex-1 min-w-0">
+        <span className="font-display text-[12px] tracking-wider" style={{ color: typeInfo.color }}>
+          {typeInfo.label}
+        </span>
+        {s.repRange && (
+          <span className="font-mono text-[10px] text-muted ml-2">{s.repRange} reps</span>
+        )}
+        <span className="font-mono text-[10px] text-muted ml-2">GER {s.ger}</span>
+      </div>
+      <button
+        onClick={() => removeSet(weekIdx, dayIdx, exId, s.id)}
+        className="p-1 text-muted/50 hover:text-red-400 transition-colors"
+      >
+        <LuX size={13}/>
+      </button>
+    </div>
+  )
+}
+
 // ─── ExerciseEditor ───────────────────────────────────────────────────────────
 
-function ExerciseEditor({ exercise, weekIdx, dayIdx, index, total }) {
+function ExerciseEditor({ exercise, weekIdx, dayIdx, isDragging: isExDragging }) {
   const [open, setOpen]       = useState(false)
   const [showAddSet, setShowAddSet] = useState(false)
-  const addSet      = useStore(s => s.addSet)
-  const removeSet   = useStore(s => s.removeSet)
+  const addSet         = useStore(s => s.addSet)
+  const removeSet      = useStore(s => s.removeSet)
   const removeExercise = useStore(s => s.removeExercise)
+  const reorderSets    = useStore(s => s.reorderSets)
+
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: exercise.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  }
+
+  const setsSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor,   { activationConstraint: { delay: 200, tolerance: 5 } }),
+  )
+
+  const handleSetsDragEnd = ({ active, over }) => {
+    if (!over || active.id === over.id) return
+    const oldIdx = exercise.sets.findIndex(s => s.id === active.id)
+    const newIdx = exercise.sets.findIndex(s => s.id === over.id)
+    reorderSets(weekIdx, dayIdx, exercise.id, arrayMove(exercise.sets, oldIdx, newIdx))
+  }
 
   return (
     <>
-      <div className="bg-s2 border border-border2 mb-2">
+      <div ref={setNodeRef} style={style} className="bg-s2 border border-border2 mb-2">
         {/* header */}
         <div
-          className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none"
-          onClick={() => setOpen(o => !o)}
+          className="flex items-center gap-2 px-3 py-2.5 select-none"
+          onClick={() => !isDragging && setOpen(o => !o)}
         >
-          <LuGripVertical size={14} className="text-muted/40 flex-shrink-0"/>
+          <button
+            className="touch-none p-0.5 -ml-1 text-muted/40 cursor-grab active:cursor-grabbing flex-shrink-0"
+            {...attributes}
+            {...listeners}
+            onClick={e => e.stopPropagation()}
+          >
+            <LuGripVertical size={14}/>
+          </button>
           <div className="flex-1 min-w-0">
             <div className="font-display text-sm tracking-wider text-ink truncate">{exercise.name}</div>
             <div className="font-mono text-[10px] text-muted tracking-wider">{exercise.muscle}</div>
@@ -403,32 +482,27 @@ function ExerciseEditor({ exercise, weekIdx, dayIdx, index, total }) {
                 {/* sets list */}
                 {exercise.sets.length > 0 && (
                   <div className="mt-2 flex flex-col gap-1.5">
-                    {exercise.sets.map((s, si) => {
-                      const typeInfo = SET_TYPES[s.type] || {}
-                      return (
-                        <div
-                          key={s.id}
-                          className="flex items-center gap-2 bg-s1 border border-border1 px-2.5 py-2"
-                        >
-                          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: typeInfo.color }}/>
-                          <div className="flex-1 min-w-0">
-                            <span className="font-display text-[12px] tracking-wider" style={{ color: typeInfo.color }}>
-                              {typeInfo.label}
-                            </span>
-                            {s.repRange && (
-                              <span className="font-mono text-[10px] text-muted ml-2">{s.repRange} reps</span>
-                            )}
-                            <span className="font-mono text-[10px] text-muted ml-2">GER {s.ger}</span>
-                          </div>
-                          <button
-                            onClick={() => removeSet(weekIdx, dayIdx, exercise.id, s.id)}
-                            className="p-1 text-muted/50 hover:text-red-400 transition-colors"
-                          >
-                            <LuX size={13}/>
-                          </button>
-                        </div>
-                      )
-                    })}
+                    <DndContext
+                      sensors={setsSensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleSetsDragEnd}
+                    >
+                      <SortableContext
+                        items={exercise.sets.map(s => s.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {exercise.sets.map(s => (
+                          <SortableSet
+                            key={s.id}
+                            s={s}
+                            weekIdx={weekIdx}
+                            dayIdx={dayIdx}
+                            exId={exercise.id}
+                            removeSet={removeSet}
+                          />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
                   </div>
                 )}
 
@@ -475,14 +549,27 @@ function ExerciseEditor({ exercise, weekIdx, dayIdx, index, total }) {
 
 function DayEditor({ weekIdx, dayIdx }) {
   const [showAddExercise, setShowAddExercise] = useState(false)
-  const userProtocol          = useStore(s => s.userProtocol)
-  const setDayRest            = useStore(s => s.setDayRest)
-  const setDayRestSeconds     = useStore(s => s.setDayRestSeconds)
+  const userProtocol            = useStore(s => s.userProtocol)
+  const setDayRest              = useStore(s => s.setDayRest)
+  const setDayRestSeconds       = useStore(s => s.setDayRestSeconds)
   const setDayWarmupRestSeconds = useStore(s => s.setDayWarmupRestSeconds)
   const setDayFeederRestSeconds = useStore(s => s.setDayFeederRestSeconds)
-  const addExercise           = useStore(s => s.addExercise)
+  const addExercise             = useStore(s => s.addExercise)
+  const reorderExercises        = useStore(s => s.reorderExercises)
 
   const day = userProtocol.weeks[weekIdx].days[dayIdx]
+
+  const exSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor,   { activationConstraint: { delay: 200, tolerance: 5 } }),
+  )
+
+  const handleExDragEnd = ({ active, over }) => {
+    if (!over || active.id === over.id) return
+    const oldIdx = day.exercises.findIndex(e => e.id === active.id)
+    const newIdx = day.exercises.findIndex(e => e.id === over.id)
+    reorderExercises(weekIdx, dayIdx, arrayMove(day.exercises, oldIdx, newIdx))
+  }
 
   return (
     <div className="p-3 pb-6">
@@ -566,16 +653,25 @@ function DayEditor({ weekIdx, dayIdx }) {
           {/* Exercises */}
           {day.exercises.length > 0 && (
             <div className="mb-3">
-              {day.exercises.map((ex, i) => (
-                <ExerciseEditor
-                  key={ex.id}
-                  exercise={ex}
-                  weekIdx={weekIdx}
-                  dayIdx={dayIdx}
-                  index={i}
-                  total={day.exercises.length}
-                />
-              ))}
+              <DndContext
+                sensors={exSensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleExDragEnd}
+              >
+                <SortableContext
+                  items={day.exercises.map(e => e.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {day.exercises.map((ex) => (
+                    <ExerciseEditor
+                      key={ex.id}
+                      exercise={ex}
+                      weekIdx={weekIdx}
+                      dayIdx={dayIdx}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
             </div>
           )}
 
@@ -666,12 +762,18 @@ export default function ProtocolPage() {
       {/* Week selector */}
       <div className="sticky top-0 z-10 bg-bg border-b border-border1 px-3 pt-3 pb-2">
         {/* CSV import/export */}
-        <div className="flex gap-2 mb-2">
+        <div className="flex gap-2 mb-2 flex-wrap">
           <button
             onClick={downloadTemplateCsv}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-s2 border border-border2 text-muted hover:text-ink hover:border-neon/40 transition-all font-mono text-[10px] tracking-widest"
           >
             <LuDownload size={12}/> TEMPLATE
+          </button>
+          <button
+            onClick={() => downloadProtocolCsv(userProtocol)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-s2 border border-border2 text-muted hover:text-ink hover:border-neon/40 transition-all font-mono text-[10px] tracking-widest"
+          >
+            <LuDownload size={12}/> EXPORTAR CSV
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}

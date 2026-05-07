@@ -546,6 +546,18 @@ export const useStore = create(
         scheduleSyncSection('userProtocol', get)
       },
 
+      reorderSets: (weekIdx, dayIdx, exId, sets) => {
+        set(state => {
+          const p = JSON.parse(JSON.stringify(state.userProtocol))
+          const day = p.weeks[weekIdx].days[dayIdx]
+          day.exercises = day.exercises.map(e =>
+            e.id === exId ? { ...e, sets } : e
+          )
+          return { userProtocol: p }
+        })
+        scheduleSyncSection('userProtocol', get)
+      },
+
       // ── active workout session ────────────────────────────────────────────────
       activeWorkout: null,
 

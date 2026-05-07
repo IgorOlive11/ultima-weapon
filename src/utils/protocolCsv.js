@@ -56,6 +56,63 @@ export function downloadTemplateCsv() {
   URL.revokeObjectURL(url)
 }
 
+// ─── Exporter ─────────────────────────────────────────────────────────────────
+
+export function exportProtocolCsv(protocol) {
+  const lines = [HEADERS.join(',')]
+
+  protocol.weeks.forEach((week, wIdx) => {
+    week.days.forEach((day, dIdx) => {
+      const semana = wIdx + 1
+      const dia    = dIdx + 1
+
+      if (day.isRest) {
+        lines.push([semana, dia, '', '', '', 'S', '', '', '', '', ''].join(','))
+        return
+      }
+
+      if (day.exercises.length === 0) {
+        const ds = day.restSeconds        ?? 120
+        const as = day.warmupRestSeconds  ?? 60
+        const fs = day.feederRestSeconds  ?? 60
+        lines.push([semana, dia, ds, as, fs, 'N', '', '', '', '', ''].join(','))
+        return
+      }
+
+      day.exercises.forEach(ex => {
+        const ds = day.restSeconds        ?? 120
+        const as = day.warmupRestSeconds  ?? 60
+        const fs = day.feederRestSeconds  ?? 60
+
+        if (ex.sets.length === 0) {
+          lines.push([semana, dia, ds, as, fs, 'N', ex.name, ex.muscle, '', '', ''].join(','))
+          return
+        }
+
+        ex.sets.forEach(set => {
+          lines.push([
+            semana, dia, ds, as, fs, 'N',
+            ex.name, ex.muscle, set.type, set.ger, set.repRange ?? '',
+          ].join(','))
+        })
+      })
+    })
+  })
+
+  return lines.join('\n')
+}
+
+export function downloadProtocolCsv(protocol) {
+  const csv  = exportProtocolCsv(protocol)
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href     = url
+  a.download = 'protocolo_overload.csv'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 // ─── Parser ────────────────────────────────────────────────────────────────────
 
 function genId() {
