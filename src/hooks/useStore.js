@@ -115,7 +115,7 @@ export const useStore = create(
           set({ viewingUserId: null, viewingUserName: null })
           if (authUser) await get().hydrateFromSupabase(authUser.id)
         } else {
-          set({ viewingUserId: userId, viewingUserName: userName })
+          set({ viewingUserId: userId, viewingUserName: userName, activeTab: 'workout' })
           await get().hydrateFromSupabase(userId)
         }
       },
@@ -124,17 +124,26 @@ export const useStore = create(
         const { authUser } = get()
         const isOwnData = userId === authUser?.id
 
-        let rows
+        let rows = []
+
         if (isOwnData) {
-          // dados próprios — RLS permite normalmente
           const { data, error } = await supabase
             .from('user_data')
             .select('section, data')
             .eq('user_id', userId)
-          if (error || !data?.length) return
-          rows = data
+          if (!error && data?.length) rows = data
         } else {
           // dados de aluno — usa edge function com service role (bypassa RLS)
+          // Limpa o estado antes para nunca mostrar dados do trainer
+          set({
+            logs:            {},
+            userProtocol:    defaultUserProtocol(),
+            exerciseHistory: {},
+            savedExercises:  [],
+            mealLog:         {},
+            microLog:        {},
+            userProfile:     null,
+          })
           const { data: { session } } = await supabase.auth.getSession()
           const res = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-student-data`,
@@ -148,9 +157,10 @@ export const useStore = create(
             }
           )
           const json = await res.json()
-          if (!res.ok || !json.data?.length) return
-          rows = json.data
+          if (res.ok && json.data?.length) rows = json.data
         }
+
+        if (!rows.length) return
 
         const updates = {}
         for (const row of rows) {
