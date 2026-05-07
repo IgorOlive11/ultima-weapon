@@ -523,6 +523,20 @@ export const useStore = create(
         scheduleSyncSection('userProtocol', get)
       },
 
+      updateSet: (weekIdx, dayIdx, exId, setId, updates) => {
+        set(state => {
+          const p = JSON.parse(JSON.stringify(state.userProtocol))
+          const day = p.weeks[weekIdx].days[dayIdx]
+          day.exercises = day.exercises.map(e =>
+            e.id === exId
+              ? { ...e, sets: e.sets.map(s => s.id === setId ? { ...s, ...updates } : s) }
+              : e
+          )
+          return { userProtocol: p }
+        })
+        scheduleSyncSection('userProtocol', get)
+      },
+
       removeSet: (weekIdx, dayIdx, exId, setId) => {
         set(state => {
           const p = JSON.parse(JSON.stringify(state.userProtocol))

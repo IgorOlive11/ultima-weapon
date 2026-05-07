@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LuPlus, LuTrash2, LuChevronDown, LuChevronUp, LuBed,
   LuDumbbell, LuClock, LuCheck, LuGripVertical, LuX, LuBookmark, LuSearch,
-  LuDownload, LuUpload,
+  LuDownload, LuUpload, LuPencil,
 } from 'react-icons/lu'
 import {
   DndContext, PointerSensor, TouchSensor, useSensor, useSensors,
@@ -210,6 +210,75 @@ function AddExerciseModal({ onAdd, onClose }) {
   )
 }
 
+// ─── EditExerciseModal ────────────────────────────────────────────────────────
+
+function EditExerciseModal({ exercise, onSave, onClose }) {
+  const [name, setName]     = useState(exercise.name)
+  const [muscle, setMuscle] = useState(exercise.muscle)
+
+  const submit = () => {
+    if (!name.trim()) return
+    onSave({ name: name.trim(), muscle })
+    onClose()
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[400] bg-black/80 flex items-end justify-center"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+        className="w-full max-w-[430px] bg-s1 border-t border-border1"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-5 pb-3">
+          <span className="font-display text-lg tracking-[0.15em] text-neon">EDITAR EXERCÍCIO</span>
+          <button onClick={onClose} className="text-muted hover:text-ink p-1"><LuX size={18}/></button>
+        </div>
+
+        <div className="px-5 pb-8">
+          <div className="mb-3">
+            <label className="section-label block mb-1">NOME DO EXERCÍCIO</label>
+            <input
+              className="w-full bg-s2 border border-border2 px-3 py-2.5 font-body text-sm text-ink focus:border-neon outline-none transition-colors"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && submit()}
+            />
+          </div>
+
+          <div className="mb-5">
+            <label className="section-label block mb-2">GRUPAMENTO MUSCULAR</label>
+            <div className="flex flex-wrap gap-1.5">
+              {MUSCLE_GROUP_LIST.map(m => (
+                <button
+                  key={m}
+                  onClick={() => setMuscle(m)}
+                  className={`px-2.5 py-1 font-mono text-[10px] border transition-all ${
+                    muscle === m ? 'bg-neon text-bg border-neon' : 'bg-s2 border-border2 text-muted hover:text-ink'
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            onClick={submit}
+            className="w-full py-3 bg-neon text-bg font-display text-sm tracking-[0.2em] hover:opacity-90 transition-opacity"
+          >
+            SALVAR
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
 // ─── AddSetModal ──────────────────────────────────────────────────────────────
 
 function AddSetModal({ onAdd, onClose }) {
@@ -352,9 +421,146 @@ function AddSetModal({ onAdd, onClose }) {
   )
 }
 
+// ─── EditSetModal ─────────────────────────────────────────────────────────────
+
+function EditSetModal({ set, onSave, onClose }) {
+  const [type, setType]         = useState(set.type)
+  const [ger, setGer]           = useState(set.ger)
+  const [repRange, setRepRange] = useState(set.repRange ?? '')
+
+  const handleTypeChange = (t) => {
+    setType(t)
+    setGer(SET_TYPE_GER_DEFAULTS[t].ger)
+    setRepRange(SET_TYPE_GER_DEFAULTS[t].repRange)
+  }
+
+  const submit = () => {
+    onSave({ type, ger, repRange })
+    onClose()
+  }
+
+  const cfg = SET_TYPES[type]
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[400] bg-black/80 flex items-end justify-center"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+        className="w-full max-w-[430px] bg-s1 border-t border-border1 max-h-[90vh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-5 pb-3 flex-shrink-0">
+          <span className="font-display text-lg tracking-[0.15em] text-neon">EDITAR SÉRIE</span>
+          <button onClick={onClose} className="text-muted hover:text-ink p-1"><LuX size={18}/></button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 px-5 pb-8">
+          <div className="flex flex-col gap-1.5 mb-4">
+            {Object.entries(SET_TYPES).map(([key, val]) => (
+              <button
+                key={key}
+                onClick={() => handleTypeChange(key)}
+                className={`flex items-center gap-3 px-3 py-2.5 border text-left transition-all ${
+                  type === key ? 'border-opacity-100' : 'bg-s2 border-border2 opacity-60 hover:opacity-80'
+                }`}
+                style={type === key ? { borderColor: val.color, background: val.color + '15' } : {}}
+              >
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: val.color }} />
+                <div className="flex-1">
+                  <div className="font-display text-[13px] tracking-wider" style={{ color: type === key ? val.color : '' }}>
+                    {val.label}
+                  </div>
+                  <div className="font-mono text-[10px] text-muted mt-0.5 leading-relaxed">{SET_TYPE_DESCRIPTIONS[key]}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {type === 'NORMAL' && (
+            <div className="mb-4">
+              <label className="section-label block mb-2">NÍVEL DE ESFORÇO (GER)</label>
+              <div className="flex gap-1.5 flex-wrap">
+                {[7,8,9,10,11,12,13].map(g => (
+                  <button
+                    key={g}
+                    onClick={() => setGer(g)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 border font-mono text-[11px] tracking-wider transition-all ${
+                      ger === g ? 'border-neon text-neon bg-neon/10' : 'bg-s2 border-border2 text-muted hover:text-ink'
+                    }`}
+                  >
+                    <DoomFace face={GER_CONFIG[g].face} size={18}/>
+                    GER {g}
+                  </button>
+                ))}
+              </div>
+              {ger && (
+                <div className="mt-2 font-mono text-[10px] text-muted">
+                  {GER_CONFIG[ger].title} — {GER_CONFIG[ger].subtitle}
+                </div>
+              )}
+            </div>
+          )}
+
+          {type === 'NORMAL' && (
+            <div className="mb-5">
+              <label className="section-label block mb-1">REP RANGE</label>
+              <div className="flex gap-1.5 flex-wrap">
+                {['5-9','6-10','8-12','10-15','12-20'].map(r => (
+                  <button
+                    key={r}
+                    onClick={() => setRepRange(r)}
+                    className={`px-3 py-1.5 border font-mono text-[11px] tracking-wider transition-all ${
+                      repRange === r ? 'bg-neon text-bg border-neon' : 'bg-s2 border-border2 text-muted hover:text-ink'
+                    }`}
+                  >
+                    {r}
+                  </button>
+                ))}
+                <input
+                  className="w-20 bg-s2 border border-border2 px-2 py-1.5 font-mono text-[11px] text-ink focus:border-neon outline-none"
+                  placeholder="custom"
+                  value={['5-9','6-10','8-12','10-15','12-20'].includes(repRange) ? '' : repRange}
+                  onChange={e => setRepRange(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          {type !== 'NORMAL' && (
+            <div className="mb-5 bg-s2 border border-border2 px-3 py-2.5">
+              <div className="font-mono text-[10px] text-muted tracking-wider">GER PADRÃO</div>
+              <div className="flex items-center gap-2 mt-1">
+                <DoomFace face={GER_CONFIG[cfg.ger].face} size={24}/>
+                <div>
+                  <div className="font-display text-sm tracking-wider" style={{ color: cfg.color }}>
+                    GER {cfg.ger}
+                  </div>
+                  <div className="font-mono text-[10px] text-muted">{GER_CONFIG[cfg.ger].title}</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={submit}
+            className="w-full py-3 font-display text-sm tracking-[0.2em] text-bg transition-opacity"
+            style={{ background: cfg.color }}
+          >
+            SALVAR
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
 // ─── SortableSet ─────────────────────────────────────────────────────────────
 
-function SortableSet({ s, weekIdx, dayIdx, exId, removeSet }) {
+function SortableSet({ s, weekIdx, dayIdx, exId, removeSet, onEdit }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: s.id })
   const style = {
@@ -387,6 +593,12 @@ function SortableSet({ s, weekIdx, dayIdx, exId, removeSet }) {
         <span className="font-mono text-[10px] text-muted ml-2">GER {s.ger}</span>
       </div>
       <button
+        onClick={() => onEdit(s.id)}
+        className="p-1 text-muted/50 hover:text-ink transition-colors"
+      >
+        <LuPencil size={12}/>
+      </button>
+      <button
         onClick={() => removeSet(weekIdx, dayIdx, exId, s.id)}
         className="p-1 text-muted/50 hover:text-red-400 transition-colors"
       >
@@ -399,12 +611,18 @@ function SortableSet({ s, weekIdx, dayIdx, exId, removeSet }) {
 // ─── ExerciseEditor ───────────────────────────────────────────────────────────
 
 function ExerciseEditor({ exercise, weekIdx, dayIdx, isDragging: isExDragging }) {
-  const [open, setOpen]       = useState(false)
+  const [open, setOpen]             = useState(false)
   const [showAddSet, setShowAddSet] = useState(false)
+  const [showEditEx, setShowEditEx] = useState(false)
+  const [editingSetId, setEditingSetId] = useState(null)
   const addSet         = useStore(s => s.addSet)
   const removeSet      = useStore(s => s.removeSet)
   const removeExercise = useStore(s => s.removeExercise)
   const reorderSets    = useStore(s => s.reorderSets)
+  const updateExercise = useStore(s => s.updateExercise)
+  const updateSet      = useStore(s => s.updateSet)
+
+  const editingSet = editingSetId ? exercise.sets.find(s => s.id === editingSetId) : null
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: exercise.id })
@@ -461,7 +679,13 @@ function ExerciseEditor({ exercise, weekIdx, dayIdx, isDragging: isExDragging })
             )}
           </div>
           <button
-            className={`text-muted hover:text-ink transition-colors ml-1`}
+            className="p-1 text-muted/50 hover:text-ink transition-colors ml-1"
+            onClick={e => { e.stopPropagation(); setShowEditEx(true) }}
+          >
+            <LuPencil size={13}/>
+          </button>
+          <button
+            className="text-muted hover:text-ink transition-colors"
             onClick={e => { e.stopPropagation(); setOpen(o => !o) }}
           >
             {open ? <LuChevronUp size={16}/> : <LuChevronDown size={16}/>}
@@ -499,6 +723,7 @@ function ExerciseEditor({ exercise, weekIdx, dayIdx, isDragging: isExDragging })
                             dayIdx={dayIdx}
                             exId={exercise.id}
                             removeSet={removeSet}
+                            onEdit={setEditingSetId}
                           />
                         ))}
                       </SortableContext>
@@ -538,6 +763,20 @@ function ExerciseEditor({ exercise, weekIdx, dayIdx, isDragging: isExDragging })
           <AddSetModal
             onAdd={(setDef) => addSet(weekIdx, dayIdx, exercise.id, setDef)}
             onClose={() => setShowAddSet(false)}
+          />
+        )}
+        {showEditEx && (
+          <EditExerciseModal
+            exercise={exercise}
+            onSave={(updates) => updateExercise(weekIdx, dayIdx, exercise.id, updates)}
+            onClose={() => setShowEditEx(false)}
+          />
+        )}
+        {editingSet && (
+          <EditSetModal
+            set={editingSet}
+            onSave={(updates) => updateSet(weekIdx, dayIdx, exercise.id, editingSet.id, updates)}
+            onClose={() => setEditingSetId(null)}
           />
         )}
       </AnimatePresence>
