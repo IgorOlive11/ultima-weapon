@@ -29,28 +29,26 @@ const syncTimers = {}
 function scheduleSyncSection(section, get) {
   if (syncTimers[section]) clearTimeout(syncTimers[section])
 
-  // Captura AGORA quem é o alvo — o viewingUserId pode mudar antes do timer disparar
+  // Captura tudo AGORA — o estado pode ser sobrescrito antes do timer disparar
   const state0        = get()
   const targetUserId  = state0.viewingUserId || state0.authUser?.id
   const isStudentSave = !!state0.viewingUserId
+  const capturedData  = {
+    logs:            state0.logs,
+    userProtocol:    state0.userProtocol,
+    userProfile:     state0.userProfile,
+    exerciseHistory: state0.exerciseHistory,
+    savedExercises:  state0.savedExercises,
+    mealLog:         state0.mealLog,
+    microLog:        state0.microLog,
+  }[section]
 
   syncTimers[section] = setTimeout(async () => {
-    const state = get()
-    if (!targetUserId) return
-    const data = {
-      logs:            state.logs,
-      userProtocol:    state.userProtocol,
-      userProfile:     state.userProfile,
-      exerciseHistory: state.exerciseHistory,
-      savedExercises:  state.savedExercises,
-      mealLog:         state.mealLog,
-      microLog:        state.microLog,
-    }[section]
-    if (data === undefined) return
+    if (!targetUserId || capturedData === undefined) return
 
     if (isStudentSave) {
       const { data: { session } } = await supabase.auth.getSession()
-      await fetch(
+      const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-student-data`,
         {
           method: 'POST',
@@ -58,12 +56,19 @@ function scheduleSyncSection(section, get) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session?.access_token}`,
           },
-          body: JSON.stringify({ studentId: targetUserId, section, data }),
+          body: JSON.stringify({ studentId: targetUserId, section, data: capturedData }),
         }
       )
+      if (!res.ok) {
+        // Fallback: tenta escrita direta (funciona se RLS via profiles estiver ok)
+        await supabase.from('user_data').upsert(
+          { user_id: targetUserId, section, data: capturedData, updated_at: new Date().toISOString() },
+          { onConflict: 'user_id,section' }
+        )
+      }
     } else {
       await supabase.from('user_data').upsert(
-        { user_id: targetUserId, section, data, updated_at: new Date().toISOString() },
+        { user_id: targetUserId, section, data: capturedData, updated_at: new Date().toISOString() },
         { onConflict: 'user_id,section' }
       )
     }
