@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { LuSave, LuCircleCheck } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 import { DAY_NAMES } from '../data/protocol'
@@ -33,6 +33,14 @@ export default function SettingsPage() {
 
   const [times, setTimes]       = useState({ workoutTime: userProfile.workoutTime, sleepTime: userProfile.sleepTime })
   const [timesSaved, setTimesSaved] = useState(false)
+
+  // Sincroniza quando userProfile muda (ex: hydration do Supabase termina)
+  useEffect(() => {
+    if (userProfile) {
+      setProfile({ ...userProfile })
+      setTimes({ workoutTime: userProfile.workoutTime, sleepTime: userProfile.sleepTime })
+    }
+  }, [userProfile])
 
   const userProtocol = useStore((s) => s.userProtocol)
   const currentDay   = useStore((s) => s.currentDay)

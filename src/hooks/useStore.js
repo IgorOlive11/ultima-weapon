@@ -25,6 +25,19 @@ function genId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
+function defaultUserProfile() {
+  return {
+    weight:        80,
+    height:        183,
+    age:           21,
+    sex:           'M',
+    workoutTime:   '16:30',
+    sleepTime:     '23:00',
+    caloricGoal:   'bulk',
+    activityLevel: 1.55,
+  }
+}
+
 const syncTimers = {}
 async function syncStudentSection(targetUserId, section, capturedData) {
   const { data: { session } } = await supabase.auth.getSession()
@@ -208,7 +221,7 @@ export const useStore = create(
             savedExercises:  [],
             mealLog:         {},
             microLog:        {},
-            userProfile:     null,
+            userProfile:     defaultUserProfile(),
           })
           await get().hydrateFromSupabase(userId)
         }
@@ -249,8 +262,6 @@ export const useStore = create(
           }
         }
 
-        if (!rows.length) return
-
         const updates = {}
         for (const row of rows) {
           if (row.section === 'userProtocol')    updates.userProtocol    = row.data
@@ -261,7 +272,9 @@ export const useStore = create(
           if (row.section === 'mealLog')         updates.mealLog         = row.data
           if (row.section === 'microLog')        updates.microLog        = row.data
         }
-        set(updates)
+        // Garante que userProfile nunca fica null após hydration
+        if (!updates.userProfile) updates.userProfile = defaultUserProfile()
+        if (Object.keys(updates).length) set(updates)
       },
 
       // ── workout logs ─────────────────────────────────────────────────────────
@@ -646,6 +659,10 @@ export const useStore = create(
         savedExercises:  state.savedExercises,
         // _viewerSnapshot nunca persiste — só existe em memória
       }),
+      onRehydrateStorage: () => (state) => {
+        // Corrige null salvo no localStorage por bug anterior
+        if (state && !state.userProfile) state.userProfile = defaultUserProfile()
+      },
     }
   )
 )

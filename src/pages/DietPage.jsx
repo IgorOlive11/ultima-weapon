@@ -345,14 +345,9 @@ export default function DietPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        {!userProfile
-          ? <div className="flex items-center justify-center h-full text-dim text-sm">Carregando...</div>
-          : <>
-              {tab === 'macros' && <SectionMacros userProfile={userProfile}/>}
-              {tab === 'plano'  && <SectionPlano  userProfile={userProfile} currentWeek={currentWeek} currentDay={currentDay}/>}
-              {tab === 'micros' && <SectionMicros microLog={microLog}/>}
-            </>
-        }
+        {tab === 'macros' && <SectionMacros userProfile={userProfile}/>}
+        {tab === 'plano'  && <SectionPlano  userProfile={userProfile} currentWeek={currentWeek} currentDay={currentDay}/>}
+        {tab === 'micros' && <SectionMicros microLog={microLog}/>}
       </div>
     </div>
   )
