@@ -109,22 +109,28 @@ export const useStore = create(
         // clearAuth is called automatically via onAuthStateChange(SIGNED_OUT)
       },
 
-      _viewerSnapshot: null,
-
       setViewingUser: async (userId, userName = null) => {
+        const SNAP_KEY = 'uw-trainer-snapshot'
+
         if (!userId) {
-          // Restaura do snapshot — sem depender de Supabase ou localStorage
-          const { _viewerSnapshot } = get()
-          set({
-            viewingUserId:   null,
-            viewingUserName: null,
-            _viewerSnapshot: null,
-            ...(_viewerSnapshot ?? {}),
-          })
+          // Restaura do localStorage dedicado (sobrevive a page refresh)
+          const raw = localStorage.getItem(SNAP_KEY)
+          localStorage.removeItem(SNAP_KEY)
+          if (raw) {
+            try {
+              const snapshot = JSON.parse(raw)
+              set({ viewingUserId: null, viewingUserName: null, ...snapshot })
+              return
+            } catch {}
+          }
+          // Fallback: busca do Supabase se snapshot perdido
+          const { authUser } = get()
+          set({ viewingUserId: null, viewingUserName: null })
+          if (authUser) await get().hydrateFromSupabase(authUser.id)
         } else {
-          // Salva snapshot do estado atual antes de sobrescrever com dados do aluno
+          // Salva snapshot num key separado antes de sobrescrever
           const s = get()
-          const snapshot = {
+          localStorage.setItem(SNAP_KEY, JSON.stringify({
             logs:            s.logs,
             userProtocol:    s.userProtocol,
             exerciseHistory: s.exerciseHistory,
@@ -132,13 +138,11 @@ export const useStore = create(
             mealLog:         s.mealLog,
             microLog:        s.microLog,
             userProfile:     s.userProfile,
-          }
+          }))
           set({
             viewingUserId:   userId,
             viewingUserName: userName,
             activeTab:       'workout',
-            _viewerSnapshot: snapshot,
-            // Reseta para vazio enquanto carrega
             logs:            {},
             userProtocol:    defaultUserProtocol(),
             exerciseHistory: {},
