@@ -26,6 +26,46 @@ function genId() {
 }
 
 const syncTimers = {}
+async function syncStudentSection(targetUserId, section, capturedData) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) {
+    console.error('[save-student] sem sessão ativa — save cancelado')
+    return
+  }
+
+  const fnUrl = `${supabase.supabaseUrl}/functions/v1/save-student-data`
+  console.log('[save-student] chamando edge fn', fnUrl, 'studentId=', targetUserId, 'section=', section)
+
+  let res
+  try {
+    res = await fetch(fnUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ studentId: targetUserId, section, data: capturedData }),
+    })
+  } catch (err) {
+    console.error('[save-student] fetch falhou (rede?):', err)
+    return
+  }
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '(sem body)')
+    console.error('[save-student] edge fn retornou', res.status, errText)
+    // Fallback: escrita direta (requer RLS trainer_admin_all via profiles)
+    const { error: fbErr } = await supabase.from('user_data').upsert(
+      { user_id: targetUserId, section, data: capturedData, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id,section' }
+    )
+    if (fbErr) console.error('[save-student] fallback direto também falhou:', fbErr.message)
+    else console.log('[save-student] fallback direto OK')
+  } else {
+    console.log('[save-student] edge fn OK')
+  }
+}
+
 function scheduleSyncSection(section, get) {
   if (syncTimers[section]) clearTimeout(syncTimers[section])
 
@@ -43,34 +83,22 @@ function scheduleSyncSection(section, get) {
     microLog:        state0.microLog,
   }[section]
 
+  console.log('[sync] scheduleSyncSection', section, '| viewing=', state0.viewingUserId, '| target=', targetUserId)
+
   syncTimers[section] = setTimeout(async () => {
-    if (!targetUserId || capturedData === undefined) return
+    if (!targetUserId || capturedData === undefined) {
+      console.warn('[sync] abortado — targetUserId=', targetUserId, 'capturedData=', capturedData === undefined ? 'undefined' : 'ok')
+      return
+    }
 
     if (isStudentSave) {
-      const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-student-data`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session?.access_token}`,
-          },
-          body: JSON.stringify({ studentId: targetUserId, section, data: capturedData }),
-        }
-      )
-      if (!res.ok) {
-        // Fallback: tenta escrita direta (funciona se RLS via profiles estiver ok)
-        await supabase.from('user_data').upsert(
-          { user_id: targetUserId, section, data: capturedData, updated_at: new Date().toISOString() },
-          { onConflict: 'user_id,section' }
-        )
-      }
+      await syncStudentSection(targetUserId, section, capturedData)
     } else {
-      await supabase.from('user_data').upsert(
+      const { error } = await supabase.from('user_data').upsert(
         { user_id: targetUserId, section, data: capturedData, updated_at: new Date().toISOString() },
         { onConflict: 'user_id,section' }
       )
+      if (error) console.error('[sync] próprio upsert falhou:', error.message)
     }
   }, 1500)
 }
@@ -202,7 +230,7 @@ export const useStore = create(
           // dados de aluno — usa edge function com service role (bypassa RLS)
           const { data: { session } } = await supabase.auth.getSession()
           const res = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-student-data`,
+            `${supabase.supabaseUrl}/functions/v1/get-student-data`,
             {
               method: 'POST',
               headers: {
@@ -212,8 +240,13 @@ export const useStore = create(
               body: JSON.stringify({ studentId: userId }),
             }
           )
-          const json = await res.json()
-          if (res.ok && json.data?.length) rows = json.data
+          if (!res.ok) {
+            const errText = await res.text().catch(() => '')
+            console.error('[hydrate] get-student-data falhou', res.status, errText)
+          } else {
+            const json = await res.json()
+            if (json.data?.length) rows = json.data
+          }
         }
 
         if (!rows.length) return
