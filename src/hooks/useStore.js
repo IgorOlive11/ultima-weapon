@@ -28,10 +28,15 @@ function genId() {
 const syncTimers = {}
 function scheduleSyncSection(section, get) {
   if (syncTimers[section]) clearTimeout(syncTimers[section])
+
+  // Captura AGORA quem é o alvo — o viewingUserId pode mudar antes do timer disparar
+  const state0        = get()
+  const targetUserId  = state0.viewingUserId || state0.authUser?.id
+  const isStudentSave = !!state0.viewingUserId
+
   syncTimers[section] = setTimeout(async () => {
-    const state  = get()
-    const userId = state.viewingUserId || state.authUser?.id
-    if (!userId) return
+    const state = get()
+    if (!targetUserId) return
     const data = {
       logs:            state.logs,
       userProtocol:    state.userProtocol,
@@ -43,8 +48,7 @@ function scheduleSyncSection(section, get) {
     }[section]
     if (data === undefined) return
 
-    if (state.viewingUserId) {
-      // Escrita em dados do aluno — edge function com service role (JWT pode ser stale)
+    if (isStudentSave) {
       const { data: { session } } = await supabase.auth.getSession()
       await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-student-data`,
@@ -54,12 +58,12 @@ function scheduleSyncSection(section, get) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session?.access_token}`,
           },
-          body: JSON.stringify({ studentId: userId, section, data }),
+          body: JSON.stringify({ studentId: targetUserId, section, data }),
         }
       )
     } else {
       await supabase.from('user_data').upsert(
-        { user_id: userId, section, data, updated_at: new Date().toISOString() },
+        { user_id: targetUserId, section, data, updated_at: new Date().toISOString() },
         { onConflict: 'user_id,section' }
       )
     }
