@@ -29,9 +29,8 @@ const syncTimers = {}
 function scheduleSyncSection(section, get) {
   if (syncTimers[section]) clearTimeout(syncTimers[section])
   syncTimers[section] = setTimeout(async () => {
-    const state = get()
-    const studentId = state.viewingUserId
-    const userId    = studentId || state.authUser?.id
+    const state  = get()
+    const userId = state.viewingUserId || state.authUser?.id
     if (!userId) return
     const data = {
       logs:            state.logs,
@@ -43,27 +42,11 @@ function scheduleSyncSection(section, get) {
       microLog:        state.microLog,
     }[section]
     if (data === undefined) return
-
-    if (studentId) {
-      // Salva dados do aluno via edge function (service role bypassa RLS)
-      const { data: { session } } = await supabase.auth.getSession()
-      await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-student-data`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session?.access_token}`,
-          },
-          body: JSON.stringify({ studentId, section, data }),
-        }
-      )
-    } else {
-      await supabase.from('user_data').upsert(
-        { user_id: userId, section, data, updated_at: new Date().toISOString() },
-        { onConflict: 'user_id,section' }
-      )
-    }
+    // RLS permite trainer/admin escrever em qualquer user_id diretamente
+    await supabase.from('user_data').upsert(
+      { user_id: userId, section, data, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id,section' }
+    )
   }, 1500)
 }
 
