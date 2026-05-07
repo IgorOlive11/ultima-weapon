@@ -109,13 +109,44 @@ export const useStore = create(
         // clearAuth is called automatically via onAuthStateChange(SIGNED_OUT)
       },
 
+      _viewerSnapshot: null,
+
       setViewingUser: async (userId, userName = null) => {
         if (!userId) {
-          const { authUser } = get()
-          set({ viewingUserId: null, viewingUserName: null })
-          if (authUser) await get().hydrateFromSupabase(authUser.id)
+          // Restaura do snapshot — sem depender de Supabase ou localStorage
+          const { _viewerSnapshot } = get()
+          set({
+            viewingUserId:   null,
+            viewingUserName: null,
+            _viewerSnapshot: null,
+            ...(_viewerSnapshot ?? {}),
+          })
         } else {
-          set({ viewingUserId: userId, viewingUserName: userName, activeTab: 'workout' })
+          // Salva snapshot do estado atual antes de sobrescrever com dados do aluno
+          const s = get()
+          const snapshot = {
+            logs:            s.logs,
+            userProtocol:    s.userProtocol,
+            exerciseHistory: s.exerciseHistory,
+            savedExercises:  s.savedExercises,
+            mealLog:         s.mealLog,
+            microLog:        s.microLog,
+            userProfile:     s.userProfile,
+          }
+          set({
+            viewingUserId:   userId,
+            viewingUserName: userName,
+            activeTab:       'workout',
+            _viewerSnapshot: snapshot,
+            // Reseta para vazio enquanto carrega
+            logs:            {},
+            userProtocol:    defaultUserProtocol(),
+            exerciseHistory: {},
+            savedExercises:  [],
+            mealLog:         {},
+            microLog:        {},
+            userProfile:     null,
+          })
           await get().hydrateFromSupabase(userId)
         }
       },
@@ -134,16 +165,6 @@ export const useStore = create(
           if (!error && data?.length) rows = data
         } else {
           // dados de aluno — usa edge function com service role (bypassa RLS)
-          // Limpa o estado antes para nunca mostrar dados do trainer
-          set({
-            logs:            {},
-            userProtocol:    defaultUserProtocol(),
-            exerciseHistory: {},
-            savedExercises:  [],
-            mealLog:         {},
-            microLog:        {},
-            userProfile:     null,
-          })
           const { data: { session } } = await supabase.auth.getSession()
           const res = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-student-data`,
@@ -555,6 +576,7 @@ export const useStore = create(
         restTimer:       state.restTimer,
         exerciseHistory: state.exerciseHistory,
         savedExercises:  state.savedExercises,
+        // _viewerSnapshot nunca persiste — só existe em memória
       }),
     }
   )
