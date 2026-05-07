@@ -121,13 +121,39 @@ export const useStore = create(
       },
 
       hydrateFromSupabase: async (userId) => {
-        const { data, error } = await supabase
-          .from('user_data')
-          .select('section, data')
-          .eq('user_id', userId)
-        if (error || !data?.length) return
+        const { authUser } = get()
+        const isOwnData = userId === authUser?.id
+
+        let rows
+        if (isOwnData) {
+          // dados próprios — RLS permite normalmente
+          const { data, error } = await supabase
+            .from('user_data')
+            .select('section, data')
+            .eq('user_id', userId)
+          if (error || !data?.length) return
+          rows = data
+        } else {
+          // dados de aluno — usa edge function com service role (bypassa RLS)
+          const { data: { session } } = await supabase.auth.getSession()
+          const res = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-student-data`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session?.access_token}`,
+              },
+              body: JSON.stringify({ studentId: userId }),
+            }
+          )
+          const json = await res.json()
+          if (!res.ok || !json.data?.length) return
+          rows = json.data
+        }
+
         const updates = {}
-        for (const row of data) {
+        for (const row of rows) {
           if (row.section === 'userProtocol')    updates.userProtocol    = row.data
           if (row.section === 'userProfile')     updates.userProfile     = row.data
           if (row.section === 'logs')            updates.logs            = row.data
