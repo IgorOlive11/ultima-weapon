@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { LuSwords, LuMail, LuLock, LuUser, LuArrowLeft } from 'react-icons/lu'
+import { LuSwords, LuMail, LuLock, LuUser, LuArrowLeft, LuEye, LuEyeOff } from 'react-icons/lu'
 import { supabase } from '../lib/supabase'
 
 const inputCls = 'w-full bg-s2 border border-border2 text-ink px-3 py-3 font-mono text-sm tracking-wider outline-none focus:border-neon transition-colors'
@@ -13,55 +13,94 @@ function Header() {
   )
 }
 
+function strengthInfo(pwd) {
+  if (!pwd) return null
+  let score = 0
+  if (pwd.length >= 8)  score++
+  if (pwd.length >= 12) score++
+  if (/[A-Z]/.test(pwd))        score++
+  if (/[0-9]/.test(pwd))        score++
+  if (/[^A-Za-z0-9]/.test(pwd)) score++
+  if (score <= 1) return { label: 'FRACA',  color: 'text-neon',  bars: 1, barCls: 'bg-neon'  }
+  if (score <= 3) return { label: 'MÉDIA',  color: 'text-warn',  bars: 2, barCls: 'bg-warn'  }
+  return              { label: 'FORTE',  color: 'text-blue',  bars: 3, barCls: 'bg-blue'  }
+}
+
+function translateError(msg) {
+  if (!msg) return 'Erro desconhecido.'
+  const m = msg.toLowerCase()
+  if (m.includes('rate limit') || m.includes('email rate'))
+    return 'Limite de e-mails atingido. Aguarde alguns minutos e tente novamente.'
+  if (m.includes('invalid login') || m.includes('invalid email or password') || m.includes('email not confirmed'))
+    return 'E-mail ou senha incorretos.'
+  if (m.includes('user already registered') || m.includes('already been registered'))
+    return 'Este e-mail já está cadastrado. Faça login ou recupere sua senha.'
+  if (m.includes('password should be') || m.includes('password is too short'))
+    return 'A senha deve ter no mínimo 8 caracteres.'
+  if (m.includes('unable to validate email') || m.includes('invalid email'))
+    return 'E-mail inválido.'
+  if (m.includes('network') || m.includes('fetch'))
+    return 'Erro de conexão. Verifique sua internet.'
+  return msg
+}
+
 export default function AuthPage() {
-  const [mode, setMode]         = useState('login') // 'login' | 'register' | 'forgot'
-  const [email, setEmail]       = useState('')
+  const [mode, setMode]       = useState('login')
+  const [email, setEmail]     = useState('')
   const [password, setPassword] = useState('')
+  const [confirm, setConfirm]   = useState('')
   const [name, setName]         = useState('')
   const [error, setError]       = useState('')
   const [loading, setLoading]   = useState(false)
   const [done, setDone]         = useState(false)
   const [doneMsg, setDoneMsg]   = useState('')
+  const [showPass, setShowPass]       = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   function switchMode(next) {
     setMode(next)
     setError('')
-  }
-
-  function translateError(msg) {
-    if (!msg) return 'Erro desconhecido.'
-    const m = msg.toLowerCase()
-    if (m.includes('rate limit') || m.includes('email rate'))
-      return 'Limite de e-mails atingido. Aguarde alguns minutos e tente novamente.'
-    if (m.includes('invalid login') || m.includes('invalid email or password') || m.includes('email not confirmed'))
-      return 'E-mail ou senha incorretos.'
-    if (m.includes('user already registered') || m.includes('already been registered'))
-      return 'Este e-mail já está cadastrado. Faça login ou recupere sua senha.'
-    if (m.includes('password should be'))
-      return 'A senha deve ter no mínimo 6 caracteres.'
-    if (m.includes('unable to validate email'))
-      return 'E-mail inválido.'
-    if (m.includes('network') || m.includes('fetch'))
-      return 'Erro de conexão. Verifique sua internet.'
-    return msg
+    setPassword('')
+    setConfirm('')
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+
+    if (mode === 'register') {
+      if (password.length < 8) {
+        setError('A senha deve ter no mínimo 8 caracteres.')
+        return
+      }
+      if (password !== confirm) {
+        setError('As senhas não coincidem.')
+        return
+      }
+    }
+
     setLoading(true)
     try {
       if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) setError(translateError(error.message))
+
       } else if (mode === 'register') {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { data: { name, role: 'student' } },
         })
-        if (error) setError(translateError(error.message))
-        else { setDoneMsg('Verifique seu e-mail para confirmar o cadastro, depois faça login.'); setDone(true) }
+        if (error) {
+          setError(translateError(error.message))
+        } else if (!data.user || data.user.identities?.length === 0) {
+          // Supabase retorna user sem identities quando o email já existe
+          setError('Este e-mail já está cadastrado. Faça login ou recupere sua senha.')
+        } else {
+          setDoneMsg('Verifique seu e-mail para confirmar o cadastro, depois faça login.')
+          setDone(true)
+        }
+
       } else if (mode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: window.location.origin,
@@ -73,6 +112,8 @@ export default function AuthPage() {
       setLoading(false)
     }
   }
+
+  const strength = mode === 'register' ? strengthInfo(password) : null
 
   if (done) {
     return (
@@ -143,12 +184,68 @@ export default function AuthPage() {
                 <div className="relative">
                   <LuLock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
                   <input
-                    type="password" value={password} onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••" required minLength={6}
-                    className={inputCls + ' pl-9'}
+                    type={showPass ? 'text' : 'password'}
+                    value={password} onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••" required
+                    minLength={mode === 'register' ? 8 : 1}
+                    className={inputCls + ' pl-9 pr-10'}
                     autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink transition-colors"
+                  >
+                    {showPass ? <LuEyeOff size={14} /> : <LuEye size={14} />}
+                  </button>
                 </div>
+
+                {strength && (
+                  <div className="mt-1.5 space-y-1">
+                    <div className="flex gap-1">
+                      {[0, 1, 2].map(i => (
+                        <div
+                          key={i}
+                          className={`h-[2px] flex-1 transition-all duration-300 ${i < strength.bars ? strength.barCls : 'bg-border2'}`}
+                        />
+                      ))}
+                    </div>
+                    <div className={`font-mono text-[9px] tracking-widest ${strength.color}`}>
+                      SENHA {strength.label}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {mode === 'register' && (
+              <div>
+                <div className="font-mono text-[9px] text-muted tracking-widest mb-1">CONFIRMAR SENHA</div>
+                <div className="relative">
+                  <LuLock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+                  <input
+                    type={showConfirm ? 'text' : 'password'}
+                    value={confirm} onChange={e => setConfirm(e.target.value)}
+                    placeholder="••••••••" required
+                    className={
+                      inputCls + ' pl-9 pr-10' +
+                      (confirm && confirm !== password ? ' border-neon' : '')
+                    }
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink transition-colors"
+                  >
+                    {showConfirm ? <LuEyeOff size={14} /> : <LuEye size={14} />}
+                  </button>
+                </div>
+                {confirm && confirm !== password && (
+                  <div className="font-mono text-[9px] text-neon tracking-widest mt-1">
+                    AS SENHAS NÃO COINCIDEM
+                  </div>
+                )}
               </div>
             )}
 
