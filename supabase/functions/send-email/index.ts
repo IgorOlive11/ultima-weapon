@@ -23,54 +23,70 @@ function emailHtml(label: string, body: string, buttonText: string, buttonUrl: s
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
   <link href="https://fonts.googleapis.com/css2?family=Metal+Mania&display=swap" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Metal+Mania&display=swap');
+    @media (prefers-color-scheme: dark) {
+      body, .outer { background-color: #0a0a0a !important; }
+      .outer-td   { background-color: #0a0a0a !important; }
+      .card-wrap  { background-color: #111111 !important; border-color: #222222 !important; }
+      .content-td { background-color: #111111 !important; }
+      .gif-td     { background-color: #111111 !important; }
+      .ftr-td     { background-color: #0d0d0d !important; border-color: #1a1a1a !important; }
+      .body-text  { color: #888888 !important; }
+      .ftr-text   { color: #333333 !important; }
+    }
+  </style>
 </head>
-<body style="margin:0;padding:0;background:#0a0a0a">
-<table width="100%" cellpadding="0" cellspacing="0" bgcolor="#0a0a0a">
-<tr><td bgcolor="#0a0a0a" align="center" style="padding:40px 16px;background:#0a0a0a">
-<table width="480" cellpadding="0" cellspacing="0" bgcolor="#111111" style="max-width:480px;border:1px solid #222">
+<body class="outer" style="margin:0;padding:0;background-color:#f2f2f2">
+<table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f2f2f2">
+<tr>
+  <td class="outer-td" bgcolor="#f2f2f2" align="center" style="padding:40px 16px;background-color:#f2f2f2">
+  <table width="480" cellpadding="0" cellspacing="0" bgcolor="#ffffff" class="card-wrap" style="max-width:480px;background-color:#ffffff;border:1px solid #dddddd">
 
-  <!-- header -->
-  <tr>
-    <td bgcolor="#111111" align="center" style="padding:22px 24px;background:#111111;border-bottom:1px solid #222">
-      <p style="margin:0;font-family:'Metal Mania',Impact,cursive;font-size:36px;color:#FF1414;letter-spacing:5px">OVERLOAD</p>
-    </td>
-  </tr>
+    <!-- header — sempre escuro para manter identidade da marca -->
+    <tr>
+      <td bgcolor="#1a1a1a" align="center" style="padding:22px 24px;background-color:#1a1a1a;border-bottom:1px solid #0a0a0a">
+        <p style="margin:0;font-family:'Metal Mania',Impact,cursive;font-size:36px;color:#FF1414;letter-spacing:5px">OVERLOAD</p>
+      </td>
+    </tr>
 
-  <!-- conteudo: texto esquerda + gif direita -->
-  <tr>
-    <td bgcolor="#111111" style="padding:28px 24px;background:#111111">
-      <table width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-          <td valign="top" style="padding-right:20px">
-            <p style="margin:0 0 10px;font-family:'Metal Mania',Impact,cursive;font-size:20px;color:#FF1414;letter-spacing:3px">${label}</p>
-            <p style="margin:0 0 24px;font-family:'Courier New',monospace;font-size:12px;color:#888;line-height:1.8">${body}</p>
-            <table cellpadding="0" cellspacing="0">
-              <tr>
-                <td bgcolor="#FF1414" style="background:#FF1414">
-                  <a href="${buttonUrl}" style="display:inline-block;padding:12px 24px;font-family:'Metal Mania',Impact,cursive;font-size:14px;letter-spacing:3px;color:#fff;text-decoration:none">${buttonText}</a>
-                </td>
-              </tr>
-            </table>
-          </td>
-          <td valign="middle" align="center" width="128" bgcolor="#111111" style="background:#111111">
-            <img src="${GIF_URL}" width="120" height="155" alt="" style="display:block">
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
+    <!-- conteúdo: texto esquerda + gif direita -->
+    <tr>
+      <td class="content-td" bgcolor="#ffffff" style="padding:28px 24px;background-color:#ffffff">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td valign="top" style="padding-right:20px">
+              <p style="margin:0 0 10px;font-family:'Metal Mania',Impact,cursive;font-size:20px;color:#FF1414;letter-spacing:3px">${label}</p>
+              <p class="body-text" style="margin:0 0 24px;font-family:'Courier New',monospace;font-size:12px;color:#444444;line-height:1.8">${body}</p>
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td bgcolor="#FF1414" style="background-color:#FF1414">
+                    <a href="${buttonUrl}" style="display:inline-block;padding:12px 24px;font-family:'Metal Mania',Impact,cursive;font-size:14px;letter-spacing:3px;color:#ffffff;text-decoration:none">${buttonText}</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+            <td class="gif-td" valign="middle" align="center" width="152" bgcolor="#ffffff" style="background-color:#ffffff">
+              <img src="${GIF_URL}" width="144" height="179" alt="" style="display:block">
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
 
-  <!-- footer -->
-  <tr>
-    <td bgcolor="#0d0d0d" style="padding:14px 24px;background:#0d0d0d;border-top:1px solid #1a1a1a">
-      <p style="margin:0;font-family:'Courier New',monospace;font-size:9px;color:#333;letter-spacing:2px">OVERLOAD · BY IGOR OLIVEIRA</p>
-    </td>
-  </tr>
+    <!-- footer -->
+    <tr>
+      <td class="ftr-td" bgcolor="#e8e8e8" style="padding:14px 24px;background-color:#e8e8e8;border-top:1px solid #dddddd">
+        <p class="ftr-text" style="margin:0;font-family:'Courier New',monospace;font-size:9px;color:#666666;letter-spacing:2px">OVERLOAD · BY IGOR OLIVEIRA</p>
+      </td>
+    </tr>
 
-</table>
-</td></tr>
+  </table>
+  </td>
+</tr>
 </table>
 </body>
 </html>`
@@ -90,7 +106,7 @@ const TEMPLATES: Record<string, (url: string, email: string) => { subject: strin
     subject: 'Recupere sua senha — Overload',
     html: emailHtml(
       'RECUPERAÇÃO DE SENHA',
-      `Recebemos uma solicitação de redefinição de senha para <span style="color:#ccc">${email}</span>. O link expira em 1 hora.`,
+      `Recebemos uma solicitação de redefinição de senha para <strong>${email}</strong>. O link expira em 1 hora.`,
       'REDEFINIR SENHA',
       url,
     ),
