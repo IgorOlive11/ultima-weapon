@@ -83,16 +83,18 @@ export function buildWorkoutSteps(exercises) {
   if (!exercises || exercises.length === 0) return []
 
   const steps = []
-  const muscleCount = {}
+  const primaryMuscleSeen = {}
+  const accessoryMuscleSeen = new Set()
 
-  exercises.forEach((exercise) => {
+  exercises.forEach((exercise, exIdx) => {
     const muscle = exercise.muscle || 'OUTRO'
-    const muscleIdx = muscleCount[muscle] ?? 0
-    muscleCount[muscle] = muscleIdx + 1
+    const accessory = exercise.accessoryMuscle || null
+
+    const primaryIdx = primaryMuscleSeen[muscle] ?? 0
+    primaryMuscleSeen[muscle] = primaryIdx + 1
 
     const firstSet = exercise.sets?.[0] || { type: 'NORMAL', ger: 10, repRange: '8-12' }
 
-    // Step 1: ask for the working weight
     steps.push({
       type: 'WEIGHT_QUESTION',
       exerciseId: exercise.id,
@@ -101,22 +103,27 @@ export function buildWorkoutSteps(exercises) {
       setDef: firstSet,
     })
 
-    // Warmup only for first exercise of each muscle group
-    if (muscleIdx === 0) {
-      steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 1, pct: 0.45, reps: '15-20' })
-      steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 2, pct: 0.50, reps: '15-20' })
+    // Warmup only for first occurrence of each primary muscle
+    if (primaryIdx === 0) {
+      if (accessoryMuscleSeen.has(muscle)) {
+        // Already recruited as accessory → 1 warmup set
+        steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 1, totalSets: 1, pct: 0.50, reps: '12-15' })
+      } else {
+        // Fresh muscle → 2 warmup sets
+        steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 1, totalSets: 2, pct: 0.45, reps: '12-15' })
+        steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 2, totalSets: 2, pct: 0.50, reps: '12-15' })
+      }
     }
 
-    // 3 feeder sets for 1st and 2nd exercise of each muscle; 1 for the rest
-    if (muscleIdx <= 1) {
-      steps.push({ type: 'FEEDER', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 1, pct: 0.70, reps: '4-8' })
-      steps.push({ type: 'FEEDER', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 2, pct: 0.75, reps: '4-8' })
-      steps.push({ type: 'FEEDER', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 3, pct: 0.80, reps: '4-8' })
-    } else {
-      steps.push({ type: 'FEEDER', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 1, pct: 0.70, reps: '4-8' })
+    // Feeders: 3 for 1st exercise, 2 for 2nd, 1 for rest (all at 75%)
+    const feederCount = exIdx === 0 ? 3 : exIdx === 1 ? 2 : 1
+    for (let i = 0; i < feederCount; i++) {
+      steps.push({ type: 'FEEDER', exerciseId: exercise.id, exerciseName: exercise.name, setNum: i + 1, totalSets: feederCount, pct: 0.75, reps: '6-8' })
     }
 
-    // Working sets
+    // Register accessory muscle for subsequent exercises
+    if (accessory) accessoryMuscleSeen.add(accessory)
+
     ;(exercise.sets || []).forEach((setDef, setIdx) => {
       steps.push({
         type: 'WORKING_SET',

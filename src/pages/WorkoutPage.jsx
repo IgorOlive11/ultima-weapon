@@ -1,13 +1,13 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LuPlay, LuCheck, LuChevronRight, LuSwords, LuTriangleAlert,
-  LuFlame, LuDumbbell, LuPlus, LuMinus,
+  LuFlame, LuDumbbell, LuPlus, LuMinus, LuChevronLeft,
 } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 import { DAY_NAMES, SET_TYPES, GER_CONFIG, getWeightQuestion } from '../data/protocol'
 import DoomFace from '../components/DoomFace'
-import { round25 } from '../utils/loads'
+import { round25, round5 } from '../utils/loads'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -59,6 +59,84 @@ function ConfirmModal({ title, subtitle, confirmLabel, confirmClass, onConfirm, 
             {confirmLabel}
           </button>
         </div>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+// ─── gamification ─────────────────────────────────────────────────────────────
+
+function checkGamification(history) {
+  if (!history?.sets?.length) return null
+  const normal = history.sets.filter(s => s.setType === 'NORMAL' && s.repRange && s.reps != null)
+  if (!normal.length) return null
+  for (const s of normal) {
+    const [lo] = s.repRange.split('-').map(Number)
+    if (!isNaN(lo) && s.reps < lo) return 'angry'
+  }
+  for (const s of normal) {
+    const parts = s.repRange.split('-').map(Number)
+    const hi = parts.length > 1 ? parts[1] : parts[0]
+    if (!isNaN(hi) && s.reps > hi) return 'happy'
+  }
+  return null
+}
+
+const ANGRY_LINES = [
+  'Ficou abaixo do range. Isso não é treino, é passeio.',
+  'Menos reps que o alvo? Que vergonha. Sem desculpa hoje.',
+  'O Doomguy ficou com pena — e ele não tem piedade de nada.',
+  'Abaixo do range. Hoje você vai pagar essa dívida.',
+]
+const HAPPY_LINES = [
+  'Acima do rep range! Aumente o peso agora. Não deixa isso mofar.',
+  'Rep range superado — progressão de carga obrigatória.',
+  'Você destruiu o alvo. Capriche no peso antes que sua força envergonhe você.',
+  'Acima do alvo. Sobe a carga ou vira decoração da academia.',
+]
+function rndLine(arr) { return arr[Math.floor(Math.random() * arr.length)] }
+
+function GamificationPopup({ type, exerciseName, onDismiss }) {
+  const isAngry = type === 'angry'
+  const color   = isAngry ? '#FF1414' : '#39FF14'
+  const face    = isAngry ? 'ger12'   : 'ger13'
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[450] bg-black/90 flex items-center justify-center px-5"
+      onClick={onDismiss}
+    >
+      <motion.div
+        initial={{ scale: 0.82, y: 32 }} animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.82, y: 32 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+        className="w-full max-w-sm bg-s1 border p-6 text-center"
+        style={{ borderColor: color + '55' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-center mb-4">
+          <DoomFace face={face} size={88}/>
+        </div>
+        <div className="font-display text-xl tracking-[0.2em] mb-2" style={{ color }}>
+          {isAngry ? 'QUE COVARDIA!' : 'PROGRESSÃO!'}
+        </div>
+        <div className="font-display text-sm tracking-wider mb-3 text-ink/70">
+          {exerciseName}
+        </div>
+        <div className="font-mono text-[11px] text-muted leading-relaxed mb-5">
+          {rndLine(isAngry ? ANGRY_LINES : HAPPY_LINES)}
+          {!isAngry && (
+            <span className="block mt-1.5 text-neon/80">Avalie o peso antes de confirmar.</span>
+          )}
+        </div>
+        <button
+          onClick={onDismiss}
+          className="w-full py-3 font-display text-sm tracking-[0.2em] border transition-colors hover:opacity-80"
+          style={{ borderColor: color, color }}
+        >
+          {isAngry ? 'VAI TRABALHAR' : 'BORA PROGREDIR'}
+        </button>
       </motion.div>
     </motion.div>
   )
@@ -132,7 +210,7 @@ function PrevRecord({ prevData, setDef }) {
   )
 }
 
-function WeightQuestionCard({ step, onConfirm, history }) {
+function WeightQuestionCard({ step, onConfirm, history, isLocked }) {
   const [weight, setWeight] = useState('')
   const question = getWeightQuestion(step.setDef)
   const typeInfo = SET_TYPES[step.setDef?.type] || SET_TYPES.NORMAL
@@ -227,7 +305,7 @@ function WeightQuestionCard({ step, onConfirm, history }) {
 
         <button
           onClick={handleConfirm}
-          disabled={!parseFloat(weight)}
+          disabled={!parseFloat(weight) || isLocked}
           className="w-full py-3.5 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
           style={{ background: typeInfo.color }}
         >
@@ -238,13 +316,14 @@ function WeightQuestionCard({ step, onConfirm, history }) {
   )
 }
 
-function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData }) {
-  const [reps, setReps] = useState('')
+function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, savedResult }) {
+  const defaultKg = round5(workingWeight * step.pct)
+  const [reps, setReps] = useState(savedResult?.reps != null ? String(savedResult.reps) : '')
+  const [kg, setKg]     = useState(savedResult?.kg   != null ? String(savedResult.kg)   : String(defaultKg))
   const isWarmup = step.type === 'WARMUP'
-  const weight = round25(workingWeight * step.pct)
 
   const handleDone = () => {
-    onDone({ reps: parseInt(reps) || 0, kg: weight })
+    onDone({ reps: parseInt(reps) || 0, kg: parseFloat(kg) || defaultKg })
   }
 
   return (
@@ -254,21 +333,30 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData }) {
         <div className="font-mono text-[10px] text-muted tracking-[0.25em] mb-1">{step.exerciseName}</div>
 
         <div className="font-display text-xl tracking-wider text-ink mb-1">
-          {isWarmup ? `AQUECIMENTO ${step.setNum} DE 2` : `FEEDER ${step.setNum} DE ${step.setNum <= 1 ? '1-3' : '3'}`}
+          {isWarmup
+            ? `AQUECIMENTO ${step.setNum} DE ${step.totalSets ?? 2}`
+            : `FEEDER ${step.setNum} DE ${step.totalSets ?? 1}`}
         </div>
         <div className="font-mono text-[11px] text-muted/60 tracking-wider mb-4">
           {isWarmup ? 'Prepare os tecidos' : 'Ativação progressiva — GER 7'}
         </div>
 
-        <div className="bg-s2 border border-border1 px-4 py-4 mb-4 flex items-center justify-between">
+        <div className="bg-s2 border border-border1 px-4 py-4 mb-4 flex items-center justify-between gap-4">
           <div>
             <div className="font-mono text-[10px] text-muted tracking-wider mb-1">ALVO</div>
             <div className="font-display text-2xl tracking-wider text-ink">{step.reps} REPS</div>
           </div>
-          <div className="text-right">
-            <div className="font-mono text-[10px] text-muted tracking-wider mb-1">CARGA</div>
-            <div className="font-display text-2xl tracking-wider text-neon">{fmtKg(weight)}</div>
-            <div className="font-mono text-[10px] text-muted mt-0.5">{Math.round(step.pct*100)}% de {fmtKg(workingWeight)}</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-mono text-[10px] text-muted tracking-wider mb-1">
+              CARGA <span className="text-muted/50">({Math.round(step.pct*100)}% ≈ {round5(workingWeight * step.pct)}kg)</span>
+            </div>
+            <input
+              type="number"
+              inputMode="decimal"
+              className="w-full bg-s1 border border-border2 text-center font-display text-xl tracking-wider text-neon py-1.5 focus:border-neon outline-none transition-colors"
+              value={kg}
+              onChange={e => setKg(e.target.value)}
+            />
           </div>
         </div>
 
@@ -317,8 +405,8 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData }) {
   )
 }
 
-function NormalSetCard({ step, workingWeight, onDone, isLocked, prevData }) {
-  const [repsHit, setRepsHit] = useState('')
+function NormalSetCard({ step, workingWeight, onDone, isLocked, prevData, savedResult }) {
+  const [repsHit, setRepsHit] = useState(savedResult?.reps != null ? String(savedResult.reps) : '')
   const typeInfo  = SET_TYPES[step.setDef.type] || SET_TYPES.NORMAL
   const gerCfg    = GER_CONFIG[step.setDef.ger] || GER_CONFIG[10]
 
@@ -1030,9 +1118,9 @@ function InlineRestTimer({ onNext }) {
 
 // ─── WorkingSetCard (dispatcher) ─────────────────────────────────────────────
 
-function WorkingSetCard({ step, workingWeight, onDone, isLocked, prevData }) {
+function WorkingSetCard({ step, workingWeight, onDone, isLocked, prevData, savedResult }) {
   const { type } = step.setDef
-  const props = { step, workingWeight, onDone, isLocked, prevData }
+  const props = { step, workingWeight, onDone, isLocked, prevData, savedResult }
 
   switch (type) {
     case 'REST_PAUSE':   return <RestPauseCard {...props}/>
@@ -1056,45 +1144,83 @@ function ActiveWorkout() {
   const startRestTimer      = useStore(s => s.startRestTimer)
   const stopRestTimer       = useStore(s => s.stopRestTimer)
   const exerciseHistory     = useStore(s => s.exerciseHistory)
-  const [showConfirm, setShowConfirm] = useState(false)
-  const [showAbandon, setShowAbandon] = useState(false)
-  const [dir, setDir]       = useState(1)
-  const [isResting, setIsResting] = useState(false)
+
+  const [showConfirm,  setShowConfirm]  = useState(false)
+  const [showAbandon,  setShowAbandon]  = useState(false)
+  const [dir,          setDir]          = useState(1)
+  const [isResting,    setIsResting]    = useState(false)
+  const [viewingStepIdx, setViewingStepIdx] = useState(0)
+  const [shownGamif,   setShownGamif]   = useState(() => new Set())
+  const [gamifPopup,   setGamifPopup]   = useState(null) // { type, exerciseName }
+
+  const prevCurIdxRef = useRef(0)
 
   if (!activeWorkout) return null
 
-  const { steps, currentStepIdx, exerciseWeights, weekIdx, dayIdx } = activeWorkout
-  const day     = userProtocol.weeks[weekIdx].days[dayIdx]
-  const step    = steps[currentStepIdx]
-  const isLast  = currentStepIdx === steps.length - 1
-  const workingWeight = step ? exerciseWeights[step.exerciseId] || 0 : 0
+  const { steps, currentStepIdx, exerciseWeights, weekIdx, dayIdx, setResults } = activeWorkout
+  const day = userProtocol.weeks[weekIdx].days[dayIdx]
 
-  const history = exerciseHistory?.[step?.exerciseName?.toUpperCase()?.trim()]
-  const prevData = step?.type === 'WARMUP'      ? (history?.warmups?.[step.setNum - 1] ?? null)
-                 : step?.type === 'FEEDER'      ? (history?.feeders?.[step.setNum - 1] ?? null)
-                 : step?.type === 'WORKING_SET' ? (history?.sets?.[step.setNum - 1] ?? null)
+  // Sync viewingStepIdx to follow currentStepIdx when user was on the current step
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (viewingStepIdx === prevCurIdxRef.current) {
+      setViewingStepIdx(currentStepIdx)
+    }
+    prevCurIdxRef.current = currentStepIdx
+  }, [currentStepIdx]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Show gamification popup when landing on a WEIGHT_QUESTION step
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    const vStep = steps[viewingStepIdx]
+    if (
+      vStep?.type === 'WEIGHT_QUESTION' &&
+      viewingStepIdx === currentStepIdx &&
+      !shownGamif.has(vStep.exerciseId)
+    ) {
+      const hist = exerciseHistory?.[vStep.exerciseName?.toUpperCase()?.trim()]
+      const type = checkGamification(hist)
+      if (type) {
+        setGamifPopup({ type, exerciseName: vStep.exerciseName })
+        setShownGamif(prev => new Set([...prev, vStep.exerciseId]))
+      }
+    }
+  }, [viewingStepIdx]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const vStep         = steps[viewingStepIdx]
+  const isPastStep    = viewingStepIdx < currentStepIdx
+  const isFutureStep  = viewingStepIdx > currentStepIdx
+  const isCurrentStep = viewingStepIdx === currentStepIdx
+
+  const workingWeight = vStep ? exerciseWeights[vStep.exerciseId] || 0 : 0
+  const savedResult   = setResults?.[String(viewingStepIdx)] ?? null
+
+  const history  = exerciseHistory?.[vStep?.exerciseName?.toUpperCase()?.trim()]
+  const prevData = vStep?.type === 'WARMUP'      ? (history?.warmups?.[vStep.setNum - 1] ?? null)
+                 : vStep?.type === 'FEEDER'      ? (history?.feeders?.[vStep.setNum - 1] ?? null)
+                 : vStep?.type === 'WORKING_SET' ? (history?.sets?.[vStep.setNum - 1] ?? null)
                  : null
 
+  // advance runs from currentStepIdx (regardless of where user is browsing)
+  const curStep = steps[currentStepIdx]
   const advance = useCallback((result) => {
     if (result) saveSetResult(String(currentStepIdx), result)
 
-    // No rest after weight question or last working set
     const isLastWorkingSet =
-      step?.type === 'WORKING_SET' &&
+      curStep?.type === 'WORKING_SET' &&
       !steps.slice(currentStepIdx + 1).some(s => s.type === 'WORKING_SET')
 
-    if (isLastWorkingSet || step?.type === 'WEIGHT_QUESTION') {
+    if (isLastWorkingSet || curStep?.type === 'WEIGHT_QUESTION') {
       setDir(1)
       advanceWorkoutStep()
       return
     }
 
-    // Rest duration based on what comes NEXT (not current)
     const nextStep = steps[currentStepIdx + 1]
     let restSec = 0
-    if (nextStep?.type === 'WARMUP')        restSec = day.warmupRestSeconds ?? 60
-    else if (nextStep?.type === 'FEEDER')   restSec = day.feederRestSeconds ?? 60
-    else if (nextStep?.type === 'WORKING_SET') restSec = day.restSeconds ?? 120
+    if (nextStep?.type === 'WARMUP')           restSec = day.warmupRestSeconds  ?? 60
+    else if (nextStep?.type === 'FEEDER')      restSec = day.feederRestSeconds  ?? 60
+    else if (nextStep?.type === 'WORKING_SET') restSec = day.restSeconds        ?? 120
 
     if (restSec > 0) {
       startRestTimer(restSec)
@@ -1103,7 +1229,7 @@ function ActiveWorkout() {
       setDir(1)
       advanceWorkoutStep()
     }
-  }, [step, currentStepIdx, steps, day, advanceWorkoutStep, saveSetResult, startRestTimer])
+  }, [curStep, currentStepIdx, steps, day, advanceWorkoutStep, saveSetResult, startRestTimer])
 
   const handleRestDone = useCallback(() => {
     stopRestTimer()
@@ -1113,9 +1239,33 @@ function ActiveWorkout() {
   }, [stopRestTimer, advanceWorkoutStep])
 
   const handleWeightConfirm = (weight) => {
-    setExerciseWeight(step.exerciseId, weight)
+    setExerciseWeight(curStep.exerciseId, weight)
     setDir(1)
     advanceWorkoutStep()
+  }
+
+  // onDone for the displayed card
+  const handleCardDone = useCallback((result) => {
+    if (isCurrentStep) {
+      advance(result)
+    } else if (isPastStep) {
+      // just update the saved result for that past step
+      saveSetResult(String(viewingStepIdx), result)
+    }
+    // future steps: button is disabled, this won't be called
+  }, [isCurrentStep, isPastStep, advance, saveSetResult, viewingStepIdx])
+
+  const handleNavPrev = () => {
+    if (viewingStepIdx > 0) {
+      setDir(-1)
+      setViewingStepIdx(v => v - 1)
+    }
+  }
+  const handleNavNext = () => {
+    if (viewingStepIdx < steps.length - 1) {
+      setDir(1)
+      setViewingStepIdx(v => v + 1)
+    }
   }
 
   // Completed state
@@ -1143,13 +1293,11 @@ function ActiveWorkout() {
     )
   }
 
-  // Step progress
   const workingSteps = steps.filter(s => s.type === 'WORKING_SET').length
   const workingDone  = steps.slice(0, currentStepIdx).filter(s => s.type === 'WORKING_SET').length
-
-  // Find exercise index for display
-  const exerciseNames = [...new Set(steps.map(s => s.exerciseId))]
-  const currentExIdx  = exerciseNames.indexOf(step?.exerciseId)
+  const exerciseIds  = [...new Set(steps.map(s => s.exerciseId))]
+  const curExIdx     = exerciseIds.indexOf(curStep?.exerciseId)
+  const isLast       = currentStepIdx === steps.length - 1
 
   return (
     <div className="p-3 pb-6">
@@ -1172,10 +1320,21 @@ function ActiveWorkout() {
         </div>
       </div>
 
-      {/* step card with animation */}
+      {/* past/future banner */}
+      {!isCurrentStep && (
+        <div className={`mb-2 px-3 py-1.5 font-mono text-[10px] tracking-widest text-center border ${
+          isPastStep
+            ? 'border-amber-500/30 text-amber-400/70 bg-amber-500/5'
+            : 'border-border2 text-muted/50'
+        }`}>
+          {isPastStep ? '◂ EDITANDO RESULTADO ANTERIOR' : 'PRÉVIA — AGUARDE SUA VEZ ▸'}
+        </div>
+      )}
+
+      {/* step card */}
       <AnimatePresence mode="wait" custom={dir}>
         <motion.div
-          key={currentStepIdx}
+          key={viewingStepIdx}
           custom={dir}
           variants={cardVariants(dir)}
           initial="initial"
@@ -1183,43 +1342,46 @@ function ActiveWorkout() {
           exit="exit"
           transition={{ type: 'spring', stiffness: 350, damping: 30 }}
         >
-          {step?.type === 'WEIGHT_QUESTION' && (
+          {vStep?.type === 'WEIGHT_QUESTION' && (
             <WeightQuestionCard
-              step={step}
-              onConfirm={handleWeightConfirm}
+              step={vStep}
+              onConfirm={isCurrentStep ? handleWeightConfirm : () => {}}
               history={history}
+              isLocked={!isCurrentStep}
             />
           )}
 
-          {(step?.type === 'WARMUP' || step?.type === 'FEEDER') && (
+          {(vStep?.type === 'WARMUP' || vStep?.type === 'FEEDER') && (
             <WarmupFeederCard
-              step={step}
+              step={vStep}
               workingWeight={workingWeight}
-              onDone={(result) => advance(result)}
-              isLocked={isResting}
+              onDone={handleCardDone}
+              isLocked={isResting && isCurrentStep || isFutureStep}
               prevData={prevData}
+              savedResult={isPastStep ? savedResult : null}
             />
           )}
 
-          {step?.type === 'WORKING_SET' && (
+          {vStep?.type === 'WORKING_SET' && (
             <WorkingSetCard
-              step={step}
+              step={vStep}
               workingWeight={workingWeight}
-              onDone={(result) => advance(result)}
-              isLocked={isResting}
+              onDone={handleCardDone}
+              isLocked={isResting && isCurrentStep || isFutureStep}
               prevData={prevData}
+              savedResult={isPastStep ? savedResult : null}
             />
           )}
         </motion.div>
       </AnimatePresence>
 
-      {/* inline rest timer */}
+      {/* rest timer — always visible when resting, regardless of viewing step */}
       <AnimatePresence>
         {isResting && <InlineRestTimer onNext={handleRestDone}/>}
       </AnimatePresence>
 
-      {/* finish button (shows on last working set) */}
-      {isLast && step?.type === 'WORKING_SET' && (
+      {/* finish button */}
+      {isLast && isCurrentStep && curStep?.type === 'WORKING_SET' && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1236,20 +1398,49 @@ function ActiveWorkout() {
       )}
 
       {/* exercise indicator */}
-      {exerciseNames.length > 1 && (
-        <div className="flex gap-1 justify-center mt-5">
-          {exerciseNames.map((id, i) => (
+      {exerciseIds.length > 1 && (
+        <div className="flex gap-1 justify-center mt-4">
+          {exerciseIds.map((id, i) => (
             <div
               key={id}
               className={`h-1 rounded-full transition-all ${
-                i < currentExIdx ? 'w-4 bg-neon/50' :
-                i === currentExIdx ? 'w-6 bg-neon' :
+                i < curExIdx ? 'w-4 bg-neon/50' :
+                i === curExIdx ? 'w-6 bg-neon' :
                 'w-4 bg-border2'
               }`}
             />
           ))}
         </div>
       )}
+
+      {/* step navigation */}
+      <div className="flex items-center gap-2 mt-3">
+        <button
+          onClick={handleNavPrev}
+          disabled={viewingStepIdx === 0}
+          className="flex items-center gap-1 px-3 py-1.5 border border-border2 font-mono text-[10px] text-muted hover:text-ink hover:border-neon/40 disabled:opacity-25 transition-colors"
+        >
+          <LuChevronLeft size={13}/> ANT
+        </button>
+        {!isCurrentStep && (
+          <button
+            onClick={() => { setDir(viewingStepIdx < currentStepIdx ? 1 : -1); setViewingStepIdx(currentStepIdx) }}
+            className="px-3 py-1.5 border border-neon/40 font-mono text-[10px] text-neon hover:bg-neon/5 transition-colors"
+          >
+            ATUAL
+          </button>
+        )}
+        <div className="flex-1 text-center font-mono text-[9px] text-muted/50 tracking-wider">
+          {viewingStepIdx + 1}/{steps.length}
+        </div>
+        <button
+          onClick={handleNavNext}
+          disabled={viewingStepIdx >= steps.length - 1}
+          className="flex items-center gap-1 px-3 py-1.5 border border-border2 font-mono text-[10px] text-muted hover:text-ink hover:border-neon/40 disabled:opacity-25 transition-colors"
+        >
+          PRÓ <LuChevronRight size={13}/>
+        </button>
+      </div>
 
       <AnimatePresence>
         {showConfirm && (
@@ -1273,6 +1464,16 @@ function ActiveWorkout() {
             confirmClass="bg-red-500 text-white"
             onConfirm={() => { setShowAbandon(false); stopRestTimer(); abandonWorkout() }}
             onCancel={() => setShowAbandon(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {gamifPopup && (
+          <GamificationPopup
+            type={gamifPopup.type}
+            exerciseName={gamifPopup.exerciseName}
+            onDismiss={() => setGamifPopup(null)}
           />
         )}
       </AnimatePresence>

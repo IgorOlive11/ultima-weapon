@@ -2,6 +2,10 @@ export function round25(v) {
   return Math.round(v / 2.5) * 2.5
 }
 
+export function round5(v) {
+  return Math.round(v / 5) * 5
+}
+
 export function fmtKg(v) {
   if (!v || v <= 0) return '—'
   return `${round25(v)}KG`

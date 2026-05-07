@@ -35,11 +35,12 @@ const SET_TYPE_GER_DEFAULTS = {
 // ─── AddExerciseModal ─────────────────────────────────────────────────────────
 
 function AddExerciseModal({ onAdd, onClose }) {
-  const [name, setName]       = useState('')
-  const [muscle, setMuscle]   = useState(MUSCLE_GROUP_LIST[0])
-  const [saveEx, setSaveEx]   = useState(true)
+  const [name, setName]             = useState('')
+  const [muscle, setMuscle]         = useState(MUSCLE_GROUP_LIST[0])
+  const [accessoryMuscle, setAccessoryMuscle] = useState('')
+  const [saveEx, setSaveEx]         = useState(true)
   const [showLibrary, setShowLibrary] = useState(false)
-  const [search, setSearch]   = useState('')
+  const [search, setSearch]         = useState('')
 
   const savedExercises    = useStore(s => s.savedExercises)
   const addSavedExercise  = useStore(s => s.addSavedExercise)
@@ -50,14 +51,15 @@ function AddExerciseModal({ onAdd, onClose }) {
   })
 
   const pickSaved = (ex) => {
-    onAdd({ name: ex.name, muscle: ex.muscle })
+    onAdd({ name: ex.name, muscle: ex.muscle, ...(ex.accessoryMuscle ? { accessoryMuscle: ex.accessoryMuscle } : {}) })
     onClose()
   }
 
   const submit = () => {
     if (!name.trim()) return
-    if (saveEx) addSavedExercise({ name: name.trim(), muscle })
-    onAdd({ name: name.trim(), muscle })
+    const ex = { name: name.trim(), muscle, ...(accessoryMuscle ? { accessoryMuscle } : {}) }
+    if (saveEx) addSavedExercise(ex)
+    onAdd(ex)
     onClose()
   }
 
@@ -178,6 +180,35 @@ function AddExerciseModal({ onAdd, onClose }) {
               </div>
             </div>
 
+            <div className="mb-4">
+              <label className="section-label block mb-1">MÚSCULO ACESSÓRIO <span className="text-muted/50">(opcional)</span></label>
+              <div className="font-mono text-[9px] text-muted/60 mb-2 leading-relaxed">
+                Músculo recrutado neste exercício que é principal de outro exercício posterior.<br/>
+                Reduz aquecimentos desse músculo.
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  onClick={() => setAccessoryMuscle('')}
+                  className={`px-2.5 py-1 font-mono text-[10px] border transition-all ${
+                    accessoryMuscle === '' ? 'bg-neon text-bg border-neon' : 'bg-s2 border-border2 text-muted hover:text-ink'
+                  }`}
+                >
+                  NENHUM
+                </button>
+                {MUSCLE_GROUP_LIST.map(m => (
+                  <button
+                    key={m}
+                    onClick={() => setAccessoryMuscle(accessoryMuscle === m ? '' : m)}
+                    className={`px-2.5 py-1 font-mono text-[10px] border transition-all ${
+                      accessoryMuscle === m ? 'bg-amber-500/20 text-amber-400 border-amber-500/60' : 'bg-s2 border-border2 text-muted hover:text-ink'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* save toggle */}
             <div className="flex items-center justify-between bg-s2 border border-border2 px-3 py-2.5 mb-5">
               <div>
@@ -213,12 +244,13 @@ function AddExerciseModal({ onAdd, onClose }) {
 // ─── EditExerciseModal ────────────────────────────────────────────────────────
 
 function EditExerciseModal({ exercise, onSave, onClose }) {
-  const [name, setName]     = useState(exercise.name)
-  const [muscle, setMuscle] = useState(exercise.muscle)
+  const [name, setName]             = useState(exercise.name)
+  const [muscle, setMuscle]         = useState(exercise.muscle)
+  const [accessoryMuscle, setAccessoryMuscle] = useState(exercise.accessoryMuscle || '')
 
   const submit = () => {
     if (!name.trim()) return
-    onSave({ name: name.trim(), muscle })
+    onSave({ name: name.trim(), muscle, ...(accessoryMuscle ? { accessoryMuscle } : { accessoryMuscle: undefined }) })
     onClose()
   }
 
@@ -231,7 +263,7 @@ function EditExerciseModal({ exercise, onSave, onClose }) {
       <motion.div
         initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-        className="w-full max-w-[430px] bg-s1 border-t border-border1"
+        className="w-full max-w-[430px] bg-s1 border-t border-border1 max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-5 pb-3">
@@ -250,7 +282,7 @@ function EditExerciseModal({ exercise, onSave, onClose }) {
             />
           </div>
 
-          <div className="mb-5">
+          <div className="mb-4">
             <label className="section-label block mb-2">GRUPAMENTO MUSCULAR</label>
             <div className="flex flex-wrap gap-1.5">
               {MUSCLE_GROUP_LIST.map(m => (
@@ -259,6 +291,32 @@ function EditExerciseModal({ exercise, onSave, onClose }) {
                   onClick={() => setMuscle(m)}
                   className={`px-2.5 py-1 font-mono text-[10px] border transition-all ${
                     muscle === m ? 'bg-neon text-bg border-neon' : 'bg-s2 border-border2 text-muted hover:text-ink'
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-5">
+            <label className="section-label block mb-1">MÚSCULO ACESSÓRIO <span className="text-muted/50">(opcional)</span></label>
+            <div className="font-mono text-[9px] text-muted/60 mb-2">Músculo recrutado que é principal em outro exercício posterior.</div>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setAccessoryMuscle('')}
+                className={`px-2.5 py-1 font-mono text-[10px] border transition-all ${
+                  accessoryMuscle === '' ? 'bg-neon text-bg border-neon' : 'bg-s2 border-border2 text-muted hover:text-ink'
+                }`}
+              >
+                NENHUM
+              </button>
+              {MUSCLE_GROUP_LIST.map(m => (
+                <button
+                  key={m}
+                  onClick={() => setAccessoryMuscle(accessoryMuscle === m ? '' : m)}
+                  className={`px-2.5 py-1 font-mono text-[10px] border transition-all ${
+                    accessoryMuscle === m ? 'bg-amber-500/20 text-amber-400 border-amber-500/60' : 'bg-s2 border-border2 text-muted hover:text-ink'
                   }`}
                 >
                   {m}
@@ -663,7 +721,12 @@ function ExerciseEditor({ exercise, weekIdx, dayIdx, isDragging: isExDragging })
           </button>
           <div className="flex-1 min-w-0">
             <div className="font-display text-sm tracking-wider text-ink truncate">{exercise.name}</div>
-            <div className="font-mono text-[10px] text-muted tracking-wider">{exercise.muscle}</div>
+            <div className="font-mono text-[10px] text-muted tracking-wider">
+              {exercise.muscle}
+              {exercise.accessoryMuscle && (
+                <span className="text-amber-400/70 ml-1.5">+{exercise.accessoryMuscle}</span>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {exercise.sets.map(s => (

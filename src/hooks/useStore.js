@@ -653,6 +653,7 @@ export const useStore = create(
           } else if (step.type === 'WORKING_SET') {
             exerciseMap[key].sets.push({
               setType: step.setDef?.type || 'NORMAL',
+              repRange: step.setDef?.repRange || '',
               ...(result || { kg: exerciseWeights[key] || 0 }),
             })
           }

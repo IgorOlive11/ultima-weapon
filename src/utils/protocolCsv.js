@@ -3,6 +3,7 @@ import { defaultUserProtocol } from '../data/protocol'
 const HEADERS = [
   'semana', 'dia', 'descanso_seg', 'aquecimento_seg', 'feeder_seg',
   'dia_descanso', 'exercicio', 'musculo', 'tipo_serie', 'ger', 'rep_range',
+  'musculo_acessorio',
 ]
 
 // ─── Template ──────────────────────────────────────────────────────────────────
@@ -12,31 +13,31 @@ const HEADERS = [
 
 const EXAMPLE_ROWS = [
   // SEG: Peito
-  [1,1,120,60,60,'N','Supino Reto',    'PEITO',  'NORMAL',     10,'8-12'],
-  [1,1,120,60,60,'N','Supino Reto',    'PEITO',  'NORMAL',     10,'8-12'],
-  [1,1,120,60,60,'N','Supino Reto',    'PEITO',  'NORMAL',     10,'8-12'],
-  [1,1,120,60,60,'N','Crucifixo',      'PEITO',  'REST_PAUSE', 12,''],
+  [1,1,120,60,60,'N','Supino Reto',    'PEITO',  'NORMAL',     10,'8-12',''],
+  [1,1,120,60,60,'N','Supino Reto',    'PEITO',  'NORMAL',     10,'8-12',''],
+  [1,1,120,60,60,'N','Supino Reto',    'PEITO',  'NORMAL',     10,'8-12',''],
+  [1,1,120,60,60,'N','Crucifixo',      'PEITO',  'REST_PAUSE', 12,'',   ''],
   // TER: Costas
-  [1,2,120,60,60,'N','Puxada Frontal', 'COSTAS', 'NORMAL',     10,'8-12'],
-  [1,2,120,60,60,'N','Puxada Frontal', 'COSTAS', 'NORMAL',     10,'8-12'],
-  [1,2,120,60,60,'N','Remada Curvada', 'COSTAS', 'NORMAL',     10,'8-12'],
-  [1,2,120,60,60,'N','Remada Curvada', 'COSTAS', 'NORMAL',     10,'8-12'],
+  [1,2,120,60,60,'N','Puxada Frontal', 'COSTAS', 'NORMAL',     10,'8-12',''],
+  [1,2,120,60,60,'N','Puxada Frontal', 'COSTAS', 'NORMAL',     10,'8-12',''],
+  [1,2,120,60,60,'N','Remada Curvada', 'COSTAS', 'NORMAL',     10,'8-12',''],
+  [1,2,120,60,60,'N','Remada Curvada', 'COSTAS', 'NORMAL',     10,'8-12',''],
   // QUA: Descanso
-  [1,3,'','','','S','','','','',''],
+  [1,3,'','','','S','','','','','',''],
   // QUI: Ombros
-  [1,4,120,60,60,'N','Desenvolvimento','OMBROS', 'NORMAL',     10,'8-12'],
-  [1,4,120,60,60,'N','Desenvolvimento','OMBROS', 'NORMAL',     10,'8-12'],
-  [1,4,120,60,60,'N','Elevação Lateral','OMBROS','MUSCLE_ROUND',11,''],
+  [1,4,120,60,60,'N','Desenvolvimento','OMBROS', 'NORMAL',     10,'8-12',''],
+  [1,4,120,60,60,'N','Desenvolvimento','OMBROS', 'NORMAL',     10,'8-12',''],
+  [1,4,120,60,60,'N','Elevação Lateral','OMBROS','MUSCLE_ROUND',11,'',   ''],
   // SEX: Pernas
-  [1,5,180,60,90,'N','Agachamento',   'QUADRÍCEPS','NORMAL',   10,'8-12'],
-  [1,5,180,60,90,'N','Agachamento',   'QUADRÍCEPS','NORMAL',   10,'8-12'],
-  [1,5,180,60,90,'N','Leg Press',     'QUADRÍCEPS','WIDOWMAKER',13,'10-12'],
+  [1,5,180,60,90,'N','Agachamento',   'QUADRÍCEPS','NORMAL',   10,'8-12',''],
+  [1,5,180,60,90,'N','Agachamento',   'QUADRÍCEPS','NORMAL',   10,'8-12',''],
+  [1,5,180,60,90,'N','Leg Press',     'QUADRÍCEPS','WIDOWMAKER',13,'10-12',''],
   // SAB: Braços
-  [1,6,90,60,60,'N','Rosca Direta',   'BÍCEPS',  'NORMAL',     10,'8-12'],
-  [1,6,90,60,60,'N','Rosca Direta',   'BÍCEPS',  'NORMAL',     10,'8-12'],
-  [1,6,90,60,60,'N','Tríceps Pulley', 'TRÍCEPS', 'REST_PAUSE', 12,''],
+  [1,6,90,60,60,'N','Rosca Direta',   'BÍCEPS',  'NORMAL',     10,'8-12',''],
+  [1,6,90,60,60,'N','Rosca Direta',   'BÍCEPS',  'NORMAL',     10,'8-12',''],
+  [1,6,90,60,60,'N','Tríceps Pulley', 'TRÍCEPS', 'REST_PAUSE', 12,'',   ''],
   // DOM: Descanso
-  [1,7,'','','','S','','','','',''],
+  [1,7,'','','','S','','','','','',''],
 ]
 
 export function generateTemplateCsv() {
@@ -67,7 +68,7 @@ export function exportProtocolCsv(protocol) {
       const dia    = dIdx + 1
 
       if (day.isRest) {
-        lines.push([semana, dia, '', '', '', 'S', '', '', '', '', ''].join(','))
+        lines.push([semana, dia, '', '', '', 'S', '', '', '', '', '', ''].join(','))
         return
       }
 
@@ -75,7 +76,7 @@ export function exportProtocolCsv(protocol) {
         const ds = day.restSeconds        ?? 120
         const as = day.warmupRestSeconds  ?? 60
         const fs = day.feederRestSeconds  ?? 60
-        lines.push([semana, dia, ds, as, fs, 'N', '', '', '', '', ''].join(','))
+        lines.push([semana, dia, ds, as, fs, 'N', '', '', '', '', '', ''].join(','))
         return
       }
 
@@ -85,14 +86,14 @@ export function exportProtocolCsv(protocol) {
         const fs = day.feederRestSeconds  ?? 60
 
         if (ex.sets.length === 0) {
-          lines.push([semana, dia, ds, as, fs, 'N', ex.name, ex.muscle, '', '', ''].join(','))
+          lines.push([semana, dia, ds, as, fs, 'N', ex.name, ex.muscle, '', '', '', ex.accessoryMuscle ?? ''].join(','))
           return
         }
 
         ex.sets.forEach(set => {
           lines.push([
             semana, dia, ds, as, fs, 'N',
-            ex.name, ex.muscle, set.type, set.ger, set.repRange ?? '',
+            ex.name, ex.muscle, set.type, set.ger, set.repRange ?? '', ex.accessoryMuscle ?? '',
           ].join(','))
         })
       })
@@ -164,17 +165,18 @@ export function parseProtocolCsv(text) {
     const exercicio = get('exercicio')
     if (!exercicio) continue
 
-    const musculo   = get('musculo')  || 'OUTRO'
-    const tipoSerie = get('tipo_serie').toUpperCase() || 'NORMAL'
-    const ger       = parseInt(get('ger')) || 10
-    const repRange  = get('rep_range') || ''
+    const musculo        = get('musculo')  || 'OUTRO'
+    const tipoSerie      = get('tipo_serie').toUpperCase() || 'NORMAL'
+    const ger            = parseInt(get('ger')) || 10
+    const repRange       = get('rep_range') || ''
+    const accessoryMuscle = get('musculo_acessorio') || ''
 
     const VALID_TYPES = ['NORMAL','REST_PAUSE','MUSCLE_ROUND','WIDOWMAKER','PULSE']
     const tipo = VALID_TYPES.includes(tipoSerie) ? tipoSerie : 'NORMAL'
 
     let ex = day.exercises.find(e => e.name.toLowerCase() === exercicio.toLowerCase())
     if (!ex) {
-      ex = { id: genId(), name: exercicio, muscle: musculo, sets: [] }
+      ex = { id: genId(), name: exercicio, muscle: musculo, sets: [], ...(accessoryMuscle ? { accessoryMuscle } : {}) }
       day.exercises.push(ex)
     }
 
