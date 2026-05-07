@@ -16,7 +16,14 @@ Deno.serve(async (req) => {
   const { data: { user }, error: authErr } = await userClient.auth.getUser()
   if (authErr || !user) return json({ error: 'Unauthorized' }, 401)
 
-  const role = user.user_metadata?.role
+  // Verifica role na tabela profiles (não em user_metadata que pode ser stale)
+  const { data: profile } = await adminClient
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const role = profile?.role
   if (role !== 'trainer' && role !== 'admin') return json({ error: 'Forbidden' }, 403)
 
   const { studentId, section, data } = await req.json()
