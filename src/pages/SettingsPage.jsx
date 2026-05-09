@@ -26,7 +26,8 @@ export default function SettingsPage() {
   const currentWeek    = useStore((s) => s.currentWeek)
   const userProfile    = useStore((s) => s.userProfile)
   const setUserProfile = useStore((s) => s.setUserProfile)
-  const achievements   = useStore((s) => s.achievements)
+  const achievements      = useStore((s) => s.achievements)
+  const setTutorialSeen   = useStore((s) => s.setTutorialSeen)
 
   const [dateInput, setDateInput]   = useState(startDate)
   const [dateSaved, setDateSaved]   = useState(false)
@@ -305,6 +306,12 @@ export default function SettingsPage() {
             iOS: Safari → Compartilhar → Adicionar à Tela de Início
           </span>
         </p>
+        <button
+          onClick={() => setTutorialSeen(false)}
+          className="mt-3 w-full font-mono text-[10px] text-muted tracking-widest border border-border2 py-2 hover:text-ink hover:border-neon/40 transition-colors"
+        >
+          REVER TUTORIAL
+        </button>
       </div>
     </div>
   )

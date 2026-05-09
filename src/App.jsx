@@ -13,11 +13,14 @@ import SettingsPage from './pages/SettingsPage'
 import TrainerPage from './pages/TrainerPage'
 import AdminPage from './pages/AdminPage'
 import AuthPage from './pages/AuthPage'
+import TutorialModal from './components/TutorialModal'
 
 export default function App() {
-  const activeTab       = useStore((s) => s.activeTab)
-  const resumeRestTimer = useStore((s) => s.resumeRestTimer)
-  const scrollRef       = useRef(null)
+  const activeTab        = useStore((s) => s.activeTab)
+  const resumeRestTimer  = useStore((s) => s.resumeRestTimer)
+  const tutorialSeen     = useStore((s) => s.tutorialSeen)
+  const setTutorialSeen  = useStore((s) => s.setTutorialSeen)
+  const scrollRef        = useRef(null)
 
   const { authUser, authLoading } = useAuth()
 
@@ -52,6 +55,7 @@ export default function App() {
         {activeTab === 'admin'    && <AdminPage />}
       </main>
       <GlobalRestTimer />
+      {!tutorialSeen && <TutorialModal onDone={setTutorialSeen} />}
     </div>
   )
 }

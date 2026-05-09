@@ -145,6 +145,10 @@ export const useStore = create(
       setSidebar:       (v)    => set({ sidebarOpen: v }),
       setHeaderVisible: (v)    => set({ headerVisible: v }),
 
+      // ── onboarding ───────────────────────────────────────────────────────────
+      tutorialSeen: false,
+      setTutorialSeen: (v = true) => set({ tutorialSeen: v }),
+
       // ── auth ─────────────────────────────────────────────────────────────────
       authUser:        null,
       authLoading:     true,
@@ -752,6 +756,7 @@ export const useStore = create(
         exerciseHistory: state.exerciseHistory,
         savedExercises:  state.savedExercises,
         achievements:    state.achievements,
+        tutorialSeen:    state.tutorialSeen,
         // _viewerSnapshot e pendingAchievements nunca persistem — só existem em memória
       }),
       onRehydrateStorage: () => (state) => {
