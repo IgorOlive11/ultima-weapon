@@ -25,9 +25,21 @@ function emailHtml(label: string, body: string, buttonText: string, buttonUrl: s
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <meta name="supported-color-schemes" content="light dark">
-  <link href="https://fonts.googleapis.com/css2?family=Metal+Mania&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Metal+Mania&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Metal+Mania&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Metal+Mania&family=Share+Tech+Mono&display=swap');
+    @font-face {
+      font-family: 'Metal Mania';
+      font-style: normal;
+      font-weight: 400;
+      src: url('https://fonts.gstatic.com/s/metalmania/v22/RWmMoKWb4e8kqMfBT4Y5yA.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Share Tech Mono';
+      font-style: normal;
+      font-weight: 400;
+      src: url('https://fonts.gstatic.com/s/sharetechmono/v15/J7aHnp1uDWRBEqV98dVQztYldFcLowEFA87Heg.woff2') format('woff2');
+    }
     @media (prefers-color-scheme: dark) {
       body, .outer { background-color: #0a0a0a !important; }
       .outer-td   { background-color: #0a0a0a !important; }
@@ -49,7 +61,7 @@ function emailHtml(label: string, body: string, buttonText: string, buttonUrl: s
     <!-- header — sempre escuro para manter identidade da marca -->
     <tr>
       <td bgcolor="#1a1a1a" align="center" style="padding:22px 24px;background-color:#1a1a1a;border-bottom:1px solid #0a0a0a">
-        <p style="margin:0;font-family:'Metal Mania',Impact,cursive;font-size:36px;color:#FF1414;letter-spacing:5px">OVERLOAD</p>
+        <p style="margin:0;font-family:'Metal Mania',Impact,'Arial Black',Arial,sans-serif;font-size:36px;color:#FF1414;letter-spacing:5px">OVERLOAD</p>
       </td>
     </tr>
 
@@ -59,12 +71,12 @@ function emailHtml(label: string, body: string, buttonText: string, buttonUrl: s
         <table width="100%" cellpadding="0" cellspacing="0">
           <tr>
             <td valign="top" style="padding-right:20px">
-              <p style="margin:0 0 10px;font-family:'Metal Mania',Impact,cursive;font-size:20px;color:#FF1414;letter-spacing:3px">${label}</p>
-              <p class="body-text" style="margin:0 0 24px;font-family:'Courier New',monospace;font-size:12px;color:#444444;line-height:1.8">${body}</p>
+              <p style="margin:0 0 10px;font-family:'Metal Mania',Impact,'Arial Black',Arial,sans-serif;font-size:20px;color:#FF1414;letter-spacing:3px">${label}</p>
+              <p class="body-text" style="margin:0 0 24px;font-family:'Share Tech Mono','Courier New',monospace;font-size:12px;color:#444444;line-height:1.8">${body}</p>
               <table cellpadding="0" cellspacing="0">
                 <tr>
                   <td bgcolor="#FF1414" style="background-color:#FF1414">
-                    <a href="${buttonUrl}" style="display:inline-block;padding:12px 24px;font-family:'Metal Mania',Impact,cursive;font-size:14px;letter-spacing:3px;color:#ffffff;text-decoration:none">${buttonText}</a>
+                    <a href="${buttonUrl}" style="display:inline-block;padding:12px 24px;font-family:'Metal Mania',Impact,'Arial Black',Arial,sans-serif;font-size:14px;letter-spacing:3px;color:#ffffff;text-decoration:none">${buttonText}</a>
                   </td>
                 </tr>
               </table>
@@ -80,7 +92,7 @@ function emailHtml(label: string, body: string, buttonText: string, buttonUrl: s
     <!-- footer -->
     <tr>
       <td class="ftr-td" bgcolor="#e8e8e8" style="padding:14px 24px;background-color:#e8e8e8;border-top:1px solid #dddddd">
-        <p class="ftr-text" style="margin:0;font-family:'Courier New',monospace;font-size:9px;color:#666666;letter-spacing:2px">OVERLOAD · BY IGOR OLIVEIRA</p>
+        <p class="ftr-text" style="margin:0;font-family:'Share Tech Mono','Courier New',monospace;font-size:9px;color:#666666;letter-spacing:2px">OVERLOAD · BY IGOR OLIVEIRA</p>
       </td>
     </tr>
 
@@ -154,9 +166,13 @@ Deno.serve(async (req) => {
       html,
     })
 
-    if (error) return new Response(JSON.stringify({ error }), { status: 500 })
-    return new Response(JSON.stringify({ ok: true }), { status: 200 })
+    const headers = { 'Content-Type': 'application/json' }
+    if (error) return new Response(JSON.stringify({ error }), { status: 500, headers })
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers })
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500 })
+    return new Response(JSON.stringify({ error: String(err) }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 })
