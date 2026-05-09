@@ -177,8 +177,8 @@ export const useStore = create(
       },
 
       signOut: async () => {
-        await supabase.auth.signOut()
-        // clearAuth is called automatically via onAuthStateChange(SIGNED_OUT)
+        get().clearAuth()
+        supabase.auth.signOut().catch(() => {})
       },
 
       setViewingUser: async (userId, userName = null) => {

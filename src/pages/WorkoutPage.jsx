@@ -1185,7 +1185,7 @@ function ActiveWorkout() {
         setShownGamif(prev => new Set([...prev, vStep.exerciseId]))
       }
     }
-  }, [viewingStepIdx]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [viewingStepIdx, exerciseHistory]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const vStep         = steps[viewingStepIdx]
   const isPastStep    = viewingStepIdx < currentStepIdx

@@ -96,8 +96,10 @@ export default function AuthPage() {
         } else if (!data.user || data.user.identities?.length === 0) {
           // Supabase retorna user sem identities quando o email já existe
           setError('Este e-mail já está cadastrado. Faça login ou recupere sua senha.')
+        } else if (data.session) {
+          // confirmação de e-mail desligada — onAuthStateChange(SIGNED_IN) já loga automaticamente
         } else {
-          setDoneMsg('Verifique seu e-mail para confirmar o cadastro, depois faça login.')
+          setDoneMsg('Verifique seu e-mail para confirmar o cadastro, depois faça login. Não encontrou? Cheque a pasta de spam.')
           setDone(true)
         }
 
