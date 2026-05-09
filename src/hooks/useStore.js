@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { JS_DAY_TO_IDX, defaultUserProtocol, buildWorkoutSteps } from '../data/protocol'
+import { defaultAchievements, checkNewAchievements } from '../data/achievements'
 import { timerManager } from '../utils/timerManager'
 import { round25 } from '../utils/loads'
 import { supabase } from '../lib/supabase'
@@ -94,6 +95,7 @@ function scheduleSyncSection(section, get) {
     savedExercises:  state0.savedExercises,
     mealLog:         state0.mealLog,
     microLog:        state0.microLog,
+    achievements:    state0.achievements,
   }[section]
 
   console.log('[sync] scheduleSyncSection', section, '| viewing=', state0.viewingUserId, '| target=', targetUserId)
@@ -166,13 +168,15 @@ export const useStore = create(
           authLoading:     false,
           viewingUserId:   null,
           viewingUserName: null,
-          logs:            {},
-          userProtocol:    defaultUserProtocol(),
-          exerciseHistory: {},
-          savedExercises:  [],
-          mealLog:         {},
-          microLog:        {},
-          activeWorkout:   null,
+          logs:               {},
+          userProtocol:       defaultUserProtocol(),
+          exerciseHistory:    {},
+          savedExercises:     [],
+          mealLog:            {},
+          microLog:           {},
+          activeWorkout:      null,
+          achievements:       defaultAchievements(),
+          pendingAchievements: [],
         })
       },
 
@@ -271,9 +275,11 @@ export const useStore = create(
           if (row.section === 'savedExercises')  updates.savedExercises  = row.data
           if (row.section === 'mealLog')         updates.mealLog         = row.data
           if (row.section === 'microLog')        updates.microLog        = row.data
+          if (row.section === 'achievements')    updates.achievements    = row.data
         }
         // Garante que userProfile nunca fica null após hydration
-        if (!updates.userProfile) updates.userProfile = defaultUserProfile()
+        if (!updates.userProfile)  updates.userProfile  = defaultUserProfile()
+        if (!updates.achievements) updates.achievements = defaultAchievements()
         if (Object.keys(updates).length) set(updates)
       },
 
@@ -572,6 +578,15 @@ export const useStore = create(
         scheduleSyncSection('userProtocol', get)
       },
 
+      // ── achievements ─────────────────────────────────────────────────────────
+      achievements:        defaultAchievements(),
+      pendingAchievements: [], // IDs desbloqueados no treino atual, limpos após exibição
+
+      dismissPendingAchievement: () => {
+        const { pendingAchievements } = get()
+        set({ pendingAchievements: pendingAchievements.slice(1) })
+      },
+
       // ── active workout session ────────────────────────────────────────────────
       activeWorkout: null,
 
@@ -672,7 +687,54 @@ export const useStore = create(
             sets: data.sets,
           })
         })
-        set({ activeWorkout: null })
+
+        // ── conquistas ──────────────────────────────────────────────────────
+        const prev = get().achievements
+        const today = new Date().toISOString().split('T')[0]
+        const lastDate = prev.lastWorkoutDate
+
+        // streak: +1 se ontem treinou, 1 se dia diferente sem ser ontem, mantém se for hoje
+        let streak = prev.streak
+        if (lastDate === today) {
+          // mesmo dia, não altera streak
+        } else {
+          const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+          streak = lastDate === yesterday ? streak + 1 : 1
+        }
+
+        // verifica se todos os exercícios com repRange ficaram acima
+        const allExercises = Object.values(exerciseMap)
+        const withRange = allExercises.filter(ex =>
+          ex.sets.some(s => s.setType === 'NORMAL' && s.repRange)
+        )
+        const lastWorkoutAllAbove = withRange.length > 0 && withRange.every(ex =>
+          ex.sets
+            .filter(s => s.setType === 'NORMAL' && s.repRange && s.reps != null)
+            .every(s => {
+              const parts = s.repRange.split('-').map(Number)
+              const hi = parts.length > 1 ? parts[1] : parts[0]
+              return !isNaN(hi) && s.reps > hi
+            })
+        )
+
+        const newCount = prev.workoutCount + 1
+        const updatedAchievements = {
+          ...prev,
+          workoutCount:    newCount,
+          streak,
+          lastWorkoutDate: today,
+        }
+        const newIds = checkNewAchievements(prev, {
+          workoutCount: newCount,
+          streak,
+          lastWorkoutAllAbove,
+        })
+        if (newIds.length > 0) {
+          updatedAchievements.unlockedIds = [...prev.unlockedIds, ...newIds]
+        }
+
+        set({ activeWorkout: null, achievements: updatedAchievements, pendingAchievements: newIds })
+        scheduleSyncSection('achievements', get)
       },
 
       abandonWorkout: () => set({ activeWorkout: null }),
@@ -689,11 +751,12 @@ export const useStore = create(
         restTimer:       state.restTimer,
         exerciseHistory: state.exerciseHistory,
         savedExercises:  state.savedExercises,
-        // _viewerSnapshot nunca persiste — só existe em memória
+        achievements:    state.achievements,
+        // _viewerSnapshot e pendingAchievements nunca persistem — só existem em memória
       }),
       onRehydrateStorage: () => (state) => {
-        // Corrige null salvo no localStorage por bug anterior
-        if (state && !state.userProfile) state.userProfile = defaultUserProfile()
+        if (state && !state.userProfile)  state.userProfile  = defaultUserProfile()
+        if (state && !state.achievements) state.achievements = defaultAchievements()
       },
     }
   )

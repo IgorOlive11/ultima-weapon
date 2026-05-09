@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { LuSave, LuCircleCheck } from 'react-icons/lu'
+import { LuSave, LuCircleCheck, LuLock } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 import { DAY_NAMES } from '../data/protocol'
+import { ACHIEVEMENTS } from '../data/achievements'
+import DoomFace from '../components/DoomFace'
 
 function SaveBtn({ saved, onClick }) {
   return (
@@ -24,6 +26,7 @@ export default function SettingsPage() {
   const currentWeek    = useStore((s) => s.currentWeek)
   const userProfile    = useStore((s) => s.userProfile)
   const setUserProfile = useStore((s) => s.setUserProfile)
+  const achievements   = useStore((s) => s.achievements)
 
   const [dateInput, setDateInput]   = useState(startDate)
   const [dateSaved, setDateSaved]   = useState(false)
@@ -244,6 +247,50 @@ export default function SettingsPage() {
             )
           })}
         </div>
+      </div>
+
+      {/* Conquistas */}
+      <div className="bg-s1 border border-border1 p-4">
+        <div className="font-display text-sm text-neon tracking-[0.2em] mb-3 pb-2 border-b border-border1 flex items-baseline justify-between">
+          <span>CONQUISTAS</span>
+          <span className="font-mono text-[9px] text-muted tracking-widest">
+            {achievements.unlockedIds.length}/{ACHIEVEMENTS.length}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {ACHIEVEMENTS.map(a => {
+            const unlocked = achievements.unlockedIds.includes(a.id)
+            return (
+              <div
+                key={a.id}
+                className={`border p-3 flex flex-col items-center text-center gap-1.5 transition-all ${
+                  unlocked ? 'border-yellow-400/40 bg-yellow-400/5' : 'border-border1 opacity-40'
+                }`}
+              >
+                <div className="relative">
+                  <DoomFace face={a.face} size={44} />
+                  {!unlocked && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                      <LuLock size={14} className="text-muted" />
+                    </div>
+                  )}
+                </div>
+                <div className={`font-display text-[10px] tracking-[0.15em] leading-tight ${unlocked ? 'text-yellow-400' : 'text-muted'}`}>
+                  {a.title}
+                </div>
+                <div className="font-mono text-[8px] text-muted leading-tight">
+                  {a.desc}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        {achievements.streak > 0 && (
+          <div className="mt-3 pt-3 border-t border-border1 font-mono text-[10px] text-muted tracking-wider text-center">
+            STREAK ATUAL: <span className="text-neon">{achievements.streak} DIA{achievements.streak !== 1 ? 'S' : ''}</span>
+            {' · '}TREINOS: <span className="text-neon">{achievements.workoutCount}</span>
+          </div>
+        )}
       </div>
 
       {/* About */}

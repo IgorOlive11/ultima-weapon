@@ -6,6 +6,7 @@ import {
 } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 import { DAY_NAMES, SET_TYPES, GER_CONFIG, getWeightQuestion } from '../data/protocol'
+import { ACHIEVEMENTS } from '../data/achievements'
 import DoomFace from '../components/DoomFace'
 import { round25, round5 } from '../utils/loads'
 
@@ -136,6 +137,46 @@ function GamificationPopup({ type, exerciseName, onDismiss }) {
           style={{ borderColor: color, color }}
         >
           {isAngry ? 'VAI TRABALHAR' : 'BORA PROGREDIR'}
+        </button>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+// ─── AchievementPopup ─────────────────────────────────────────────────────────
+
+function AchievementPopup({ achievementId, onDismiss }) {
+  const achievement = ACHIEVEMENTS.find(a => a.id === achievementId)
+  if (!achievement) return null
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[460] bg-black/90 flex items-center justify-center px-5"
+      onClick={onDismiss}
+    >
+      <motion.div
+        initial={{ scale: 0.82, y: 32 }} animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.82, y: 32 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+        className="w-full max-w-sm bg-s1 border border-yellow-400/40 p-6 text-center"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-center mb-4">
+          <DoomFace face={achievement.face} size={88} />
+        </div>
+        <div className="font-mono text-[9px] text-yellow-400 tracking-[0.3em] mb-1">CONQUISTA DESBLOQUEADA</div>
+        <div className="font-display text-xl tracking-[0.2em] mb-2 text-yellow-400">
+          {achievement.title}
+        </div>
+        <div className="font-mono text-[11px] text-muted leading-relaxed mb-5">
+          {achievement.desc}
+        </div>
+        <button
+          onClick={onDismiss}
+          className="w-full py-3 font-display text-sm tracking-[0.2em] border border-yellow-400/60 text-yellow-400 transition-colors hover:bg-yellow-400/10"
+        >
+          RECEBER
         </button>
       </motion.div>
     </motion.div>
@@ -1141,9 +1182,11 @@ function ActiveWorkout() {
   const completeWorkout     = useStore(s => s.completeWorkout)
   const abandonWorkout      = useStore(s => s.abandonWorkout)
   const userProtocol        = useStore(s => s.userProtocol)
-  const startRestTimer      = useStore(s => s.startRestTimer)
-  const stopRestTimer       = useStore(s => s.stopRestTimer)
-  const exerciseHistory     = useStore(s => s.exerciseHistory)
+  const startRestTimer             = useStore(s => s.startRestTimer)
+  const stopRestTimer              = useStore(s => s.stopRestTimer)
+  const exerciseHistory            = useStore(s => s.exerciseHistory)
+  const pendingAchievements        = useStore(s => s.pendingAchievements)
+  const dismissPendingAchievement  = useStore(s => s.dismissPendingAchievement)
 
   const [showConfirm,  setShowConfirm]  = useState(false)
   const [showAbandon,  setShowAbandon]  = useState(false)
@@ -1474,6 +1517,16 @@ function ActiveWorkout() {
             type={gamifPopup.type}
             exerciseName={gamifPopup.exerciseName}
             onDismiss={() => setGamifPopup(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {pendingAchievements.length > 0 && (
+          <AchievementPopup
+            key={pendingAchievements[0]}
+            achievementId={pendingAchievements[0]}
+            onDismiss={dismissPendingAchievement}
           />
         )}
       </AnimatePresence>
