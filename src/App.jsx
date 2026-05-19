@@ -7,7 +7,6 @@ import GlobalRestTimer from './components/GlobalRestTimer'
 import ViewingAsBanner from './components/ViewingAsBanner'
 import WorkoutPage from './pages/WorkoutPage'
 import ProtocolPage from './pages/ProtocolPage'
-import DietPage from './pages/DietPage'
 import HistoryPage from './pages/HistoryPage'
 import SettingsPage from './pages/SettingsPage'
 import TrainerPage from './pages/TrainerPage'
@@ -48,7 +47,6 @@ export default function App() {
       >
         {activeTab === 'workout'  && <WorkoutPage />}
         {activeTab === 'protocol' && <ProtocolPage />}
-        {activeTab === 'diet'     && <DietPage />}
         {activeTab === 'history'  && <HistoryPage />}
         {activeTab === 'settings' && <SettingsPage />}
         {activeTab === 'trainer'  && <TrainerPage />}

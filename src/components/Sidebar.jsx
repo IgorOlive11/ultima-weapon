@@ -1,7 +1,7 @@
 import React from 'react'
 import {
   LuSwords, LuClipboardList, LuTrendingUp,
-  LuSlidersHorizontal, LuX, LuCalendar, LuFlame, LuSalad,
+  LuSlidersHorizontal, LuX, LuCalendar, LuFlame,
   LuLogOut, LuUsers, LuShield,
 } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
@@ -9,7 +9,6 @@ import { useStore } from '../hooks/useStore'
 const BASE_NAV = [
   { id: 'workout',  label: 'TREINO',        Icon: LuSwords },
   { id: 'protocol', label: 'PROTOCOLO',     Icon: LuClipboardList },
-  { id: 'diet',     label: 'DIETA',         Icon: LuSalad },
   { id: 'history',  label: 'HISTÓRICO',     Icon: LuTrendingUp },
   { id: 'settings', label: 'CONFIGURAÇÕES', Icon: LuSlidersHorizontal },
 ]

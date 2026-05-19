@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { LuSave, LuCircleCheck, LuLock } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 import { DAY_NAMES } from '../data/protocol'
@@ -24,27 +24,11 @@ export default function SettingsPage() {
   const startDate      = useStore((s) => s.startDate)
   const setStartDate   = useStore((s) => s.setStartDate)
   const currentWeek    = useStore((s) => s.currentWeek)
-  const userProfile    = useStore((s) => s.userProfile)
-  const setUserProfile = useStore((s) => s.setUserProfile)
   const achievements      = useStore((s) => s.achievements)
   const setTutorialSeen   = useStore((s) => s.setTutorialSeen)
 
   const [dateInput, setDateInput]   = useState(startDate)
   const [dateSaved, setDateSaved]   = useState(false)
-
-  const [profile, setProfile] = useState({ ...userProfile })
-  const [profileSaved, setProfileSaved] = useState(false)
-
-  const [times, setTimes]       = useState({ workoutTime: userProfile.workoutTime, sleepTime: userProfile.sleepTime })
-  const [timesSaved, setTimesSaved] = useState(false)
-
-  // Sincroniza quando userProfile muda (ex: hydration do Supabase termina)
-  useEffect(() => {
-    if (userProfile) {
-      setProfile({ ...userProfile })
-      setTimes({ workoutTime: userProfile.workoutTime, sleepTime: userProfile.sleepTime })
-    }
-  }, [userProfile])
 
   const userProtocol = useStore((s) => s.userProtocol)
   const currentDay   = useStore((s) => s.currentDay)
@@ -57,53 +41,6 @@ export default function SettingsPage() {
     setStartDate(dateInput)
     setDateSaved(true)
     setTimeout(() => setDateSaved(false), 2000)
-  }
-
-  const saveProfile = () => {
-    setUserProfile({
-      weight: Number(profile.weight),
-      height: Number(profile.height),
-      age:    Number(profile.age),
-      sex:    profile.sex,
-      caloricGoal: profile.caloricGoal,
-    })
-    setProfileSaved(true)
-    setTimeout(() => setProfileSaved(false), 2000)
-  }
-
-  const saveTimes = () => {
-    setUserProfile({ workoutTime: times.workoutTime, sleepTime: times.sleepTime })
-    setTimesSaved(true)
-    setTimeout(() => setTimesSaved(false), 2000)
-  }
-
-  const numInput = (field, label, unit) => (
-    <div>
-      <div className="font-mono text-[9px] text-muted tracking-widest mb-1">{label}{unit ? ` (${unit})` : ''}</div>
-      <input
-        className={inputCls()}
-        type="number" inputMode="decimal" min="0"
-        value={profile[field]}
-        onChange={e => setProfile(p => ({ ...p, [field]: e.target.value }))}
-        style={{ colorScheme: 'dark' }}
-      />
-    </div>
-  )
-
-  const toggleBtn = (field, value, label, color = '#39FF14') => {
-    const active = profile[field] === value
-    return (
-      <button
-        key={value}
-        onClick={() => setProfile(p => ({ ...p, [field]: value }))}
-        className="flex-1 py-2.5 font-display text-[12px] tracking-widest border transition-all"
-        style={active
-          ? { background: color, color: '#080808', borderColor: color }
-          : { borderColor: '#333', color: '#555' }}
-      >
-        {label}
-      </button>
-    )
   }
 
   return (
@@ -144,72 +81,6 @@ export default function SettingsPage() {
           />
         </div>
         <SaveBtn saved={dateSaved} onClick={saveDate} />
-      </div>
-
-      {/* PERFIL */}
-      <div className="bg-s1 border border-border1 p-4">
-        <div className="font-display text-sm text-neon tracking-[0.2em] mb-3 pb-2 border-b border-border1">
-          PERFIL
-        </div>
-        <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
-            {numInput('weight', 'PESO', 'kg')}
-            {numInput('height', 'ALTURA', 'cm')}
-            {numInput('age', 'IDADE', null)}
-          </div>
-
-          <div>
-            <div className="font-mono text-[9px] text-muted tracking-widest mb-1">SEXO</div>
-            <div className="flex gap-2">
-              {toggleBtn('sex', 'M', 'MASC')}
-              {toggleBtn('sex', 'F', 'FEM', '#ff44aa')}
-            </div>
-          </div>
-
-          <div>
-            <div className="font-mono text-[9px] text-muted tracking-widest mb-1">OBJETIVO</div>
-            <div className="flex gap-2">
-              {toggleBtn('caloricGoal', 'bulk',     'BULKING',  '#ffaa00')}
-              {toggleBtn('caloricGoal', 'maintain', 'MANTER',   '#39FF14')}
-              {toggleBtn('caloricGoal', 'cut',      'CUTTING',  '#ff2d2d')}
-            </div>
-          </div>
-        </div>
-        <div className="mt-4">
-          <SaveBtn saved={profileSaved} onClick={saveProfile} />
-        </div>
-      </div>
-
-      {/* HORÁRIOS */}
-      <div className="bg-s1 border border-border1 p-4">
-        <div className="font-display text-sm text-neon tracking-[0.2em] mb-3 pb-2 border-b border-border1">
-          HORÁRIOS
-        </div>
-        <div className="space-y-3">
-          <div>
-            <div className="font-mono text-[9px] text-muted tracking-widest mb-1">HORÁRIO DO TREINO</div>
-            <div className="overflow-hidden">
-              <input
-                type="time" value={times.workoutTime}
-                onChange={e => setTimes(t => ({ ...t, workoutTime: e.target.value }))}
-                className={inputCls()} style={{ colorScheme: 'dark', maxWidth: '100%' }}
-              />
-            </div>
-          </div>
-          <div>
-            <div className="font-mono text-[9px] text-muted tracking-widest mb-1">HORÁRIO DE DORMIR</div>
-            <div className="overflow-hidden">
-              <input
-                type="time" value={times.sleepTime}
-                onChange={e => setTimes(t => ({ ...t, sleepTime: e.target.value }))}
-                className={inputCls()} style={{ colorScheme: 'dark', maxWidth: '100%' }}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="mt-4">
-          <SaveBtn saved={timesSaved} onClick={saveTimes} />
-        </div>
       </div>
 
       {/* Protocol overview */}
