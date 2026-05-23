@@ -1039,7 +1039,9 @@ export default function ProtocolPage() {
         setUserProtocol(protocol)
         protocol.weeks.forEach(week =>
           week.days.forEach(day =>
-            day.exercises.forEach(ex => addSavedExercise({ name: ex.name, muscle: ex.muscle }))
+            day.exercises.forEach(ex =>
+              addSavedExercise({ name: ex.name, muscle: ex.muscle, accessoryMuscle: ex.accessoryMuscle })
+            )
           )
         )
         setCsvError(null)
