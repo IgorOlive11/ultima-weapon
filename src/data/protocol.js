@@ -42,10 +42,12 @@ export const MUSCLE_GROUP_LIST = [
 export const MIN_PLATE_INCREMENT = 5
 
 // Ramp alvo por número de feeders: pct crescente, reps decrescentes
-// Continua o ramp iniciado pelos warmups (50→65→70→75→80→trabalho)
+// Estreante:   warmups 50×8 / 65×6  → feeders 70×5 / 75×4 / 80×3  (sequência 50/65/70/75/80, reps 8/6/5/4/3)
+// Acessório:   warmup  60×6         → feeders 70×5 / 78×3          (sequência 60/70/78,       reps 6/5/3)
+// Já primário: (sem warmup)         → feeder  75×4                  (1 só, sem sequência)
 const FEEDER_RAMPS = {
   3: [{ pct: 0.70, reps: '5' }, { pct: 0.75, reps: '4' }, { pct: 0.80, reps: '3' }],
-  2: [{ pct: 0.72, reps: '4' }, { pct: 0.78, reps: '3' }],
+  2: [{ pct: 0.70, reps: '5' }, { pct: 0.78, reps: '3' }],
   1: [{ pct: 0.75, reps: '4' }],
 }
 
@@ -118,12 +120,12 @@ export function buildWorkoutSteps(exercises) {
     // Usa primaryIdx (pré-incremento) e accessoryMuscleSeen antes do add(accessory)
     if (primaryIdx === 0) {
       if (accessoryMuscleSeen.has(muscle)) {
-        // Pré-ativado como acessório → 1 warmup em 75%×4 (músculo já quente)
-        steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 1, totalSets: 1, pct: 0.75, reps: '4' })
+        // Pré-ativado como acessório → 1 warmup em 60%×6 (antecede feeders 70×5 / 78×3)
+        steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 1, totalSets: 1, pct: 0.60, reps: '6' })
       } else {
-        // Estreante → ramp 2 sets: 50%×8 → 65%×4 (carga crescente, reps decrescentes)
+        // Estreante → ramp 2 sets: 50%×8 → 65%×6 (antecede feeders 70×5 / 75×4 / 80×3)
         steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 1, totalSets: 2, pct: 0.50, reps: '8' })
-        steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 2, totalSets: 2, pct: 0.65, reps: '4' })
+        steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 2, totalSets: 2, pct: 0.65, reps: '6' })
       }
     }
 
