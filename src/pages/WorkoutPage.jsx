@@ -386,14 +386,7 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, sav
           {isWarmup ? 'Prepare os tecidos' : `Ativação progressiva — GER ${step.gerTarget ?? 7}`}
         </div>
 
-        <div className="bg-s2 border border-border1 px-4 py-4 mb-4 flex items-center justify-between gap-4">
-          <div>
-            <div className="font-mono text-[10px] text-muted tracking-wider mb-1">PESO ALVO</div>
-            <div className="font-display text-2xl tracking-wider text-ink">
-              {defaultKg > 0 ? `${defaultKg}kg` : '—'}
-            </div>
-            <div className="font-mono text-[9px] text-muted/50 mt-0.5">{Math.round(step.pct * 100)}% do trabalho</div>
-          </div>
+        <div className="bg-s2 border border-border1 px-4 py-4 mb-4 flex items-center gap-4">
           <div>
             <div className="font-mono text-[10px] text-muted tracking-wider mb-1">REPS</div>
             <div className="font-display text-2xl tracking-wider text-ink">{step.reps}</div>
@@ -401,17 +394,18 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, sav
               <div className="font-mono text-[9px] text-neon/70 mt-0.5">GER {step.gerTarget}</div>
             )}
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-mono text-[10px] text-muted tracking-wider mb-1">CARGA REAL</div>
-            <input
-              type="number"
-              inputMode="decimal"
-              className="w-full bg-s1 border border-border2 text-center font-display text-xl tracking-wider text-neon py-1.5 focus:border-neon outline-none transition-colors"
-              value={kg}
-              placeholder={workingWeight > 0 ? '' : '—'}
-              onChange={e => setKg(e.target.value)}
-            />
-          </div>
+          {workingWeight > 0 && (
+            <div className="flex-1 min-w-0">
+              <div className="font-mono text-[10px] text-muted tracking-wider mb-1">CARGA</div>
+              <input
+                type="number"
+                inputMode="decimal"
+                className="w-full bg-s1 border border-border2 text-center font-display text-xl tracking-wider text-neon py-1.5 focus:border-neon outline-none transition-colors"
+                value={kg}
+                onChange={e => setKg(e.target.value)}
+              />
+            </div>
+          )}
         </div>
 
         {!isWarmup && (
