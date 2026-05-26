@@ -137,6 +137,7 @@ export function buildWorkoutSteps(exercises) {
     } else {
       feederCount = 1  // já trabalhou como primário
     }
+    feederCount = Math.max(1, feederCount)  // piso inegociável — nenhum exercício sem prep
     FEEDER_RAMPS[feederCount].forEach((slot, i) => {
       steps.push({
         type: 'FEEDER',

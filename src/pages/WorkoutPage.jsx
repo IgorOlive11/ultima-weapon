@@ -364,7 +364,7 @@ function WeightQuestionCard({ step, onConfirm, history, isLocked }) {
 function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, savedResult }) {
   const defaultKg = workingWeight > 0 ? roundToMinPlate(workingWeight * step.pct) : 0
   const [reps, setReps] = useState(savedResult?.reps != null ? String(savedResult.reps) : '')
-  const [kg, setKg]     = useState(savedResult?.kg   != null ? String(savedResult.kg)   : String(defaultKg))
+  const [kg, setKg]     = useState(savedResult?.kg   != null ? String(savedResult.kg)   : (defaultKg > 0 ? String(defaultKg) : ''))
   const isWarmup = step.type === 'WARMUP'
 
   const handleDone = () => {
@@ -408,6 +408,7 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, sav
               inputMode="decimal"
               className="w-full bg-s1 border border-border2 text-center font-display text-xl tracking-wider text-neon py-1.5 focus:border-neon outline-none transition-colors"
               value={kg}
+              placeholder={workingWeight > 0 ? '' : '—'}
               onChange={e => setKg(e.target.value)}
             />
           </div>
@@ -1249,6 +1250,8 @@ function ActiveWorkout() {
   useEffect(() => {
     const curStep = steps[currentStepIdx]
     if (curStep?.type !== 'FEEDER') return
+
+    // Ajuste 1 — guard de pré-visualização: sem peso informado não roda corte nem cálculo
     const ww = exerciseWeights[curStep.exerciseId] || 0
     if (ww <= 0) return
 
@@ -1256,13 +1259,20 @@ function ActiveWorkout() {
     if (feederKg < ww) return
 
     const wsStep = steps.find(s => s.type === 'WORKING_SET' && s.exerciseId === curStep.exerciseId)
-    const wsMinReps = parseInt(wsStep?.setDef?.repRange?.split('-')[0]) || 1
+    // Ajuste 2 — tipos sem repRange (REST_PAUSE, MUSCLE_ROUND, PULSE) sempre diferem por GER
+    // (7 vs 9+): nunca são duplicatas → wsMinReps = Infinity, corte nunca dispara para esses tipos
+    const rawMinReps = parseInt(wsStep?.setDef?.repRange?.split('-')[0])
+    const wsMinReps  = isNaN(rawMinReps) ? Infinity : rawMinReps
     const feederReps = parseInt(curStep.reps) || 0
 
-    if (feederReps >= wsMinReps) {
-      setDir(1)
-      advanceWorkoutStep()
-    }
+    if (feederReps < wsMinReps) return
+
+    // Ajuste 2 — piso inegociável: preserva sempre o prep de MENOR carga (setNum=1, mais reps)
+    // Feeders mais pesados (setNum > 1) podem ser cortados; o mais leve nunca
+    if (curStep.setNum === 1) return
+
+    setDir(1)
+    advanceWorkoutStep()
   }, [currentStepIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const vStep         = steps[viewingStepIdx]
