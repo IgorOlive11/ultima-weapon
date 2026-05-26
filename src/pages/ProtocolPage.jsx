@@ -914,7 +914,7 @@ function DayEditor({ weekIdx, dayIdx }) {
               opts: [30, 45, 60, 90],
             },
             {
-              label: 'FEEDER SETS',
+              label: 'PREP SETS',
               sub: 'Descanso entre feeders',
               field: 'feederRestSeconds',
               set: (v) => setDayFeederRestSeconds(weekIdx, dayIdx, v),

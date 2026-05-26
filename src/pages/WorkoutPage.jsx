@@ -5,10 +5,10 @@ import {
   LuFlame, LuDumbbell, LuPlus, LuMinus, LuChevronLeft,
 } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
-import { DAY_NAMES, SET_TYPES, GER_CONFIG, getWeightQuestion } from '../data/protocol'
+import { DAY_NAMES, SET_TYPES, GER_CONFIG, getWeightQuestion, MIN_PLATE_INCREMENT } from '../data/protocol'
 import { ACHIEVEMENTS } from '../data/achievements'
 import DoomFace from '../components/DoomFace'
-import { round25, round5 } from '../utils/loads'
+import { round25 } from '../utils/loads'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -17,6 +17,10 @@ const WEEK_LABELS = ['S01','S02','S03','S04','S05','S06','S07','S08']
 function fmtKg(v) {
   if (!v || v <= 0) return '—'
   return `${round25(v)} KG`
+}
+
+function roundToMinPlate(v) {
+  return Math.round(v / MIN_PLATE_INCREMENT) * MIN_PLATE_INCREMENT
 }
 
 function cardVariants(dir) {
@@ -302,7 +306,7 @@ function WeightQuestionCard({ step, onConfirm, history, isLocked }) {
               ))}
               {history.feeders?.filter(f => f.reps > 0).map((f, i) => (
                 <>
-                  <span key={`fl${i}`} className="font-mono text-[9px] text-muted/50">FEEDER {i+1}</span>
+                  <span key={`fl${i}`} className="font-mono text-[9px] text-muted/50">PREP {i+1}</span>
                   <span key={`fr${i}`} className="font-mono text-[10px] text-muted">{f.reps}r · {fmtKg(f.kg)}</span>
                 </>
               ))}
@@ -358,7 +362,7 @@ function WeightQuestionCard({ step, onConfirm, history, isLocked }) {
 }
 
 function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, savedResult }) {
-  const defaultKg = round5(workingWeight * step.pct)
+  const defaultKg = workingWeight > 0 ? roundToMinPlate(workingWeight * step.pct) : 0
   const [reps, setReps] = useState(savedResult?.reps != null ? String(savedResult.reps) : '')
   const [kg, setKg]     = useState(savedResult?.kg   != null ? String(savedResult.kg)   : String(defaultKg))
   const isWarmup = step.type === 'WARMUP'
@@ -376,21 +380,29 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, sav
         <div className="font-display text-xl tracking-wider text-ink mb-1">
           {isWarmup
             ? `AQUECIMENTO ${step.setNum} DE ${step.totalSets ?? 2}`
-            : `FEEDER ${step.setNum} DE ${step.totalSets ?? 1}`}
+            : `PREP ${step.setNum} DE ${step.totalSets ?? 1}`}
         </div>
         <div className="font-mono text-[11px] text-muted/60 tracking-wider mb-4">
-          {isWarmup ? 'Prepare os tecidos' : 'Ativação progressiva — GER 7'}
+          {isWarmup ? 'Prepare os tecidos' : `Ativação progressiva — GER ${step.gerTarget ?? 7}`}
         </div>
 
         <div className="bg-s2 border border-border1 px-4 py-4 mb-4 flex items-center justify-between gap-4">
           <div>
-            <div className="font-mono text-[10px] text-muted tracking-wider mb-1">ALVO</div>
-            <div className="font-display text-2xl tracking-wider text-ink">{step.reps} REPS</div>
+            <div className="font-mono text-[10px] text-muted tracking-wider mb-1">PESO ALVO</div>
+            <div className="font-display text-2xl tracking-wider text-ink">
+              {defaultKg > 0 ? `${defaultKg}kg` : '—'}
+            </div>
+            <div className="font-mono text-[9px] text-muted/50 mt-0.5">{Math.round(step.pct * 100)}% do trabalho</div>
+          </div>
+          <div>
+            <div className="font-mono text-[10px] text-muted tracking-wider mb-1">REPS</div>
+            <div className="font-display text-2xl tracking-wider text-ink">{step.reps}</div>
+            {!isWarmup && step.gerTarget != null && (
+              <div className="font-mono text-[9px] text-neon/70 mt-0.5">GER {step.gerTarget}</div>
+            )}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-mono text-[10px] text-muted tracking-wider mb-1">
-              CARGA <span className="text-muted/50">({Math.round(step.pct*100)}% ≈ {round5(workingWeight * step.pct)}kg)</span>
-            </div>
+            <div className="font-mono text-[10px] text-muted tracking-wider mb-1">CARGA REAL</div>
             <input
               type="number"
               inputMode="decimal"
@@ -403,9 +415,9 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, sav
 
         {!isWarmup && (
           <div className="flex items-center gap-2 mb-4">
-            <DoomFace face={GER_CONFIG[7].face} size={28}/>
+            <DoomFace face={GER_CONFIG[step.gerTarget ?? 7]?.face} size={28}/>
             <div className="font-mono text-[10px] text-muted leading-relaxed">
-              Mantenha GER 7 nestas séries.<br/>Sentir o movimento, não chegar perto da falha.
+              Mantenha GER {step.gerTarget ?? 7} nestas séries.<br/>Sentir o movimento, não chegar perto da falha.
             </div>
           </div>
         )}
@@ -1229,6 +1241,29 @@ function ActiveWorkout() {
       }
     }
   }, [viewingStepIdx, exerciseHistory]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mudança 3b — corte de feeder na camada de execução (steps gerados permanecem íntegros)
+  // Critério: peso arredondado a MIN_PLATE_INCREMENT ≥ peso de trabalho E reps ≥ mín. da série efetiva
+  // Peso disponível em exerciseWeights após WEIGHT_QUESTION; buildWorkoutSteps não tem acesso a ele
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    const curStep = steps[currentStepIdx]
+    if (curStep?.type !== 'FEEDER') return
+    const ww = exerciseWeights[curStep.exerciseId] || 0
+    if (ww <= 0) return
+
+    const feederKg = Math.round(ww * curStep.pct / MIN_PLATE_INCREMENT) * MIN_PLATE_INCREMENT
+    if (feederKg < ww) return
+
+    const wsStep = steps.find(s => s.type === 'WORKING_SET' && s.exerciseId === curStep.exerciseId)
+    const wsMinReps = parseInt(wsStep?.setDef?.repRange?.split('-')[0]) || 1
+    const feederReps = parseInt(curStep.reps) || 0
+
+    if (feederReps >= wsMinReps) {
+      setDir(1)
+      advanceWorkoutStep()
+    }
+  }, [currentStepIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const vStep         = steps[viewingStepIdx]
   const isPastStep    = viewingStepIdx < currentStepIdx

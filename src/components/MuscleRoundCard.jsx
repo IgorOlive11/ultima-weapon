@@ -185,7 +185,7 @@ export default function MuscleRoundCard({ exercise, weekIdx, dayIdx, exIdx, onSa
             <>
               <div className="section-label">
                 <LuArrowDownToLine size={10} />
-                FEEDER SET
+                PREP SET
               </div>
               <div className="set-row mb-3">
                 <span className="font-mono text-[10px] text-muted w-4">F</span>

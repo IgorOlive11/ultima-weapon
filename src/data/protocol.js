@@ -38,6 +38,17 @@ export const MUSCLE_GROUP_LIST = [
   'CORE', 'OUTRO',
 ]
 
+// Incremento mínimo montável em kg na maioria das academias (ajuste por equipamento)
+export const MIN_PLATE_INCREMENT = 5
+
+// Ramp alvo por número de feeders: pct crescente, reps decrescentes
+// Continua o ramp iniciado pelos warmups (50→65→70→75→80→trabalho)
+const FEEDER_RAMPS = {
+  3: [{ pct: 0.70, reps: '5' }, { pct: 0.75, reps: '4' }, { pct: 0.80, reps: '3' }],
+  2: [{ pct: 0.72, reps: '4' }, { pct: 0.78, reps: '3' }],
+  1: [{ pct: 0.75, reps: '4' }],
+}
+
 // Default protocol template for 8 weeks × 7 days
 export function defaultUserProtocol() {
   return {
@@ -104,22 +115,40 @@ export function buildWorkoutSteps(exercises) {
     })
 
     // Warmup only for first occurrence of each primary muscle
+    // Usa primaryIdx (pré-incremento) e accessoryMuscleSeen antes do add(accessory)
     if (primaryIdx === 0) {
       if (accessoryMuscleSeen.has(muscle)) {
-        // Already recruited as accessory → 1 warmup set
-        steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 1, totalSets: 1, pct: 0.50, reps: '12-15' })
+        // Pré-ativado como acessório → 1 warmup em 75%×4 (músculo já quente)
+        steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 1, totalSets: 1, pct: 0.75, reps: '4' })
       } else {
-        // Fresh muscle → 2 warmup sets
-        steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 1, totalSets: 2, pct: 0.45, reps: '12-15' })
-        steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 2, totalSets: 2, pct: 0.50, reps: '12-15' })
+        // Estreante → ramp 2 sets: 50%×8 → 65%×4 (carga crescente, reps decrescentes)
+        steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 1, totalSets: 2, pct: 0.50, reps: '8' })
+        steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 2, totalSets: 2, pct: 0.65, reps: '4' })
       }
     }
 
-    // Feeders: 3 for 1st exercise, 2 for 2nd, 1 for rest (all at 75%)
-    const feederCount = exIdx === 0 ? 3 : exIdx === 1 ? 2 : 1
-    for (let i = 0; i < feederCount; i++) {
-      steps.push({ type: 'FEEDER', exerciseId: exercise.id, exerciseName: exercise.name, setNum: i + 1, totalSets: feederCount, pct: 0.75, reps: '6-8' })
+    // Feeders — ramp progressivo (pct crescente, reps decrescentes) por estado do músculo
+    // Usa primaryIdx (pré-incremento) e accessoryMuscleSeen antes do add(accessory)
+    let feederCount
+    if (primaryIdx === 0 && !accessoryMuscleSeen.has(muscle)) {
+      feederCount = 3  // estreante
+    } else if (primaryIdx === 0 && accessoryMuscleSeen.has(muscle)) {
+      feederCount = 2  // pré-ativado como acessório
+    } else {
+      feederCount = 1  // já trabalhou como primário
     }
+    FEEDER_RAMPS[feederCount].forEach((slot, i) => {
+      steps.push({
+        type: 'FEEDER',
+        exerciseId: exercise.id,
+        exerciseName: exercise.name,
+        setNum: i + 1,
+        totalSets: feederCount,
+        pct: slot.pct,
+        reps: slot.reps,
+        gerTarget: 7,
+      })
+    })
 
     // Register accessory muscle for subsequent exercises
     if (accessory) accessoryMuscleSeen.add(accessory)
