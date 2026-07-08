@@ -1,11 +1,11 @@
 export const GER_CONFIG = {
-  7:  { label: 'GER 7',  title: 'POSSO BRINCAR PAPAIZÃO',         subtitle: '4-6 reps na reserva',         face: 'ger7'  },
-  8:  { label: 'GER 8',  title: 'NÃO QUERO ME MACHUCAR',          subtitle: '2-3 reps na reserva',         face: 'ger8'  },
-  9:  { label: 'GER 9',  title: 'EU SOU MUITO NOVO PRA MORRER',   subtitle: '1 rep na reserva',            face: 'ger9'  },
-  10: { label: 'GER 10', title: 'QUEBREI MINHA LINHA',            subtitle: 'falha com forma perfeita',    face: 'ger10' },
-  11: { label: 'GER 11', title: 'SADOMASOQUISTA',                  subtitle: 'falha após perder a forma',   face: 'ger11' },
-  12: { label: 'GER 12', title: 'VIOLÊNCIA GRATUITA',             subtitle: 'ajuda e técnicas além falha', face: 'ger12' },
-  13: { label: 'GER 13', title: 'EU SOU REINCARNAÇÃO DO LUCIFER', subtitle: 'widowmaker territory',        face: 'ger13' },
+  7:  { label: 'GER 7',  title: 'POSSO BRINCAR PAPAIZÃO',         subtitle: '4-6 reps na reserva',         rir: '4-6 reps da falha',                 face: 'ger7'  },
+  8:  { label: 'GER 8',  title: 'NÃO QUERO ME MACHUCAR',          subtitle: '2-3 reps na reserva',         rir: '2-3 reps da falha',                 face: 'ger8'  },
+  9:  { label: 'GER 9',  title: 'EU SOU MUITO NOVO PRA MORRER',   subtitle: '1 rep na reserva',            rir: '1 rep da falha',                    face: 'ger9'  },
+  10: { label: 'GER 10', title: 'QUEBREI MINHA LINHA',            subtitle: 'falha com forma perfeita',    rir: '0 reps da falha',                   face: 'ger10' },
+  11: { label: 'GER 11', title: 'SADOMASOQUISTA',                  subtitle: 'falha após perder a forma',   rir: 'falha após perder a forma',         face: 'ger11' },
+  12: { label: 'GER 12', title: 'VIOLÊNCIA GRATUITA',             subtitle: 'ajuda e técnicas além falha', rir: 'além da falha com ajuda/técnicas',   face: 'ger12' },
+  13: { label: 'GER 13', title: 'EU SOU REINCARNAÇÃO DO LUCIFER', subtitle: 'widowmaker territory',        rir: 'além da falha extrema',             face: 'ger13' },
 }
 
 export const SET_TYPES = {

@@ -23,6 +23,47 @@ function roundToMinPlate(v) {
   return Math.round(v / MIN_PLATE_INCREMENT) * MIN_PLATE_INCREMENT
 }
 
+const WORKING_GER_FACE_SIZE = 40
+
+function getGerConfig(ger) {
+  return GER_CONFIG[ger] || GER_CONFIG[10]
+}
+
+function GerEffortPanel({ ger, color }) {
+  const cfg = getGerConfig(ger)
+  return (
+    <div className="flex items-center gap-3 bg-s2 border border-border1 px-3 py-2 mb-2.5 min-h-[74px]">
+      <DoomFace face={cfg.face} size={WORKING_GER_FACE_SIZE}/>
+      <div className="min-w-0">
+        <div className="font-display text-sm tracking-wider leading-none mb-1" style={{ color }}>
+          {cfg.label}
+        </div>
+        <div className="font-mono text-[10px] text-muted truncate">{cfg.title}</div>
+        <div className="font-mono text-[10px] text-muted/60 mt-0.5">
+          {cfg.label} · {cfg.rir || cfg.subtitle}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function WorkingSetShell({ step, typeInfo, label, workingWeight, children }) {
+  return (
+    <div className="h-full bg-s1 border border-border2 rounded-sm overflow-hidden flex flex-col">
+      <div className="h-1 flex-shrink-0" style={{ background: typeInfo.color }} />
+      <div className="p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
+        <div className="font-mono text-[9px] text-muted tracking-[0.22em] mb-0.5">{step.muscle}</div>
+        <div className="font-display text-base tracking-wider text-ink leading-none mb-1 truncate">{step.exerciseName}</div>
+        <div className="font-display text-[11px] tracking-[0.18em] mb-2" style={{ color: typeInfo.color }}>
+          {label}{workingWeight > 0 ? ` · ${fmtKg(workingWeight)}` : ''}
+        </div>
+        <GerEffortPanel ger={step.setDef?.ger ?? typeInfo.ger} color={typeInfo.color}/>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 // ─── ConfirmFinishModal ───────────────────────────────────────────────────────
 
 function ConfirmModal({ title, subtitle, confirmLabel, confirmClass, onConfirm, onCancel }) {
@@ -448,83 +489,64 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, sav
 function NormalSetCard({ step, workingWeight, onDone, isLocked, prevData, savedResult }) {
   const [repsHit, setRepsHit] = useState(savedResult?.reps != null ? String(savedResult.reps) : '')
   const typeInfo  = SET_TYPES[step.setDef.type] || SET_TYPES.NORMAL
-  const gerCfg    = GER_CONFIG[step.setDef.ger] || GER_CONFIG[10]
 
   const handleDone = () => {
     onDone({ kg: workingWeight, reps: parseInt(repsHit) || 0 })
   }
 
   return (
-    <div className="h-full bg-s1 border border-border2 rounded-sm overflow-hidden flex flex-col">
-      <div className="h-1" style={{ background: typeInfo.color }} />
-      <div className="p-4 flex-1 min-h-0 overflow-hidden flex flex-col">
-        <div className="font-mono text-[10px] text-muted tracking-[0.25em] mb-1">{step.muscle}</div>
-        <div className="font-display text-lg tracking-wider text-ink mb-0.5 truncate">{step.exerciseName}</div>
-        <div className="font-display text-xs tracking-[0.2em] mb-3" style={{ color: typeInfo.color }}>
-          {step.totalSets > 1 ? `SÉRIE ${step.setNum} DE ${step.totalSets}` : 'SÉRIE PRINCIPAL'}
+    <WorkingSetShell
+      step={step}
+      typeInfo={typeInfo}
+      label={step.totalSets > 1 ? `SÉRIE ${step.setNum} DE ${step.totalSets}` : 'SÉRIE PRINCIPAL'}
+      workingWeight={workingWeight}
+    >
+      <div className="flex gap-2 mb-2.5">
+        <div className="flex-1 bg-s2 border border-border1 px-3 py-2 text-center">
+          <div className="font-mono text-[9px] text-muted tracking-wider mb-0.5">CARGA</div>
+          <div className="font-display text-xl tracking-wider text-neon leading-none">{fmtKg(workingWeight)}</div>
         </div>
-
-        {/* GER face */}
-        <div className="flex items-center gap-3 bg-s2 border border-border1 px-3 py-2.5 mb-3">
-          <DoomFace face={gerCfg.face} size={40}/>
-          <div>
-            <div className="font-display text-sm tracking-wider" style={{ color: typeInfo.color }}>
-              {gerCfg.label}
-            </div>
-            <div className="font-mono text-[11px] text-muted">{gerCfg.title}</div>
-            <div className="font-mono text-[10px] text-muted/60 mt-0.5">{gerCfg.subtitle}</div>
+        {step.setDef.repRange && (
+          <div className="flex-1 bg-s2 border border-border1 px-3 py-2 text-center">
+            <div className="font-mono text-[9px] text-muted tracking-wider mb-0.5">REP RANGE</div>
+            <div className="font-display text-xl tracking-wider text-ink leading-none">{step.setDef.repRange}</div>
           </div>
-        </div>
-
-        {/* weight + rep range */}
-        <div className="flex gap-3 mb-3">
-          <div className="flex-1 bg-s2 border border-border1 px-3 py-2.5 text-center">
-            <div className="font-mono text-[10px] text-muted tracking-wider mb-1">CARGA</div>
-            <div className="font-display text-2xl tracking-wider text-neon">{fmtKg(workingWeight)}</div>
-          </div>
-          {step.setDef.repRange && (
-            <div className="flex-1 bg-s2 border border-border1 px-3 py-3 text-center">
-              <div className="font-mono text-[10px] text-muted tracking-wider mb-1">REP RANGE</div>
-              <div className="font-display text-2xl tracking-wider text-ink">{step.setDef.repRange}</div>
-            </div>
-          )}
-        </div>
-
-        <PrevRecord prevData={prevData} setDef={step.setDef} />
-
-        {/* reps hit input */}
-        <div className="mt-auto mb-3">
-          <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">REPS REALIZADAS</label>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setRepsHit(r => String(Math.max(0, (parseInt(r)||0) - 1)))}
-              className="w-11 h-11 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
-            ><LuMinus size={16}/></button>
-            <input
-              type="number"
-              inputMode="numeric"
-              className="flex-1 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-2 focus:border-neon outline-none transition-colors"
-              placeholder="0"
-              value={repsHit}
-              onChange={e => setRepsHit(e.target.value)}
-            />
-            <button
-              onClick={() => setRepsHit(r => String((parseInt(r)||0) + 1))}
-              className="w-11 h-11 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
-            ><LuPlus size={16}/></button>
-          </div>
-        </div>
-
-        <button
-          onClick={handleDone}
-          disabled={isLocked}
-          className="w-full py-3 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-opacity"
-          style={{ background: typeInfo.color }}
-        >
-          <LuCheck size={16}/> SÉRIE CONCLUÍDA
-        </button>
+        )}
       </div>
-    </div>
+
+      <PrevRecord prevData={prevData} setDef={step.setDef} />
+
+      <div className="mt-auto mb-2.5">
+        <label className="font-mono text-[9px] text-muted tracking-wider block mb-1">REPS REALIZADAS</label>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setRepsHit(r => String(Math.max(0, (parseInt(r)||0) - 1)))}
+            className="w-10 h-10 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
+          ><LuMinus size={16}/></button>
+          <input
+            type="number"
+            inputMode="numeric"
+            className="flex-1 min-w-0 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-1.5 focus:border-neon outline-none transition-colors"
+            placeholder="0"
+            value={repsHit}
+            onChange={e => setRepsHit(e.target.value)}
+          />
+          <button
+            onClick={() => setRepsHit(r => String((parseInt(r)||0) + 1))}
+            className="w-10 h-10 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
+          ><LuPlus size={16}/></button>
+        </div>
+      </div>
+
+      <button
+        onClick={handleDone}
+        disabled={isLocked}
+        className="w-full py-2.5 font-display text-sm tracking-[0.18em] text-bg disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-opacity"
+        style={{ background: typeInfo.color }}
+      >
+        <LuCheck size={16}/> SÉRIE CONCLUÍDA
+      </button>
+    </WorkingSetShell>
   )
 }
 
@@ -574,120 +596,96 @@ function RestPauseCard({ step, workingWeight, onDone, isLocked, prevData }) {
   const [localReps, setLocalReps] = useState('')
 
   return (
-    <div className="h-full bg-s1 border border-border2 rounded-sm overflow-hidden flex flex-col">
-      <div className="h-1" style={{ background: typeInfo.color }}/>
-      <div className="p-4 flex-1 min-h-0 overflow-hidden flex flex-col">
-        <div className="font-mono text-[10px] text-muted tracking-[0.25em] mb-1">{step.muscle}</div>
-        <div className="font-display text-lg tracking-wider text-ink mb-0.5 truncate">{step.exerciseName}</div>
-        <div className="font-display text-xs tracking-[0.2em] mb-3" style={{ color: typeInfo.color }}>
-          DC STYLE REST PAUSE · {fmtKg(workingWeight)}
-        </div>
+    <WorkingSetShell step={step} typeInfo={typeInfo} label="DC STYLE REST PAUSE" workingWeight={workingWeight}>
+      <div className="bg-s2 border border-border1 px-3 py-2 mb-2.5 font-mono text-[10px] text-muted leading-snug">
+        Carga para ~8 reps. Falha → <span className="text-orange-400">20s</span> → falha de novo.
+        <br/>10-11 reps no bloco 1: progride carga.
+      </div>
 
-        {/* GER face */}
-        <div className="flex items-center gap-3 bg-s2 border border-border1 px-3 py-2.5 mb-3">
-          <DoomFace face={GER_CONFIG[typeInfo.ger].face} size={40}/>
-          <div>
-            <div className="font-display text-sm tracking-wider" style={{ color: typeInfo.color }}>
-              {GER_CONFIG[typeInfo.ger].label}
+      <div className="flex flex-col gap-1 mb-2.5">
+        {blocks.map((b, i) => (
+          <div
+            key={i}
+            className={`flex items-center gap-3 border px-3 py-1.5 ${
+              i < currentBlock ? 'border-border2 bg-s2 opacity-60' :
+              i === currentBlock ? 'border-orange-500/50 bg-orange-500/5' :
+              'border-border1 opacity-30'
+            }`}
+          >
+            <div className="font-display text-[13px] tracking-wider" style={{ color: typeInfo.color }}>
+              BLOCO {i+1}
             </div>
-            <div className="font-mono text-[11px] text-muted">{GER_CONFIG[typeInfo.ger].title}</div>
+            <div className="flex-1 font-mono text-[10px] text-muted">
+              {b.reps !== null ? `${b.reps} reps` : i === currentBlock ? 'em andamento...' : '-'}
+            </div>
+            {b.reps !== null && <LuCheck size={14} className="text-orange-400"/>}
           </div>
-        </div>
+        ))}
+      </div>
 
-        {/* instructions */}
-        <div className="bg-s2 border border-border1 px-3 py-2.5 mb-3 font-mono text-[10px] text-muted leading-snug">
-          Carga para ~8 reps. Vai até a falha → <span className="text-orange-400">Pausa 20s</span> → vai até a falha de novo.
-          <br/>Quando chegar 10-11 reps no bloco 1: progride carga.
-        </div>
+      <PrevRecord prevData={prevData} />
 
-        {/* blocks */}
-        <div className="flex flex-col gap-1.5 mb-3">
-          {blocks.map((b, i) => (
-            <div
-              key={i}
-              className={`flex items-center gap-3 border px-3 py-2 ${
-                i < currentBlock ? 'border-border2 bg-s2 opacity-60' :
-                i === currentBlock ? 'border-orange-500/50 bg-orange-500/5' :
-                'border-border1 opacity-30'
-              }`}
-            >
-              <div className="font-display text-sm tracking-wider" style={{ color: typeInfo.color }}>
-                BLOCO {i+1}
-              </div>
-              <div className="flex-1 font-mono text-[11px] text-muted">
-                {b.reps !== null ? `${b.reps} reps` : i === currentBlock ? 'em andamento…' : '—'}
-              </div>
-              {b.reps !== null && <LuCheck size={14} className="text-orange-400"/>}
-            </div>
-          ))}
-        </div>
-
-        <PrevRecord prevData={prevData} />
-
-        {/* 20s inter-block countdown */}
-        {phase === 'rest20' && timer20 !== null && (
-          <div className="bg-orange-500/10 border border-orange-500/30 px-4 py-3 mb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-mono text-[10px] text-orange-400 tracking-wider mb-1">PAUSA 20s</div>
-                <div className="font-display text-4xl tracking-wider text-orange-400">{timer20}</div>
-              </div>
-              <button
-                onClick={handleSkipRest}
-                className="px-3 py-2 font-display text-xs tracking-wider border border-orange-500/40 text-orange-400 hover:bg-orange-500/10 transition-colors"
-              >
-                PULAR
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* block rep input */}
-        {phase === 'block' && !isDone && (
-          <div className="mt-auto mb-3">
-            <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">
-              REPS DO BLOCO {currentBlock + 1}
-            </label>
-            <div className="flex items-center gap-3 mb-3">
-              <button
-                onClick={() => setLocalReps(r => String(Math.max(0, (parseInt(r)||0) - 1)))}
-                className="w-11 h-11 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
-              ><LuMinus size={16}/></button>
-              <input
-                type="number" inputMode="numeric"
-                className="flex-1 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-2 focus:border-neon outline-none transition-colors"
-                placeholder="0"
-                value={localReps}
-                onChange={e => setLocalReps(e.target.value)}
-              />
-              <button
-                onClick={() => setLocalReps(r => String((parseInt(r)||0) + 1))}
-                className="w-11 h-11 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
-              ><LuPlus size={16}/></button>
+      {phase === 'rest20' && timer20 !== null && (
+        <div className="bg-orange-500/10 border border-orange-500/30 px-3 py-2 mb-2.5">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-mono text-[9px] text-orange-400 tracking-wider mb-0.5">PAUSA 20s</div>
+              <div className="font-display text-3xl tracking-wider text-orange-400 leading-none">{timer20}</div>
             </div>
             <button
-              onClick={() => { handleBlockDone(parseInt(localReps)||0); setLocalReps('') }}
-              disabled={!parseInt(localReps)}
-              className="w-full py-3 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 border-0"
-              style={{ background: typeInfo.color }}
+              onClick={handleSkipRest}
+              className="px-3 py-2 font-display text-xs tracking-wider border border-orange-500/40 text-orange-400 hover:bg-orange-500/10 transition-colors"
             >
-              BLOCO {currentBlock+1} CONCLUÍDO
+              PULAR
             </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {isDone && (
+      {phase === 'block' && !isDone && (
+        <div className="mt-auto mb-2.5">
+          <label className="font-mono text-[9px] text-muted tracking-wider block mb-1">
+            REPS DO BLOCO {currentBlock + 1}
+          </label>
+          <div className="flex items-center gap-2 mb-2.5">
+            <button
+              onClick={() => setLocalReps(r => String(Math.max(0, (parseInt(r)||0) - 1)))}
+              className="w-10 h-10 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
+            ><LuMinus size={16}/></button>
+            <input
+              type="number" inputMode="numeric"
+              className="flex-1 min-w-0 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-1.5 focus:border-neon outline-none transition-colors"
+              placeholder="0"
+              value={localReps}
+              onChange={e => setLocalReps(e.target.value)}
+            />
+            <button
+              onClick={() => setLocalReps(r => String((parseInt(r)||0) + 1))}
+              className="w-10 h-10 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
+            ><LuPlus size={16}/></button>
+          </div>
           <button
-            onClick={handleFinish}
-            disabled={isLocked}
-            className="w-full py-3 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 flex items-center justify-center gap-2 mt-auto"
+            onClick={() => { handleBlockDone(parseInt(localReps)||0); setLocalReps('') }}
+            disabled={!parseInt(localReps)}
+            className="w-full py-2.5 font-display text-sm tracking-[0.18em] text-bg disabled:opacity-40 border-0"
             style={{ background: typeInfo.color }}
           >
-            <LuFlame size={16}/> REST PAUSE CONCLUÍDO
+            BLOCO {currentBlock+1} CONCLUÍDO
           </button>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+
+      {isDone && (
+        <button
+          onClick={handleFinish}
+          disabled={isLocked}
+          className="w-full py-2.5 font-display text-sm tracking-[0.18em] text-bg disabled:opacity-40 flex items-center justify-center gap-2 mt-auto"
+          style={{ background: typeInfo.color }}
+        >
+          <LuFlame size={16}/> REST PAUSE CONCLUÍDO
+        </button>
+      )}
+    </WorkingSetShell>
   )
 }
 
@@ -735,128 +733,115 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked, prevData }) {
   }
 
   return (
-    <div className="h-full bg-s1 border border-border2 rounded-sm overflow-hidden flex flex-col">
-      <div className="h-1" style={{ background: typeInfo.color }}/>
-      <div className="p-4 flex-1 min-h-0 overflow-hidden flex flex-col">
-        <div className="font-mono text-[10px] text-muted tracking-[0.25em] mb-1">{step.muscle}</div>
-        <div className="font-display text-lg tracking-wider text-ink mb-0.5 truncate">{step.exerciseName}</div>
-        <div className="font-display text-xs tracking-[0.2em] mb-3" style={{ color: typeInfo.color }}>
-          MUSCLE ROUND · {fmtKg(workingWeight)}
-        </div>
-
-        <div className="bg-s2 border border-border1 px-3 py-2.5 mb-3 font-mono text-[10px] text-muted leading-snug">
-          Blocos de <span className="text-red-400 font-bold">4 reps</span> com 10s de descanso entre blocos.
-          Continue até falhar uma vez.
-        </div>
-
-        <PrevRecord prevData={prevData} />
-
-        {/* block grid */}
-        <div className="grid grid-cols-6 gap-1.5 mb-3">
-          {Array(TOTAL_BLOCKS).fill(null).map((_, i) => {
-            const done   = i < completedBlocks
-            const isFail = failedInfo !== null && i === failedInfo.block - 1
-            const isCurr = i === completedBlocks && phase === 'ready' && failedInfo === null
-            return (
-              <div
-                key={i}
-                className={`h-8 flex items-center justify-center border font-display text-xs transition-all ${
-                  isFail ? 'border-red-500 bg-red-500/20 text-red-400' :
-                  done   ? 'border-red-400/60 bg-red-400/20 text-red-300' :
-                  isCurr ? 'border-red-500 bg-red-500/10 text-red-400' :
-                           'border-border2 text-muted/30'
-                }`}
-              >
-                {isFail ? '✕' : done ? '✓' : i+1}
-              </div>
-            )
-          })}
-        </div>
-
-        {/* 10s inter-block rest */}
-        {phase === 'rest10' && blockTimer !== null && (
-          <div className="bg-red-500/10 border border-red-500/30 px-4 py-3 mb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-mono text-[10px] text-red-400 tracking-wider mb-1">DESCANSO 10s</div>
-                <div className="font-display text-4xl tracking-wider text-red-400">{blockTimer}</div>
-              </div>
-              <button
-                onClick={handleSkipRest}
-                className="px-3 py-2 font-display text-xs tracking-wider border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-colors"
-              >
-                PULAR
-              </button>
-            </div>
-          </div>
-        )}
-
-        {phase === 'done' && failedInfo && (
-          <div className="bg-red-500/10 border border-red-500/30 px-3 py-2 mb-3 text-center">
-            <div className="font-mono text-[11px] text-red-400">
-              Falha no bloco {failedInfo.block}
-              {failedInfo.reps > 0 && ` · ${failedInfo.reps} reps`}
-              {' '}— {completedBlocks} blocos completos
-            </div>
-          </div>
-        )}
-
-        {/* current block reps input + actions */}
-        {phase === 'ready' && failedInfo === null && (
-          <>
-            <div className="mt-auto mb-3">
-              <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">
-                REPS NO BLOCO {completedBlocks + 1} (deixe 0 se não iniciou)
-              </label>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setCurrentReps(r => String(Math.max(0, (parseInt(r)||0) - 1)))}
-                  className="w-11 h-11 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
-                ><LuMinus size={16}/></button>
-                <input
-                  type="number" inputMode="numeric"
-                  className="flex-1 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-2 focus:border-neon outline-none transition-colors"
-                  placeholder="0"
-                  value={currentReps}
-                  onChange={e => setCurrentReps(e.target.value)}
-                />
-                <button
-                  onClick={() => setCurrentReps(r => String((parseInt(r)||0) + 1))}
-                  className="w-11 h-11 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
-                ><LuPlus size={16}/></button>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={handleBlockDone}
-                className="flex-1 py-3 font-display text-sm tracking-[0.15em] text-bg"
-                style={{ background: typeInfo.color }}
-              >
-                BLOCO {completedBlocks+1} FEITO
-              </button>
-              <button
-                onClick={handleFail}
-                className="px-4 py-3 border border-red-500/40 text-red-400 font-display text-xs tracking-wider hover:bg-red-500/10 transition-colors"
-              >
-                FALHOU
-              </button>
-            </div>
-          </>
-        )}
-
-        {phase === 'done' && (
-          <button
-            onClick={handleFinish}
-            disabled={isLocked}
-            className="w-full py-3 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 flex items-center justify-center gap-2 mt-auto"
-            style={{ background: typeInfo.color }}
-          >
-            <LuCheck size={16}/> MUSCLE ROUND CONCLUÍDO
-          </button>
-        )}
+    <WorkingSetShell step={step} typeInfo={typeInfo} label="MUSCLE ROUND" workingWeight={workingWeight}>
+      <div className="bg-s2 border border-border1 px-3 py-2 mb-2.5 font-mono text-[10px] text-muted leading-snug">
+        Blocos de <span className="text-red-400 font-bold">4 reps</span>, 10s entre blocos, até falhar uma vez.
       </div>
-    </div>
+
+      <PrevRecord prevData={prevData} />
+
+      <div className="grid grid-cols-6 gap-1 mb-2.5">
+        {Array(TOTAL_BLOCKS).fill(null).map((_, i) => {
+          const done   = i < completedBlocks
+          const isFail = failedInfo !== null && i === failedInfo.block - 1
+          const isCurr = i === completedBlocks && phase === 'ready' && failedInfo === null
+          return (
+            <div
+              key={i}
+              className={`h-7 flex items-center justify-center border font-display text-[11px] transition-all ${
+                isFail ? 'border-red-500 bg-red-500/20 text-red-400' :
+                done   ? 'border-red-400/60 bg-red-400/20 text-red-300' :
+                isCurr ? 'border-red-500 bg-red-500/10 text-red-400' :
+                         'border-border2 text-muted/30'
+              }`}
+            >
+              {isFail ? 'x' : done ? '✓' : i+1}
+            </div>
+          )
+        })}
+      </div>
+
+      {phase === 'rest10' && blockTimer !== null && (
+        <div className="bg-red-500/10 border border-red-500/30 px-3 py-2 mb-2.5">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-mono text-[9px] text-red-400 tracking-wider mb-0.5">DESCANSO 10s</div>
+              <div className="font-display text-3xl tracking-wider text-red-400 leading-none">{blockTimer}</div>
+            </div>
+            <button
+              onClick={handleSkipRest}
+              className="px-3 py-2 font-display text-xs tracking-wider border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              PULAR
+            </button>
+          </div>
+        </div>
+      )}
+
+      {phase === 'done' && failedInfo && (
+        <div className="bg-red-500/10 border border-red-500/30 px-3 py-2 mb-2.5 text-center">
+          <div className="font-mono text-[10px] text-red-400">
+            Falha no bloco {failedInfo.block}
+            {failedInfo.reps > 0 && ` · ${failedInfo.reps} reps`}
+            {' '}— {completedBlocks} blocos completos
+          </div>
+        </div>
+      )}
+
+      {phase === 'ready' && failedInfo === null && (
+        <>
+          <div className="mt-auto mb-2.5">
+            <label className="font-mono text-[9px] text-muted tracking-wider block mb-1">
+              REPS NO BLOCO {completedBlocks + 1}
+            </label>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentReps(r => String(Math.max(0, (parseInt(r)||0) - 1)))}
+                className="w-10 h-10 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
+              ><LuMinus size={16}/></button>
+              <input
+                type="number" inputMode="numeric"
+                className="flex-1 min-w-0 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-1.5 focus:border-neon outline-none transition-colors"
+                placeholder="0"
+                value={currentReps}
+                onChange={e => setCurrentReps(e.target.value)}
+              />
+              <button
+                onClick={() => setCurrentReps(r => String((parseInt(r)||0) + 1))}
+                className="w-10 h-10 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
+              ><LuPlus size={16}/></button>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={handleBlockDone}
+              className="flex-1 py-2.5 font-display text-sm tracking-[0.15em] text-bg"
+              style={{ background: typeInfo.color }}
+            >
+              BLOCO {completedBlocks+1} FEITO
+            </button>
+            <button
+              onClick={handleFail}
+              className="px-3 py-2.5 border border-red-500/40 text-red-400 font-display text-xs tracking-wider hover:bg-red-500/10 transition-colors"
+            >
+              FALHOU
+            </button>
+          </div>
+        </>
+      )}
+
+      {phase === 'done' && (
+        <button
+          onClick={handleFinish}
+          disabled={isLocked}
+          className="w-full py-2.5 font-display text-sm tracking-[0.18em] text-bg disabled:opacity-40 flex items-center justify-center gap-2 mt-auto"
+          style={{ background: typeInfo.color }}
+        >
+          <LuCheck size={16}/> MUSCLE ROUND CONCLUÍDO
+        </button>
+      )}
+    </WorkingSetShell>
   )
 }
 
@@ -874,102 +859,79 @@ function WidowmakerCard({ step, workingWeight, onDone, isLocked, prevData }) {
   }
 
   return (
-    <div className="h-full bg-s1 border border-border2 rounded-sm overflow-hidden flex flex-col">
-      <div className="h-1" style={{ background: typeInfo.color }}/>
-      <div className="p-4 flex-1 min-h-0 overflow-hidden flex flex-col">
-        <div className="font-mono text-[10px] text-muted tracking-[0.25em] mb-1">{step.muscle}</div>
-        <div className="font-display text-lg tracking-wider text-ink mb-0.5 truncate">{step.exerciseName}</div>
-        <div className="font-display text-xs tracking-[0.2em] mb-3" style={{ color: typeInfo.color }}>
-          DC STYLE WIDOWMAKER · {fmtKg(workingWeight)}
+    <WorkingSetShell step={step} typeInfo={typeInfo} label="DC STYLE WIDOWMAKER" workingWeight={workingWeight}>
+      {phase === 'working' && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 px-3 py-2 mb-2.5 font-mono text-[10px] text-yellow-200 leading-snug">
+          <span className="text-yellow-400 font-bold">FASE 1:</span> Falha total em 10-12 reps. Não economize nada.
         </div>
+      )}
 
-        {/* GER face */}
-        <div className="flex items-center gap-3 bg-s2 border border-border1 px-3 py-2.5 mb-3">
-          <DoomFace face={GER_CONFIG[typeInfo.ger].face} size={40}/>
-          <div>
-            <div className="font-display text-sm tracking-wider" style={{ color: typeInfo.color }}>
-              {GER_CONFIG[typeInfo.ger].label}
-            </div>
-            <div className="font-mono text-[11px] text-muted">{GER_CONFIG[typeInfo.ger].title}</div>
-          </div>
+      {phase === 'extending' && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 px-3 py-2 mb-2.5 font-mono text-[10px] text-yellow-200 leading-snug">
+          <span className="text-yellow-400 font-bold">FASE 2:</span> Continue até 15-20 reps sem soltar a barra.
         </div>
+      )}
 
-        {phase === 'working' && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 px-3 py-2.5 mb-3 font-mono text-[10px] text-yellow-200 leading-snug">
-            <span className="text-yellow-400 font-bold">FASE 1:</span> Carga pra falha TOTAL em 10-12 reps.
-            Não economize nada.
-          </div>
-        )}
+      <PrevRecord prevData={prevData} />
 
-        {phase === 'extending' && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 px-3 py-2.5 mb-3 font-mono text-[10px] text-yellow-200 leading-snug">
-            <span className="text-yellow-400 font-bold">FASE 2:</span> Continue até 15-20 reps.
-            Dê quanto intervalo precisar entre reps. <span className="text-yellow-400">Não solte a barra.</span>
-          </div>
-        )}
-
-        <PrevRecord prevData={prevData} />
-
-        {/* rep counter */}
-        <div className="bg-s2 border border-border1 px-4 py-3 mb-3 text-center">
-          <div className="font-mono text-[10px] text-muted tracking-wider mb-2">REPS TOTAIS</div>
-          <div className="font-display text-4xl tracking-wider" style={{ color: typeInfo.color }}>{reps}</div>
-          <div className="font-mono text-[10px] mt-2">
-            {phase === 'working' && reps < 8 && reps > 0 && (
-              <span className="text-muted">{8 - reps} reps para a zona de falha</span>
-            )}
-            {phase === 'working' && reps >= 8 && reps < 10 && (
-              <span className="text-yellow-400">Zona de falha se aproximando</span>
-            )}
-            {phase === 'working' && reps >= 10 && reps <= 12 && (
-              <span className="text-yellow-400">Zona de falha — ótimo!</span>
-            )}
-            {phase === 'working' && reps > 12 && (
-              <span className="text-yellow-400">Passou da zona — vá para fase 2!</span>
-            )}
-            {phase === 'extending' && reps < 20 && (
-              <span className="text-yellow-400">{20 - reps} reps até 20</span>
-            )}
-            {phase === 'extending' && reps >= 20 && (
-              <span className="text-neon">WIDOWMAKER COMPLETO!</span>
-            )}
-          </div>
+      <div className="bg-s2 border border-border1 px-3 py-2 mb-2.5 text-center">
+        <div className="font-mono text-[9px] text-muted tracking-wider mb-1">REPS TOTAIS</div>
+        <div className="font-display text-4xl tracking-wider leading-none" style={{ color: typeInfo.color }}>{reps}</div>
+        <div className="font-mono text-[10px] mt-1.5 min-h-[14px]">
+          {phase === 'working' && reps < 8 && reps > 0 && (
+            <span className="text-muted">{8 - reps} reps para a zona de falha</span>
+          )}
+          {phase === 'working' && reps >= 8 && reps < 10 && (
+            <span className="text-yellow-400">Zona de falha se aproximando</span>
+          )}
+          {phase === 'working' && reps >= 10 && reps <= 12 && (
+            <span className="text-yellow-400">Zona de falha</span>
+          )}
+          {phase === 'working' && reps > 12 && (
+            <span className="text-yellow-400">Vá para fase 2</span>
+          )}
+          {phase === 'extending' && reps < 20 && (
+            <span className="text-yellow-400">{20 - reps} reps até 20</span>
+          )}
+          {phase === 'extending' && reps >= 20 && (
+            <span className="text-neon">WIDOWMAKER COMPLETO!</span>
+          )}
         </div>
-
-        <div className="flex gap-2 mt-auto mb-3">
-          <button
-            onClick={() => setReps(r => Math.max(0, r-1))}
-            className="w-12 h-12 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
-          ><LuMinus size={18}/></button>
-          <button
-            onClick={() => setReps(r => r+1)}
-            className="flex-1 py-3 font-display text-xl tracking-wider border border-border2 text-ink hover:border-neon transition-colors"
-          >
-            +1 REP
-          </button>
-        </div>
-
-        {phase === 'working' && reps >= 8 && (
-          <button
-            onClick={handleFail}
-            className="w-full py-3 font-display text-sm tracking-[0.15em] border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 transition-colors mb-3"
-          >
-            ATINGIU FALHA → FASE 2
-          </button>
-        )}
-
-        {phase === 'extending' && reps >= 15 && (
-          <button
-            onClick={handleFinish}
-            disabled={isLocked}
-            className="w-full py-3 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 flex items-center justify-center gap-2"
-            style={{ background: typeInfo.color }}
-          >
-            <LuCheck size={16}/> WIDOWMAKER CONCLUÍDO
-          </button>
-        )}
       </div>
-    </div>
+
+      <div className="flex gap-2 mt-auto mb-2.5">
+        <button
+          onClick={() => setReps(r => Math.max(0, r-1))}
+          className="w-10 h-10 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
+        ><LuMinus size={18}/></button>
+        <button
+          onClick={() => setReps(r => r+1)}
+          className="flex-1 py-2 font-display text-xl tracking-wider border border-border2 text-ink hover:border-neon transition-colors"
+        >
+          +1 REP
+        </button>
+      </div>
+
+      {phase === 'working' && reps >= 8 && (
+        <button
+          onClick={handleFail}
+          className="w-full py-2.5 font-display text-sm tracking-[0.15em] border border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 transition-colors mb-2.5"
+        >
+          ATINGIU FALHA → FASE 2
+        </button>
+      )}
+
+      {phase === 'extending' && reps >= 15 && (
+        <button
+          onClick={handleFinish}
+          disabled={isLocked}
+          className="w-full py-2.5 font-display text-sm tracking-[0.18em] text-bg disabled:opacity-40 flex items-center justify-center gap-2"
+          style={{ background: typeInfo.color }}
+        >
+          <LuCheck size={16}/> WIDOWMAKER CONCLUÍDO
+        </button>
+      )}
+    </WorkingSetShell>
   )
 }
 
@@ -1006,80 +968,70 @@ function PulseSetCard({ step, workingWeight, onDone, isLocked, prevData }) {
   const cur = SEQUENCE[current] || {}
 
   return (
-    <div className="h-full bg-s1 border border-border2 rounded-sm overflow-hidden flex flex-col">
-      <div className="h-1" style={{ background: typeInfo.color }}/>
-      <div className="p-4 flex-1 min-h-0 overflow-hidden flex flex-col">
-        <div className="font-mono text-[10px] text-muted tracking-[0.25em] mb-1">{step.muscle}</div>
-        <div className="font-display text-lg tracking-wider text-ink mb-0.5 truncate">{step.exerciseName}</div>
-        <div className="font-display text-xs tracking-[0.2em] mb-3" style={{ color: typeInfo.color }}>
-          DC STYLE PULSE SET · {fmtKg(workingWeight)}
-        </div>
+    <WorkingSetShell step={step} typeInfo={typeInfo} label="DC STYLE PULSE SET" workingWeight={workingWeight}>
+      <PrevRecord prevData={prevData} />
 
-        <PrevRecord prevData={prevData} />
-
-        {/* sequence display */}
-        <div className="flex flex-col gap-1 mb-3">
-          {SEQUENCE.map((s, i) => (
-            <div
-              key={i}
-              className={`flex items-center gap-2 px-3 py-2 border text-sm transition-all ${
-                i < current ? 'border-border2 opacity-40 bg-s2' :
-                i === current ? 'border-pink-500/50 bg-pink-500/5' :
-                'border-border1 opacity-20'
-              }`}
-            >
-              <div className="font-display text-[13px] tracking-wider w-8" style={{ color: typeInfo.color }}>
-                {i+1}.
-              </div>
-              <div className="flex-1 font-mono text-[11px] text-muted">
-                {s.reps} reps completas
-                {s.pulses ? ` + ${s.pulses} pulsos` : ' + pulsos até a falha'}
-              </div>
-              {i < current && <LuCheck size={12} className="text-pink-400"/>}
-              {i === current && (
-                <div className="font-mono text-[10px]" style={{ color: typeInfo.color }}>
-                  {phase === 'reps' ? '← reps' : phase === 'pulses' ? '← pulsos' : '← até falha'}
-                </div>
-              )}
+      <div className="flex flex-col gap-1 mb-2.5">
+        {SEQUENCE.map((s, i) => (
+          <div
+            key={i}
+            className={`flex items-center gap-2 px-3 py-1.5 border text-sm transition-all ${
+              i < current ? 'border-border2 opacity-40 bg-s2' :
+              i === current ? 'border-pink-500/50 bg-pink-500/5' :
+              'border-border1 opacity-20'
+            }`}
+          >
+            <div className="font-display text-[12px] tracking-wider w-7" style={{ color: typeInfo.color }}>
+              {i+1}.
             </div>
-          ))}
-        </div>
-
-        {!isDone && (
-          <>
-            <div className="bg-pink-500/10 border border-pink-500/30 px-4 py-3 text-center mt-auto mb-3">
-              <div className="font-mono text-[10px] text-muted tracking-wider mb-1">AGORA</div>
-              <div className="font-display text-2xl tracking-wider" style={{ color: typeInfo.color }}>
-                {phase === 'reps' ? `${cur.reps} REPS COMPLETAS` :
-                 phase === 'pulses' ? `${cur.pulses} PULSOS PARCIAIS` :
-                 'PULSOS ATÉ A FALHA'}
-              </div>
+            <div className="flex-1 font-mono text-[10px] text-muted">
+              {s.reps} reps
+              {s.pulses ? ` + ${s.pulses} pulsos` : ' + pulsos até a falha'}
             </div>
+            {i < current && <LuCheck size={12} className="text-pink-400"/>}
+            {i === current && (
+              <div className="font-mono text-[9px]" style={{ color: typeInfo.color }}>
+                {phase === 'reps' ? 'reps' : phase === 'pulses' ? 'pulsos' : 'falha'}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
 
-            <button
-              onClick={handlePhaseNext}
-              className="w-full py-3 font-display text-sm tracking-[0.2em] text-bg"
-              style={{ background: typeInfo.color }}
-            >
-              {phase === 'reps' ? 'REPS FEITAS →' :
-               phase === 'pulses' ? 'PULSOS FEITOS →' :
-               'FALHOU → CONCLUIR'}
-            </button>
-          </>
-        )}
+      {!isDone && (
+        <>
+          <div className="bg-pink-500/10 border border-pink-500/30 px-3 py-2.5 text-center mt-auto mb-2.5">
+            <div className="font-mono text-[9px] text-muted tracking-wider mb-1">AGORA</div>
+            <div className="font-display text-xl tracking-wider leading-none" style={{ color: typeInfo.color }}>
+              {phase === 'reps' ? `${cur.reps} REPS COMPLETAS` :
+               phase === 'pulses' ? `${cur.pulses} PULSOS PARCIAIS` :
+               'PULSOS ATÉ A FALHA'}
+            </div>
+          </div>
 
-        {isDone && (
           <button
-            onClick={handleFinish}
-            disabled={isLocked}
-            className="w-full py-3 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 flex items-center justify-center gap-2 mt-auto"
+            onClick={handlePhaseNext}
+            className="w-full py-2.5 font-display text-sm tracking-[0.18em] text-bg"
             style={{ background: typeInfo.color }}
           >
-            <LuCheck size={16}/> PULSE SET CONCLUÍDO
+            {phase === 'reps' ? 'REPS FEITAS →' :
+             phase === 'pulses' ? 'PULSOS FEITOS →' :
+             'FALHOU → CONCLUIR'}
           </button>
-        )}
-      </div>
-    </div>
+        </>
+      )}
+
+      {isDone && (
+        <button
+          onClick={handleFinish}
+          disabled={isLocked}
+          className="w-full py-2.5 font-display text-sm tracking-[0.18em] text-bg disabled:opacity-40 flex items-center justify-center gap-2 mt-auto"
+          style={{ background: typeInfo.color }}
+        >
+          <LuCheck size={16}/> PULSE SET CONCLUÍDO
+        </button>
+      )}
+    </WorkingSetShell>
   )
 }
 
@@ -1226,13 +1178,10 @@ function ActiveWorkout() {
   const { steps, currentStepIdx, exerciseWeights, weekIdx, dayIdx, setResults } = activeWorkout
   const day = userProtocol.weeks[weekIdx].days[dayIdx]
 
-  // CARD_H fixo (por render): cabe dentro do viewport do reel com respiro.
-  // STEP < CARD_H de propósito: mantém o peek, mas o centro do ativo é sempre o mesmo.
-  const CARD_H = Math.max(
-    1,
-    Math.round(Math.min(460, Math.max(320, reelH - 56), Math.max(1, reelH - 24)))
-  )
-  const STEP   = Math.max(1, CARD_H - Math.min(84, Math.max(56, Math.round(CARD_H * 0.18))))
+  // CARD_H fixo: card mais compacto que o viewport, para sobrar peek acima/abaixo.
+  // STEP controla a distância entre centros; menor que CARD_H para manter a pilha visível.
+  const CARD_H = Math.max(1, Math.round(Math.min(400, Math.max(300, reelH * 0.62))))
+  const STEP   = Math.max(1, Math.round(CARD_H * 0.78))
 
   // Sync viewingStepIdx to follow currentStepIdx when user was on the current step
   // eslint-disable-next-line react-hooks/rules-of-hooks
