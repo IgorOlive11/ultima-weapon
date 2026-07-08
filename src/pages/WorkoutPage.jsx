@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LuPlay, LuCheck, LuSwords, LuTriangleAlert,
@@ -21,14 +21,6 @@ function fmtKg(v) {
 
 function roundToMinPlate(v) {
   return Math.round(v / MIN_PLATE_INCREMENT) * MIN_PLATE_INCREMENT
-}
-
-function cardVariants(dir) {
-  return {
-    initial:  { y: dir > 0 ? 60 : -60, opacity: 0, scale: 0.97 },
-    animate:  { y: 0, opacity: 1, scale: 1 },
-    exit:     { y: dir > 0 ? -60 : 60, opacity: 0, scale: 0.97 },
-  }
 }
 
 // ─── ConfirmFinishModal ───────────────────────────────────────────────────────
@@ -1199,26 +1191,45 @@ function ActiveWorkout() {
 
   const [showConfirm,  setShowConfirm]  = useState(false)
   const [showAbandon,  setShowAbandon]  = useState(false)
-  const [dir,          setDir]          = useState(1)
   const [isResting,    setIsResting]    = useState(false)
   const [viewingStepIdx, setViewingStepIdx] = useState(0)
   const [shownGamif,   setShownGamif]   = useState(() => new Set())
   const [gamifPopup,   setGamifPopup]   = useState(null) // { type, exerciseName }
   const [showStackHint, setShowStackHint] = useState(false)
 
-  // ── stack drag (scroll/swipe vertical entre séries) ──────────────────────
-  const [stackOffset, setStackOffset]   = useState(0)
-  const [stackDragging, setStackDragging] = useState(false)
+  // ── reel (trilho único) ────────────────────────────────────────────────────
+  const [reelH,     setReelH]     = useState(0)     // altura medida do viewport do reel, em px
+  const [dragY,     setDragY]     = useState(0)     // offset ao vivo do arrasto, em px
+  const [animating, setAnimating] = useState(false) // true só durante o snap (commit/bounce-back)
 
-  const prevCurIdxRef  = useRef(0)
-  const dragStartYRef  = useRef(0)
-  const isDraggingRef  = useRef(false) // fonte da verdade p/ o gate do move (evita atraso do setState)
-  const lastWheelNavRef = useRef(0)
+  const reelRef         = useRef(null)
+  const prevCurIdxRef   = useRef(0)
+  const dragStartYRef   = useRef(null)
+  const pointerDownRef  = useRef(false)
+  const wheelAccumRef   = useRef(0)
+  const wheelLockRef    = useRef(false)
+
+  // mede a altura real do viewport do reel (varia com o dispositivo e com o layout ao redor)
+  useLayoutEffect(() => {
+    const el = reelRef.current
+    if (!el) return
+    const ro = new ResizeObserver((entries) => {
+      const h = entries[0]?.contentRect?.height
+      if (h) setReelH(h)
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   if (!activeWorkout) return null
 
   const { steps, currentStepIdx, exerciseWeights, weekIdx, dayIdx, setResults } = activeWorkout
   const day = userProtocol.weeks[weekIdx].days[dayIdx]
+
+  // CARD_H fixo (por render) — todo tipo de série cabe nele, sem scroll interno.
+  // STEP < CARD_H de propósito: gera a sobreposição/peek de ~80px do vizinho.
+  const CARD_H = Math.max(1, Math.round(reelH * 0.74))
+  const STEP   = Math.max(1, CARD_H - 80)
 
   // Sync viewingStepIdx to follow currentStepIdx when user was on the current step
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -1229,7 +1240,7 @@ function ActiveWorkout() {
     prevCurIdxRef.current = currentStepIdx
   }, [currentStepIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Dica discreta de navegação (só na primeira vez que o usuário vê a pilha)
+  // Dica discreta de navegação (só na primeira vez que o usuário vê o reel)
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     if (stackNavHintSeen) return
@@ -1287,23 +1298,28 @@ function ActiveWorkout() {
     // Feeders mais pesados (setNum > 1) podem ser cortados; o mais leve nunca
     if (curStep.setNum === 1) return
 
-    setDir(1)
     advanceWorkoutStep()
   }, [currentStepIdx]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Teclado: setas navegam o reel (ignora se o foco estiver num input/textarea)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    const onKey = (e) => {
+      const tag = document.activeElement?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      if (e.key === 'ArrowUp')   { setAnimating(false); commit(-1) }
+      if (e.key === 'ArrowDown') { setAnimating(false); commit(1) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [viewingStepIdx, steps.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const vStep         = steps[viewingStepIdx]
   const isPastStep    = viewingStepIdx < currentStepIdx
   const isFutureStep  = viewingStepIdx > currentStepIdx
   const isCurrentStep = viewingStepIdx === currentStepIdx
 
-  const workingWeight = vStep ? exerciseWeights[vStep.exerciseId] || 0 : 0
-  const savedResult   = setResults?.[String(viewingStepIdx)] ?? null
-
   const history  = exerciseHistory?.[vStep?.exerciseName?.toUpperCase()?.trim()]
-  const prevData = vStep?.type === 'WARMUP'      ? (history?.warmups?.[vStep.setNum - 1] ?? null)
-                 : vStep?.type === 'FEEDER'      ? (history?.feeders?.[vStep.setNum - 1] ?? null)
-                 : vStep?.type === 'WORKING_SET' ? (history?.sets?.[vStep.setNum - 1] ?? null)
-                 : null
 
   // advance runs from currentStepIdx (regardless of where user is browsing)
   const curStep = steps[currentStepIdx]
@@ -1315,7 +1331,6 @@ function ActiveWorkout() {
       !steps.slice(currentStepIdx + 1).some(s => s.type === 'WORKING_SET')
 
     if (isLastWorkingSet || curStep?.type === 'WEIGHT_QUESTION') {
-      setDir(1)
       advanceWorkoutStep()
       return
     }
@@ -1330,7 +1345,6 @@ function ActiveWorkout() {
       startRestTimer(restSec)
       setIsResting(true)
     } else {
-      setDir(1)
       advanceWorkoutStep()
     }
   }, [curStep, currentStepIdx, steps, day, advanceWorkoutStep, saveSetResult, startRestTimer])
@@ -1338,17 +1352,15 @@ function ActiveWorkout() {
   const handleRestDone = useCallback(() => {
     stopRestTimer()
     setIsResting(false)
-    setDir(1)
     advanceWorkoutStep()
   }, [stopRestTimer, advanceWorkoutStep])
 
   const handleWeightConfirm = (weight) => {
     setExerciseWeight(curStep.exerciseId, weight)
-    setDir(1)
     advanceWorkoutStep()
   }
 
-  // onDone for the displayed card
+  // onDone for the displayed (active) card
   const handleCardDone = useCallback((result) => {
     if (isCurrentStep) {
       advance(result)
@@ -1359,73 +1371,106 @@ function ActiveWorkout() {
     // future steps: button is disabled, this won't be called
   }, [isCurrentStep, isPastStep, advance, saveSetResult, viewingStepIdx])
 
-  // ── stack drag/scroll: navega entre séries sem tocar no progresso real ───
-  const STACK_DRAG_COMMIT_PX = 100
-  const STACK_WHEEL_THRESHOLD = 12
-  const STACK_WHEEL_COOLDOWN_MS = 400
-  const PEEK_DRAG_FACTOR = 0.25 // peeks se movem bem menos que o card atual (janela pequena, evita "estourar" e ficar vazio)
+  // ── reel: commit troca a série exibida; currentStepIdx (progresso real) nunca é tocado ──
+  const DRAG_COMMIT_PX = 48
 
-  const commitStackNav = (offset) => {
-    const next = viewingStepIdx + offset
-    if (next < 0 || next > steps.length - 1) return
-    setDir(offset > 0 ? 1 : -1)
-    setViewingStepIdx(next)
+  const commit = (dir) => {
+    const next = viewingStepIdx + dir
+    if (next >= 0 && next <= steps.length - 1) setViewingStepIdx(next)
+    setDragY(0)
+    setAnimating(true)
   }
 
-  const handleStackPointerDown = (e) => {
+  const handlePointerDown = (e) => {
     e.currentTarget.setPointerCapture(e.pointerId)
     dragStartYRef.current = e.clientY
-    isDraggingRef.current = true
-    setStackDragging(true)
+    pointerDownRef.current = true
+    setAnimating(false)
   }
-  const handleStackPointerMove = (e) => {
-    if (!isDraggingRef.current) return
-    const delta = e.clientY - dragStartYRef.current // > 0 = arrastou para baixo
-    setStackOffset(delta) // conteúdo acompanha o dedo/cursor (manipulação direta)
+  const handlePointerMove = (e) => {
+    if (!pointerDownRef.current || dragStartYRef.current == null) return
+    let d = e.clientY - dragStartYRef.current // > 0 = arrastou para baixo
+    if ((viewingStepIdx === 0 && d > 0) || (viewingStepIdx === steps.length - 1 && d < 0)) d *= 0.3
+    setDragY(d)
   }
-  const handleStackPointerUp = (e) => {
-    if (!isDraggingRef.current) return
-    isDraggingRef.current = false
-    setStackDragging(false)
-    const delta = e.clientY - dragStartYRef.current
+  const handlePointerUp = () => {
+    if (!pointerDownRef.current) return
+    pointerDownRef.current = false
+    dragStartYRef.current = null
     // arrastou p/ baixo -> revela o card de cima (anterior); p/ cima -> revela o de baixo (próxima)
-    if (delta > STACK_DRAG_COMMIT_PX)       commitStackNav(-1)
-    else if (delta < -STACK_DRAG_COMMIT_PX) commitStackNav(1)
-    setStackOffset(0)
-  }
-  const handleStackWheel = (e) => {
-    e.preventDefault()
-    const now = Date.now()
-    if (now - lastWheelNavRef.current < STACK_WHEEL_COOLDOWN_MS) return
-    if (Math.abs(e.deltaY) < STACK_WHEEL_THRESHOLD) return
-    lastWheelNavRef.current = now
-    if (e.deltaY > 0) commitStackNav(1)   // rolar p/ baixo -> próxima
-    else              commitStackNav(-1)  // rolar p/ cima  -> anterior
+    if (dragY >= DRAG_COMMIT_PX)       commit(-1)
+    else if (dragY <= -DRAG_COMMIT_PX) commit(1)
+    else { setDragY(0); setAnimating(true) }
   }
 
-  // renderiza uma prévia não-interativa (mesmo chrome, travada) para o card anterior/próximo
-  const renderPeekCard = (offset) => {
-    const idx = viewingStepIdx + offset
-    const s = steps[idx]
+  const lockWheel = () => {
+    wheelLockRef.current = true
+    setTimeout(() => { wheelLockRef.current = false }, 280)
+  }
+  const handleWheel = (e) => {
+    e.preventDefault()
+    if (wheelLockRef.current) return
+    wheelAccumRef.current += e.deltaY
+    if (wheelAccumRef.current > 40)       { commit(1);  wheelAccumRef.current = 0; lockWheel() }
+    else if (wheelAccumRef.current < -40) { commit(-1); wheelAccumRef.current = 0; lockWheel() }
+  }
+
+  // renderiza o card de um índice qualquer do trilho — só o índice ativo (viewingStepIdx) é interativo;
+  // os demais usam o mesmo chrome/dispatcher, travados e com onDone no-op
+  const renderRailCard = (i) => {
+    const s = steps[i]
     if (!s) return null
+    const isActive = i === viewingStepIdx
 
     const ww   = exerciseWeights[s.exerciseId] || 0
-    const sr   = setResults?.[String(idx)] ?? null
+    const sr   = setResults?.[String(i)] ?? null
     const hist = exerciseHistory?.[s.exerciseName?.toUpperCase()?.trim()]
     const pd   = s.type === 'WARMUP'      ? (hist?.warmups?.[s.setNum - 1] ?? null)
                : s.type === 'FEEDER'      ? (hist?.feeders?.[s.setNum - 1] ?? null)
                : s.type === 'WORKING_SET' ? (hist?.sets?.[s.setNum - 1] ?? null)
                : null
-    const noop = () => {}
+
+    if (!isActive) {
+      const noop = () => {}
+      if (s.type === 'WEIGHT_QUESTION') return <WeightQuestionCard step={s} onConfirm={noop} history={hist} isLocked />
+      if (s.type === 'WARMUP' || s.type === 'FEEDER') return <WarmupFeederCard step={s} workingWeight={ww} onDone={noop} isLocked prevData={pd} savedResult={sr} />
+      if (s.type === 'WORKING_SET') return <WorkingSetCard step={s} workingWeight={ww} onDone={noop} isLocked prevData={pd} savedResult={sr} />
+      return null
+    }
 
     if (s.type === 'WEIGHT_QUESTION') {
-      return <WeightQuestionCard step={s} onConfirm={noop} history={hist} isLocked />
+      return (
+        <WeightQuestionCard
+          step={s}
+          onConfirm={isCurrentStep ? handleWeightConfirm : () => {}}
+          history={hist}
+          isLocked={!isCurrentStep}
+        />
+      )
     }
     if (s.type === 'WARMUP' || s.type === 'FEEDER') {
-      return <WarmupFeederCard step={s} workingWeight={ww} onDone={noop} isLocked prevData={pd} savedResult={sr} />
+      return (
+        <WarmupFeederCard
+          step={s}
+          workingWeight={ww}
+          onDone={handleCardDone}
+          isLocked={(isResting && isCurrentStep) || isFutureStep}
+          prevData={pd}
+          savedResult={isPastStep ? sr : null}
+        />
+      )
     }
     if (s.type === 'WORKING_SET') {
-      return <WorkingSetCard step={s} workingWeight={ww} onDone={noop} isLocked prevData={pd} savedResult={sr} />
+      return (
+        <WorkingSetCard
+          step={s}
+          workingWeight={ww}
+          onDone={handleCardDone}
+          isLocked={(isResting && isCurrentStep) || isFutureStep}
+          prevData={pd}
+          savedResult={isPastStep ? sr : null}
+        />
+      )
     }
     return null
   }
@@ -1461,6 +1506,9 @@ function ActiveWorkout() {
   const curExIdx     = exerciseIds.indexOf(curStep?.exerciseId)
   const isLast       = currentStepIdx === steps.length - 1
 
+  const trackTransform = `translateY(calc(50% - ${viewingStepIdx * STEP + CARD_H / 2}px + ${dragY}px))`
+  const snapTransition = 'transform 260ms cubic-bezier(.22,.61,.36,1)'
+
   return (
     <div className="h-full flex flex-col p-3 pb-3 overflow-hidden">
       {/* top bar */}
@@ -1493,14 +1541,16 @@ function ActiveWorkout() {
         </div>
       )}
 
-      {/* pilha vertical: anterior (esmaecido) / atual / próxima (esmaecido) — sempre cabe na tela, sem scroll */}
+      {/* trilho único (reel): todos os steps num único elemento que translada de uma vez só */}
       <div
-        onPointerDown={handleStackPointerDown}
-        onPointerMove={handleStackPointerMove}
-        onPointerUp={handleStackPointerUp}
-        onPointerCancel={handleStackPointerUp}
-        onWheel={handleStackWheel}
-        className="relative flex-1 min-h-0 flex flex-col"
+        ref={reelRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onWheel={handleWheel}
+        style={{ touchAction: 'none' }}
+        className="relative flex-1 min-h-0 overflow-hidden"
       >
         {/* dica discreta — só na primeira vez */}
         <AnimatePresence>
@@ -1509,97 +1559,53 @@ function ActiveWorkout() {
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="absolute top-1 left-1/2 -translate-x-1/2 z-20 w-[85%] max-w-[280px] px-3 py-1.5 bg-black/80 border border-neon/30 font-mono text-[9px] text-neon/90 tracking-wider text-center leading-relaxed pointer-events-none"
+              className="absolute top-1 left-1/2 -translate-x-1/2 z-[200] w-[85%] max-w-[280px] px-3 py-1.5 bg-black/80 border border-neon/30 font-mono text-[9px] text-neon/90 tracking-wider text-center leading-relaxed pointer-events-none"
             >
               ↕ ROLE PARA VER A SÉRIE ANTERIOR/PRÓXIMA
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* peek: anterior — janela pequena; colapsa se não houver série anterior (sem espaço em branco) */}
-        <div className={`flex-shrink-0 relative overflow-hidden pointer-events-none select-none transition-all duration-200 ${viewingStepIdx > 0 ? 'h-16' : 'h-0'}`}>
-          {viewingStepIdx > 0 && (
-            <div
-              className="absolute bottom-0 left-0 right-0"
-              style={{
-                transform: `scale(0.85) translateY(${stackOffset * PEEK_DRAG_FACTOR}px)`,
-                transformOrigin: 'bottom center',
-                opacity: 0.4,
-                transition: stackDragging ? 'none' : 'transform 220ms cubic-bezier(0.22,1,0.36,1)',
-              }}
-            >
-              {renderPeekCard(-1)}
-            </div>
-          )}
-        </div>
-
-        {/* card atual — centralizado, nunca cresce sobre os peeks (scroll interno só em caso extremo) */}
-        <div className="flex-1 min-h-0 relative z-10 flex flex-col justify-center">
-          <div style={{
-            transform: `translateY(${stackOffset}px)`,
-            transition: stackDragging ? 'none' : 'transform 220ms cubic-bezier(0.22,1,0.36,1)',
-          }}>
-            <AnimatePresence mode="wait" custom={dir}>
-              <motion.div
-                key={viewingStepIdx}
-                custom={dir}
-                variants={cardVariants(dir)}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-              >
-                {vStep?.type === 'WEIGHT_QUESTION' && (
-                  <WeightQuestionCard
-                    step={vStep}
-                    onConfirm={isCurrentStep ? handleWeightConfirm : () => {}}
-                    history={history}
-                    isLocked={!isCurrentStep}
-                  />
-                )}
-
-                {(vStep?.type === 'WARMUP' || vStep?.type === 'FEEDER') && (
-                  <WarmupFeederCard
-                    step={vStep}
-                    workingWeight={workingWeight}
-                    onDone={handleCardDone}
-                    isLocked={isResting && isCurrentStep || isFutureStep}
-                    prevData={prevData}
-                    savedResult={isPastStep ? savedResult : null}
-                  />
-                )}
-
-                {vStep?.type === 'WORKING_SET' && (
-                  <WorkingSetCard
-                    step={vStep}
-                    workingWeight={workingWeight}
-                    onDone={handleCardDone}
-                    isLocked={isResting && isCurrentStep || isFutureStep}
-                    prevData={prevData}
-                    savedResult={isPastStep ? savedResult : null}
-                  />
-                )}
-              </motion.div>
-            </AnimatePresence>
+        {reelH > 0 && (
+          <div
+            className="absolute left-0 right-0 top-0"
+            style={{
+              transform: trackTransform,
+              transition: animating ? snapTransition : 'none',
+            }}
+            onTransitionEnd={() => setAnimating(false)}
+          >
+            {steps.map((s, i) => {
+              const dist = (i - viewingStepIdx) - dragY / STEP
+              const ad = Math.abs(dist)
+              if (ad > 2) return null // fora do alcance visível (opacidade já bateu 0 antes disso)
+              const scale   = Math.max(0.82, 1 - ad * 0.18)
+              const opacity = Math.max(0, 1 - ad * 0.6)
+              const z       = 100 - Math.round(ad * 10)
+              return (
+                <div
+                  key={i}
+                  className={i === viewingStepIdx ? '' : 'pointer-events-none select-none'}
+                  style={{
+                    position: 'absolute',
+                    top: i * STEP,
+                    left: 0,
+                    right: 0,
+                    height: CARD_H,
+                    transform: `scale(${scale})`,
+                    opacity,
+                    zIndex: z,
+                    transition: animating ? `transform 260ms cubic-bezier(.22,.61,.36,1), opacity 260ms cubic-bezier(.22,.61,.36,1)` : 'none',
+                  }}
+                >
+                  <div style={{ height: '100%', overflow: 'hidden' }}>
+                    {renderRailCard(i)}
+                  </div>
+                </div>
+              )
+            })}
           </div>
-        </div>
-
-        {/* peek: próxima — janela pequena; colapsa se não houver próxima série (sem espaço em branco) */}
-        <div className={`flex-shrink-0 relative overflow-hidden pointer-events-none select-none transition-all duration-200 ${viewingStepIdx < steps.length - 1 ? 'h-16' : 'h-0'}`}>
-          {viewingStepIdx < steps.length - 1 && (
-            <div
-              className="absolute top-0 left-0 right-0"
-              style={{
-                transform: `scale(0.85) translateY(${stackOffset * PEEK_DRAG_FACTOR}px)`,
-                transformOrigin: 'top center',
-                opacity: 0.4,
-                transition: stackDragging ? 'none' : 'transform 220ms cubic-bezier(0.22,1,0.36,1)',
-              }}
-            >
-              {renderPeekCard(1)}
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* rest timer — always visible when resting, regardless of viewing step */}
