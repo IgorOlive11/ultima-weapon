@@ -25,9 +25,9 @@ function roundToMinPlate(v) {
 
 function cardVariants(dir) {
   return {
-    initial:  { x: dir > 0 ? 60 : -60, opacity: 0, scale: 0.97 },
-    animate:  { x: 0, opacity: 1, scale: 1 },
-    exit:     { x: dir > 0 ? -60 : 60, opacity: 0, scale: 0.97 },
+    initial:  { y: dir > 0 ? 60 : -60, opacity: 0, scale: 0.97 },
+    animate:  { y: 0, opacity: 1, scale: 1 },
+    exit:     { y: dir > 0 ? -60 : 60, opacity: 0, scale: 0.97 },
   }
 }
 
@@ -1203,7 +1203,13 @@ function ActiveWorkout() {
   const [shownGamif,   setShownGamif]   = useState(() => new Set())
   const [gamifPopup,   setGamifPopup]   = useState(null) // { type, exerciseName }
 
-  const prevCurIdxRef = useRef(0)
+  // ── stack drag (scroll/swipe vertical entre séries) ──────────────────────
+  const [stackOffset, setStackOffset]   = useState(0)
+  const [stackDragging, setStackDragging] = useState(false)
+
+  const prevCurIdxRef  = useRef(0)
+  const dragStartYRef  = useRef(0)
+  const lastWheelNavRef = useRef(0)
 
   if (!activeWorkout) return null
 
@@ -1350,6 +1356,72 @@ function ActiveWorkout() {
     }
   }
 
+  // ── stack drag/scroll: navega entre séries sem tocar no progresso real ───
+  const STACK_DRAG_COMMIT_PX = 60
+  const STACK_WHEEL_THRESHOLD = 12
+  const STACK_WHEEL_COOLDOWN_MS = 400
+
+  const commitStackNav = (offset) => {
+    const next = viewingStepIdx + offset
+    if (next < 0 || next > steps.length - 1) return
+    setDir(offset > 0 ? 1 : -1)
+    setViewingStepIdx(next)
+  }
+
+  const handleStackPointerDown = (e) => {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    dragStartYRef.current = e.clientY
+    setStackDragging(true)
+  }
+  const handleStackPointerMove = (e) => {
+    if (!stackDragging) return
+    const delta = e.clientY - dragStartYRef.current // > 0 = arrastou para baixo
+    setStackOffset(-delta)
+  }
+  const handleStackPointerUp = (e) => {
+    setStackDragging(false)
+    const delta = e.clientY - dragStartYRef.current
+    if (delta > STACK_DRAG_COMMIT_PX)       commitStackNav(1)   // arrastou p/ baixo -> próxima
+    else if (delta < -STACK_DRAG_COMMIT_PX) commitStackNav(-1)  // arrastou p/ cima  -> anterior
+    setStackOffset(0)
+  }
+  const handleStackWheel = (e) => {
+    e.preventDefault()
+    const now = Date.now()
+    if (now - lastWheelNavRef.current < STACK_WHEEL_COOLDOWN_MS) return
+    if (Math.abs(e.deltaY) < STACK_WHEEL_THRESHOLD) return
+    lastWheelNavRef.current = now
+    if (e.deltaY > 0) commitStackNav(1)   // rolar p/ baixo -> próxima
+    else              commitStackNav(-1)  // rolar p/ cima  -> anterior
+  }
+
+  // renderiza uma prévia não-interativa (mesmo chrome, travada) para o card anterior/próximo
+  const renderPeekCard = (offset) => {
+    const idx = viewingStepIdx + offset
+    const s = steps[idx]
+    if (!s) return null
+
+    const ww   = exerciseWeights[s.exerciseId] || 0
+    const sr   = setResults?.[String(idx)] ?? null
+    const hist = exerciseHistory?.[s.exerciseName?.toUpperCase()?.trim()]
+    const pd   = s.type === 'WARMUP'      ? (hist?.warmups?.[s.setNum - 1] ?? null)
+               : s.type === 'FEEDER'      ? (hist?.feeders?.[s.setNum - 1] ?? null)
+               : s.type === 'WORKING_SET' ? (hist?.sets?.[s.setNum - 1] ?? null)
+               : null
+    const noop = () => {}
+
+    if (s.type === 'WEIGHT_QUESTION') {
+      return <WeightQuestionCard step={s} onConfirm={noop} history={hist} isLocked />
+    }
+    if (s.type === 'WARMUP' || s.type === 'FEEDER') {
+      return <WarmupFeederCard step={s} workingWeight={ww} onDone={noop} isLocked prevData={pd} savedResult={sr} />
+    }
+    if (s.type === 'WORKING_SET') {
+      return <WorkingSetCard step={s} workingWeight={ww} onDone={noop} isLocked prevData={pd} savedResult={sr} />
+    }
+    return null
+  }
+
   // Completed state
   if (activeWorkout.completedAt) {
     return (
@@ -1413,49 +1485,93 @@ function ActiveWorkout() {
         </div>
       )}
 
-      {/* step card */}
-      <AnimatePresence mode="wait" custom={dir}>
-        <motion.div
-          key={viewingStepIdx}
-          custom={dir}
-          variants={cardVariants(dir)}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-        >
-          {vStep?.type === 'WEIGHT_QUESTION' && (
-            <WeightQuestionCard
-              step={vStep}
-              onConfirm={isCurrentStep ? handleWeightConfirm : () => {}}
-              history={history}
-              isLocked={!isCurrentStep}
-            />
-          )}
+      {/* pilha vertical: anterior (esmaecido) / atual / próxima (esmaecido) */}
+      <div
+        onPointerDown={handleStackPointerDown}
+        onPointerMove={handleStackPointerMove}
+        onPointerUp={handleStackPointerUp}
+        onPointerCancel={handleStackPointerUp}
+        onWheel={handleStackWheel}
+        style={{ touchAction: 'none' }}
+        className="relative"
+      >
+        {/* peek: anterior */}
+        {viewingStepIdx > 0 && (
+          <div
+            className="pointer-events-none select-none -mb-14 relative z-0"
+            style={{
+              opacity: 0.4,
+              transform: `scale(0.85) translateY(${stackOffset}px)`,
+              transition: stackDragging ? 'none' : 'transform 220ms cubic-bezier(0.22,1,0.36,1)',
+            }}
+          >
+            {renderPeekCard(-1)}
+          </div>
+        )}
 
-          {(vStep?.type === 'WARMUP' || vStep?.type === 'FEEDER') && (
-            <WarmupFeederCard
-              step={vStep}
-              workingWeight={workingWeight}
-              onDone={handleCardDone}
-              isLocked={isResting && isCurrentStep || isFutureStep}
-              prevData={prevData}
-              savedResult={isPastStep ? savedResult : null}
-            />
-          )}
+        {/* card atual */}
+        <div className="relative z-10" style={{
+          transform: `translateY(${stackOffset}px)`,
+          transition: stackDragging ? 'none' : 'transform 220ms cubic-bezier(0.22,1,0.36,1)',
+        }}>
+          <AnimatePresence mode="wait" custom={dir}>
+            <motion.div
+              key={viewingStepIdx}
+              custom={dir}
+              variants={cardVariants(dir)}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+            >
+              {vStep?.type === 'WEIGHT_QUESTION' && (
+                <WeightQuestionCard
+                  step={vStep}
+                  onConfirm={isCurrentStep ? handleWeightConfirm : () => {}}
+                  history={history}
+                  isLocked={!isCurrentStep}
+                />
+              )}
 
-          {vStep?.type === 'WORKING_SET' && (
-            <WorkingSetCard
-              step={vStep}
-              workingWeight={workingWeight}
-              onDone={handleCardDone}
-              isLocked={isResting && isCurrentStep || isFutureStep}
-              prevData={prevData}
-              savedResult={isPastStep ? savedResult : null}
-            />
-          )}
-        </motion.div>
-      </AnimatePresence>
+              {(vStep?.type === 'WARMUP' || vStep?.type === 'FEEDER') && (
+                <WarmupFeederCard
+                  step={vStep}
+                  workingWeight={workingWeight}
+                  onDone={handleCardDone}
+                  isLocked={isResting && isCurrentStep || isFutureStep}
+                  prevData={prevData}
+                  savedResult={isPastStep ? savedResult : null}
+                />
+              )}
+
+              {vStep?.type === 'WORKING_SET' && (
+                <WorkingSetCard
+                  step={vStep}
+                  workingWeight={workingWeight}
+                  onDone={handleCardDone}
+                  isLocked={isResting && isCurrentStep || isFutureStep}
+                  prevData={prevData}
+                  savedResult={isPastStep ? savedResult : null}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* peek: próxima */}
+        {viewingStepIdx < steps.length - 1 && (
+          <div
+            className="pointer-events-none select-none -mt-14 relative z-0"
+            style={{
+              opacity: 0.4,
+              transform: `scale(0.85) translateY(${stackOffset}px)`,
+              transition: stackDragging ? 'none' : 'transform 220ms cubic-bezier(0.22,1,0.36,1)',
+            }}
+          >
+            {renderPeekCard(1)}
+          </div>
+        )}
+      </div>
 
       {/* rest timer — always visible when resting, regardless of viewing step */}
       <AnimatePresence>
