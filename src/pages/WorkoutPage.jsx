@@ -1209,6 +1209,7 @@ function ActiveWorkout() {
 
   const prevCurIdxRef  = useRef(0)
   const dragStartYRef  = useRef(0)
+  const isDraggingRef  = useRef(false) // fonte da verdade p/ o gate do move (evita atraso do setState)
   const lastWheelNavRef = useRef(0)
 
   if (!activeWorkout) return null
@@ -1371,14 +1372,17 @@ function ActiveWorkout() {
   const handleStackPointerDown = (e) => {
     e.currentTarget.setPointerCapture(e.pointerId)
     dragStartYRef.current = e.clientY
+    isDraggingRef.current = true
     setStackDragging(true)
   }
   const handleStackPointerMove = (e) => {
-    if (!stackDragging) return
+    if (!isDraggingRef.current) return
     const delta = e.clientY - dragStartYRef.current // > 0 = arrastou para baixo
     setStackOffset(delta) // conteúdo acompanha o dedo/cursor (manipulação direta)
   }
   const handleStackPointerUp = (e) => {
+    if (!isDraggingRef.current) return
+    isDraggingRef.current = false
     setStackDragging(false)
     const delta = e.clientY - dragStartYRef.current
     // arrastou p/ baixo -> revela o card de cima (anterior); p/ cima -> revela o de baixo (próxima)
@@ -1455,9 +1459,9 @@ function ActiveWorkout() {
   const isLast       = currentStepIdx === steps.length - 1
 
   return (
-    <div className="p-3 pb-6">
+    <div className="h-full flex flex-col p-3 pb-3 overflow-hidden">
       {/* top bar */}
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex-shrink-0 flex items-center gap-2 mb-3">
         <button
           onClick={() => setShowAbandon(true)}
           className="font-mono text-[10px] text-muted hover:text-red-400 tracking-wider transition-colors"
@@ -1477,7 +1481,7 @@ function ActiveWorkout() {
 
       {/* past/future banner */}
       {!isCurrentStep && (
-        <div className={`mb-2 px-3 py-1.5 font-mono text-[10px] tracking-widest text-center border ${
+        <div className={`flex-shrink-0 mb-2 px-3 py-1.5 font-mono text-[10px] tracking-widest text-center border ${
           isPastStep
             ? 'border-amber-500/30 text-amber-400/70 bg-amber-500/5'
             : 'border-border2 text-muted/50'
@@ -1486,97 +1490,97 @@ function ActiveWorkout() {
         </div>
       )}
 
-      {/* pilha vertical: anterior (esmaecido) / atual / próxima (esmaecido) */}
+      {/* pilha vertical: anterior (esmaecido) / atual / próxima (esmaecido) — sempre cabe na tela, sem scroll */}
       <div
         onPointerDown={handleStackPointerDown}
         onPointerMove={handleStackPointerMove}
         onPointerUp={handleStackPointerUp}
         onPointerCancel={handleStackPointerUp}
         onWheel={handleStackWheel}
-        className="relative"
+        className="relative flex-1 min-h-0 flex flex-col"
       >
-        {/* peek: anterior */}
-        {viewingStepIdx > 0 && (
-          <div
-            className="pointer-events-none select-none -mb-14 relative z-0"
-            style={{
-              opacity: 0.4,
-              transform: `scale(0.85) translateY(${stackOffset}px)`,
-              transition: stackDragging ? 'none' : 'transform 220ms cubic-bezier(0.22,1,0.36,1)',
-            }}
-          >
-            {renderPeekCard(-1)}
-          </div>
-        )}
-
-        {/* card atual */}
-        <div className="relative z-10" style={{
-          transform: `translateY(${stackOffset}px)`,
-          transition: stackDragging ? 'none' : 'transform 220ms cubic-bezier(0.22,1,0.36,1)',
-        }}>
-          <AnimatePresence mode="wait" custom={dir}>
-            <motion.div
-              key={viewingStepIdx}
-              custom={dir}
-              variants={cardVariants(dir)}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+        {/* peek: anterior — janela fixa pequena, sempre reservada (mesmo vazia) */}
+        <div className="flex-shrink-0 h-16 relative overflow-hidden pointer-events-none select-none">
+          {viewingStepIdx > 0 && (
+            <div
+              className="absolute bottom-0 left-0 right-0"
+              style={{ transform: 'scale(0.85)', transformOrigin: 'bottom center', opacity: 0.4 }}
             >
-              {vStep?.type === 'WEIGHT_QUESTION' && (
-                <WeightQuestionCard
-                  step={vStep}
-                  onConfirm={isCurrentStep ? handleWeightConfirm : () => {}}
-                  history={history}
-                  isLocked={!isCurrentStep}
-                />
-              )}
-
-              {(vStep?.type === 'WARMUP' || vStep?.type === 'FEEDER') && (
-                <WarmupFeederCard
-                  step={vStep}
-                  workingWeight={workingWeight}
-                  onDone={handleCardDone}
-                  isLocked={isResting && isCurrentStep || isFutureStep}
-                  prevData={prevData}
-                  savedResult={isPastStep ? savedResult : null}
-                />
-              )}
-
-              {vStep?.type === 'WORKING_SET' && (
-                <WorkingSetCard
-                  step={vStep}
-                  workingWeight={workingWeight}
-                  onDone={handleCardDone}
-                  isLocked={isResting && isCurrentStep || isFutureStep}
-                  prevData={prevData}
-                  savedResult={isPastStep ? savedResult : null}
-                />
-              )}
-            </motion.div>
-          </AnimatePresence>
+              {renderPeekCard(-1)}
+            </div>
+          )}
         </div>
 
-        {/* peek: próxima */}
-        {viewingStepIdx < steps.length - 1 && (
-          <div
-            className="pointer-events-none select-none -mt-14 relative z-0"
-            style={{
-              opacity: 0.4,
-              transform: `scale(0.85) translateY(${stackOffset}px)`,
-              transition: stackDragging ? 'none' : 'transform 220ms cubic-bezier(0.22,1,0.36,1)',
-            }}
-          >
-            {renderPeekCard(1)}
+        {/* card atual */}
+        <div className="flex-1 min-h-0 relative z-10">
+          <div style={{
+            transform: `translateY(${stackOffset}px)`,
+            transition: stackDragging ? 'none' : 'transform 220ms cubic-bezier(0.22,1,0.36,1)',
+          }}>
+            <AnimatePresence mode="wait" custom={dir}>
+              <motion.div
+                key={viewingStepIdx}
+                custom={dir}
+                variants={cardVariants(dir)}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+              >
+                {vStep?.type === 'WEIGHT_QUESTION' && (
+                  <WeightQuestionCard
+                    step={vStep}
+                    onConfirm={isCurrentStep ? handleWeightConfirm : () => {}}
+                    history={history}
+                    isLocked={!isCurrentStep}
+                  />
+                )}
+
+                {(vStep?.type === 'WARMUP' || vStep?.type === 'FEEDER') && (
+                  <WarmupFeederCard
+                    step={vStep}
+                    workingWeight={workingWeight}
+                    onDone={handleCardDone}
+                    isLocked={isResting && isCurrentStep || isFutureStep}
+                    prevData={prevData}
+                    savedResult={isPastStep ? savedResult : null}
+                  />
+                )}
+
+                {vStep?.type === 'WORKING_SET' && (
+                  <WorkingSetCard
+                    step={vStep}
+                    workingWeight={workingWeight}
+                    onDone={handleCardDone}
+                    isLocked={isResting && isCurrentStep || isFutureStep}
+                    prevData={prevData}
+                    savedResult={isPastStep ? savedResult : null}
+                  />
+                )}
+              </motion.div>
+            </AnimatePresence>
           </div>
-        )}
+        </div>
+
+        {/* peek: próxima — janela fixa pequena, sempre reservada (mesmo vazia) */}
+        <div className="flex-shrink-0 h-16 relative overflow-hidden pointer-events-none select-none">
+          {viewingStepIdx < steps.length - 1 && (
+            <div
+              className="absolute top-0 left-0 right-0"
+              style={{ transform: 'scale(0.85)', transformOrigin: 'top center', opacity: 0.4 }}
+            >
+              {renderPeekCard(1)}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* rest timer — always visible when resting, regardless of viewing step */}
-      <AnimatePresence>
-        {isResting && <InlineRestTimer onNext={handleRestDone}/>}
-      </AnimatePresence>
+      <div className="flex-shrink-0">
+        <AnimatePresence>
+          {isResting && <InlineRestTimer onNext={handleRestDone}/>}
+        </AnimatePresence>
+      </div>
 
       {/* finish button */}
       {isLast && isCurrentStep && curStep?.type === 'WORKING_SET' && (
@@ -1584,7 +1588,7 @@ function ActiveWorkout() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="mt-4"
+          className="flex-shrink-0 mt-3"
         >
           <button
             onClick={() => setShowConfirm(true)}
@@ -1597,7 +1601,7 @@ function ActiveWorkout() {
 
       {/* exercise indicator */}
       {exerciseIds.length > 1 && (
-        <div className="flex gap-1 justify-center mt-4">
+        <div className="flex-shrink-0 flex gap-1 justify-center mt-3">
           {exerciseIds.map((id, i) => (
             <div
               key={id}
@@ -1612,7 +1616,7 @@ function ActiveWorkout() {
       )}
 
       {/* step navigation */}
-      <div className="flex items-center gap-2 mt-3">
+      <div className="flex-shrink-0 flex items-center gap-2 mt-3">
         <button
           onClick={handleNavPrev}
           disabled={viewingStepIdx === 0}
