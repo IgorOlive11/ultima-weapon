@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { LuBug, LuX, LuCamera, LuLoaderCircle, LuCircleCheck, LuCircleAlert } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
@@ -9,6 +9,15 @@ const TYPES = [
   { id: 'bug',      label: 'BUG' },
   { id: 'melhoria', label: 'MELHORIA' },
 ]
+
+const BTN_SIZE = 36
+const DRAG_THRESHOLD = 6
+
+function clampPos(x, y) {
+  const maxX = Math.max(window.innerWidth - BTN_SIZE, 0)
+  const maxY = Math.max(window.innerHeight - BTN_SIZE, 0)
+  return { x: Math.min(Math.max(x, 0), maxX), y: Math.min(Math.max(y, 0), maxY) }
+}
 
 async function captureScreenshot() {
   const target = document.querySelector('.scanlines') || document.body
@@ -42,6 +51,8 @@ function buildContext(route, store) {
 export default function AdminFeedbackButton() {
   const authUser = useStore(s => s.authUser)
   const enabled  = useStore(s => s.adminFeedbackButtonEnabled)
+  const savedPos = useStore(s => s.adminFeedbackButtonPos)
+  const setSavedPos = useStore(s => s.setAdminFeedbackButtonPos)
   const location = useLocation()
   const [open, setOpen] = useState(false)
   const [type, setType] = useState('bug')
@@ -50,7 +61,53 @@ export default function AdminFeedbackButton() {
   const [capturing, setCapturing] = useState(false)
   const [status, setStatus] = useState('idle') // idle | sending | sent | error
 
+  const [pos, setPos] = useState(savedPos)
+  const [dragging, setDragging] = useState(false)
+  const movedRef = useRef(false)
+  const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 })
+
+  useEffect(() => {
+    const onResize = () => setPos(p => p ? clampPos(p.x, p.y) : p)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
   if (authUser?.role !== 'admin' || !enabled) return null
+
+  const handlePointerDown = (e) => {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    const rect = e.currentTarget.getBoundingClientRect()
+    dragStartRef.current = { x: e.clientX, y: e.clientY, posX: rect.left, posY: rect.top }
+    movedRef.current = false
+    setDragging(true)
+  }
+
+  const handlePointerMove = (e) => {
+    if (!dragging) return
+    const dx = e.clientX - dragStartRef.current.x
+    const dy = e.clientY - dragStartRef.current.y
+    if (!movedRef.current && (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD)) {
+      movedRef.current = true
+    }
+    if (!movedRef.current) return
+    setPos(clampPos(dragStartRef.current.posX + dx, dragStartRef.current.posY + dy))
+  }
+
+  const handlePointerUp = () => {
+    setDragging(false)
+    if (movedRef.current) {
+      setPos(current => { setSavedPos(current); return current })
+    }
+  }
+
+  const handleClick = (e) => {
+    if (movedRef.current) {
+      movedRef.current = false
+      e.preventDefault()
+      return
+    }
+    setOpen(true)
+  }
 
   const reset = () => {
     setOpen(false)
@@ -103,9 +160,21 @@ export default function AdminFeedbackButton() {
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
-        className="fixed bottom-24 right-3 z-[220] w-9 h-9 flex items-center justify-center rounded-full bg-s1/80 border border-border2 text-muted/60 hover:text-neon hover:border-neon/40 transition-colors backdrop-blur-sm"
-        title="Reportar bug ou melhoria"
+        onClick={handleClick}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        style={{
+          ...(pos ? { left: pos.x, top: pos.y, right: 'auto', bottom: 'auto' } : {}),
+          touchAction: 'none',
+        }}
+        className={`fixed z-[220] w-9 h-9 flex items-center justify-center rounded-full bg-s1/80 border select-none transition-colors backdrop-blur-sm ${
+          pos ? '' : 'bottom-24 right-3'
+        } ${
+          dragging ? 'cursor-grabbing border-neon/60 text-neon scale-110' : 'cursor-grab border-border2 text-muted/60 hover:text-neon hover:border-neon/40'
+        }`}
+        title="Reportar bug ou melhoria (clique e segure para arrastar)"
       >
         <LuBug size={15} />
       </button>

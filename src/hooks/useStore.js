@@ -151,7 +151,9 @@ export const useStore = create(
 
       // ── admin feedback button ─────────────────────────────────────────────────
       adminFeedbackButtonEnabled: true,
+      adminFeedbackButtonPos: null, // { x, y } em px (canto top-left do botão); null = posição padrão
       setAdminFeedbackButtonEnabled: (v) => set({ adminFeedbackButtonEnabled: v }),
+      setAdminFeedbackButtonPos: (pos) => set({ adminFeedbackButtonPos: pos }),
 
       // ── auth ─────────────────────────────────────────────────────────────────
       authUser:        null,
@@ -762,6 +764,7 @@ export const useStore = create(
         achievements:    state.achievements,
         tutorialSeen:    state.tutorialSeen,
         adminFeedbackButtonEnabled: state.adminFeedbackButtonEnabled,
+        adminFeedbackButtonPos:     state.adminFeedbackButtonPos,
         // _viewerSnapshot e pendingAchievements nunca persistem — só existem em memória
       }),
       onRehydrateStorage: () => (state) => {
