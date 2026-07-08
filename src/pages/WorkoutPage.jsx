@@ -1376,13 +1376,14 @@ function ActiveWorkout() {
   const handleStackPointerMove = (e) => {
     if (!stackDragging) return
     const delta = e.clientY - dragStartYRef.current // > 0 = arrastou para baixo
-    setStackOffset(-delta)
+    setStackOffset(delta) // conteúdo acompanha o dedo/cursor (manipulação direta)
   }
   const handleStackPointerUp = (e) => {
     setStackDragging(false)
     const delta = e.clientY - dragStartYRef.current
-    if (delta > STACK_DRAG_COMMIT_PX)       commitStackNav(1)   // arrastou p/ baixo -> próxima
-    else if (delta < -STACK_DRAG_COMMIT_PX) commitStackNav(-1)  // arrastou p/ cima  -> anterior
+    // arrastou p/ baixo -> revela o card de cima (anterior); p/ cima -> revela o de baixo (próxima)
+    if (delta > STACK_DRAG_COMMIT_PX)       commitStackNav(-1)
+    else if (delta < -STACK_DRAG_COMMIT_PX) commitStackNav(1)
     setStackOffset(0)
   }
   const handleStackWheel = (e) => {
@@ -1492,7 +1493,6 @@ function ActiveWorkout() {
         onPointerUp={handleStackPointerUp}
         onPointerCancel={handleStackPointerUp}
         onWheel={handleStackWheel}
-        style={{ touchAction: 'none' }}
         className="relative"
       >
         {/* peek: anterior */}
