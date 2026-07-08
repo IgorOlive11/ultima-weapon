@@ -1534,7 +1534,7 @@ function ActiveWorkout() {
         </div>
 
         {/* card atual — centralizado, nunca cresce sobre os peeks (scroll interno só em caso extremo) */}
-        <div className="flex-1 min-h-0 relative z-10 overflow-y-auto flex flex-col justify-center">
+        <div className="flex-1 min-h-0 relative z-10 flex flex-col justify-center">
           <div style={{
             transform: `translateY(${stackOffset}px)`,
             transition: stackDragging ? 'none' : 'transform 220ms cubic-bezier(0.22,1,0.36,1)',
