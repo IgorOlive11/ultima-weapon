@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar'
 import Header from './components/Header'
 import GlobalRestTimer from './components/GlobalRestTimer'
 import ViewingAsBanner from './components/ViewingAsBanner'
+import AdminFeedbackButton from './components/AdminFeedbackButton'
 import WorkoutPage from './pages/WorkoutPage'
 import ProtocolPage from './pages/ProtocolPage'
 import HistoryPage from './pages/HistoryPage'
@@ -53,6 +54,7 @@ export default function App() {
         {activeTab === 'admin'    && <AdminPage />}
       </main>
       <GlobalRestTimer />
+      <AdminFeedbackButton />
       {!tutorialSeen && <TutorialModal onDone={setTutorialSeen} />}
     </div>
   )

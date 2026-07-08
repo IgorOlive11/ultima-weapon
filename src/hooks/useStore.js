@@ -149,6 +149,10 @@ export const useStore = create(
       tutorialSeen: false,
       setTutorialSeen: (v = true) => set({ tutorialSeen: v }),
 
+      // ── admin feedback button ─────────────────────────────────────────────────
+      adminFeedbackButtonEnabled: true,
+      setAdminFeedbackButtonEnabled: (v) => set({ adminFeedbackButtonEnabled: v }),
+
       // ── auth ─────────────────────────────────────────────────────────────────
       authUser:        null,
       authLoading:     true,
@@ -757,6 +761,7 @@ export const useStore = create(
         savedExercises:  state.savedExercises,
         achievements:    state.achievements,
         tutorialSeen:    state.tutorialSeen,
+        adminFeedbackButtonEnabled: state.adminFeedbackButtonEnabled,
         // _viewerSnapshot e pendingAchievements nunca persistem — só existem em memória
       }),
       onRehydrateStorage: () => (state) => {

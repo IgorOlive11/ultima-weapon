@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { LuSave, LuCircleCheck, LuLock } from 'react-icons/lu'
+import { LuSave, LuCircleCheck, LuLock, LuBug } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 import { DAY_NAMES } from '../data/protocol'
 import { ACHIEVEMENTS } from '../data/achievements'
@@ -32,6 +32,10 @@ export default function SettingsPage() {
 
   const userProtocol = useStore((s) => s.userProtocol)
   const currentDay   = useStore((s) => s.currentDay)
+
+  const authUser                      = useStore((s) => s.authUser)
+  const adminFeedbackButtonEnabled    = useStore((s) => s.adminFeedbackButtonEnabled)
+  const setAdminFeedbackButtonEnabled = useStore((s) => s.setAdminFeedbackButtonEnabled)
 
   const weekData = userProtocol.weeks[currentWeek]
   const day = weekData?.days[currentDay]
@@ -164,6 +168,32 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+
+      {/* Admin: feedback button */}
+      {authUser?.role === 'admin' && (
+        <div className="bg-s1 border border-border1 p-4">
+          <div className="font-display text-sm text-neon tracking-[0.2em] mb-3 pb-2 border-b border-border1 flex items-center gap-2">
+            <LuBug size={14} /> REPORTAR BUG/MELHORIA
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <p className="font-mono text-[10px] text-muted tracking-wider leading-relaxed">
+              Exibe um botão flutuante discreto (visível só para admin) para enviar bugs e ideias de melhoria com contexto e screenshot direto para o e-mail.
+            </p>
+            <button
+              onClick={() => setAdminFeedbackButtonEnabled(!adminFeedbackButtonEnabled)}
+              className={`flex-shrink-0 w-12 h-7 rounded-full relative transition-colors ${
+                adminFeedbackButtonEnabled ? 'bg-neon/80' : 'bg-border2'
+              }`}
+            >
+              <span
+                className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-s1 transition-transform ${
+                  adminFeedbackButtonEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* About */}
       <div className="bg-s1 border border-border1 p-4">
