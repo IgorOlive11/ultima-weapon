@@ -1360,9 +1360,10 @@ function ActiveWorkout() {
   }, [isCurrentStep, isPastStep, advance, saveSetResult, viewingStepIdx])
 
   // ── stack drag/scroll: navega entre séries sem tocar no progresso real ───
-  const STACK_DRAG_COMMIT_PX = 60
+  const STACK_DRAG_COMMIT_PX = 100
   const STACK_WHEEL_THRESHOLD = 12
   const STACK_WHEEL_COOLDOWN_MS = 400
+  const PEEK_DRAG_FACTOR = 0.25 // peeks se movem bem menos que o card atual (janela pequena, evita "estourar" e ficar vazio)
 
   const commitStackNav = (offset) => {
     const next = viewingStepIdx + offset
@@ -1508,20 +1509,20 @@ function ActiveWorkout() {
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="absolute top-1 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 bg-black/80 border border-neon/30 font-mono text-[9px] text-neon/90 tracking-wider text-center pointer-events-none whitespace-nowrap"
+              className="absolute top-1 left-1/2 -translate-x-1/2 z-20 w-[85%] max-w-[280px] px-3 py-1.5 bg-black/80 border border-neon/30 font-mono text-[9px] text-neon/90 tracking-wider text-center leading-relaxed pointer-events-none"
             >
-              ↕ ROLE PARA CIMA/BAIXO PARA VER A SÉRIE ANTERIOR/PRÓXIMA
+              ↕ ROLE PARA VER A SÉRIE ANTERIOR/PRÓXIMA
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* peek: anterior — janela fixa pequena, sempre reservada (mesmo vazia) */}
-        <div className="flex-shrink-0 h-16 relative overflow-hidden pointer-events-none select-none">
+        {/* peek: anterior — janela pequena; colapsa se não houver série anterior (sem espaço em branco) */}
+        <div className={`flex-shrink-0 relative overflow-hidden pointer-events-none select-none transition-all duration-200 ${viewingStepIdx > 0 ? 'h-16' : 'h-0'}`}>
           {viewingStepIdx > 0 && (
             <div
               className="absolute bottom-0 left-0 right-0"
               style={{
-                transform: `scale(0.85) translateY(${stackOffset}px)`,
+                transform: `scale(0.85) translateY(${stackOffset * PEEK_DRAG_FACTOR}px)`,
                 transformOrigin: 'bottom center',
                 opacity: 0.4,
                 transition: stackDragging ? 'none' : 'transform 220ms cubic-bezier(0.22,1,0.36,1)',
@@ -1583,13 +1584,13 @@ function ActiveWorkout() {
           </div>
         </div>
 
-        {/* peek: próxima — janela fixa pequena, sempre reservada (mesmo vazia) */}
-        <div className="flex-shrink-0 h-16 relative overflow-hidden pointer-events-none select-none">
+        {/* peek: próxima — janela pequena; colapsa se não houver próxima série (sem espaço em branco) */}
+        <div className={`flex-shrink-0 relative overflow-hidden pointer-events-none select-none transition-all duration-200 ${viewingStepIdx < steps.length - 1 ? 'h-16' : 'h-0'}`}>
           {viewingStepIdx < steps.length - 1 && (
             <div
               className="absolute top-0 left-0 right-0"
               style={{
-                transform: `scale(0.85) translateY(${stackOffset}px)`,
+                transform: `scale(0.85) translateY(${stackOffset * PEEK_DRAG_FACTOR}px)`,
                 transformOrigin: 'top center',
                 opacity: 0.4,
                 transition: stackDragging ? 'none' : 'transform 220ms cubic-bezier(0.22,1,0.36,1)',
