@@ -222,7 +222,7 @@ function PrevRecord({ prevData, setDef }) {
   }
 
   return (
-    <div className={`border px-3 py-2 mb-3 ${
+    <div className={`border px-3 py-2 mb-2 ${
       alert === 'over'  ? 'border-neon/30 bg-neon/5' :
       alert === 'under' ? 'border-yellow-500/30 bg-yellow-500/5' :
       'border-border1 bg-s2/50'
@@ -234,12 +234,12 @@ function PrevRecord({ prevData, setDef }) {
       </div>
       <div className="font-mono text-[10px] text-muted">{text}</div>
       {alert === 'over' && (
-        <div className="font-mono text-[10px] text-neon mt-1.5 leading-relaxed">
+        <div className="font-mono text-[9px] text-neon mt-1 leading-snug">
           Você superou as expectativas no último treino. Progrida a carga e cresça.
         </div>
       )}
       {alert === 'under' && (
-        <div className="font-mono text-[10px] text-yellow-400 mt-1.5 leading-relaxed">
+        <div className="font-mono text-[9px] text-yellow-400 mt-1 leading-snug">
           Você foi egoísta com esse peso no último treino. Reduz a carga e para de fugir do exercício.
         </div>
       )}
@@ -259,50 +259,50 @@ function WeightQuestionCard({ step, onConfirm, history, isLocked }) {
   }
 
   return (
-    <div className="bg-s1 border border-border2 rounded-sm overflow-hidden">
+    <div className="h-full bg-s1 border border-border2 rounded-sm overflow-hidden flex flex-col">
       {/* type strip */}
       <div className="h-1" style={{ background: typeInfo.color }} />
 
-      <div className="p-5">
+      <div className="p-4 flex-1 min-h-0 overflow-hidden flex flex-col">
         <div className="font-mono text-[10px] text-muted tracking-[0.25em] mb-1">{step.muscle}</div>
-        <div className="font-display text-xl tracking-wider text-ink mb-1">{step.exerciseName}</div>
+        <div className="font-display text-lg tracking-wider text-ink mb-1 truncate">{step.exerciseName}</div>
         <div
-          className="font-display text-xs tracking-[0.15em] mb-5"
+          className="font-display text-xs tracking-[0.15em] mb-3"
           style={{ color: typeInfo.color }}
         >
           {typeInfo.label}
         </div>
 
-        <div className="bg-s2 border border-border1 px-4 py-4 mb-4">
-          <div className="font-mono text-[11px] text-muted tracking-wider leading-relaxed">
+        <div className="bg-s2 border border-border1 px-3 py-3 mb-3">
+          <div className="font-mono text-[10px] text-muted tracking-wider leading-snug">
             {question}
           </div>
         </div>
 
         {/* last session history */}
         {history && (
-          <div className="border border-border1 bg-s2/50 px-3 py-2.5 mb-4">
-            <div className="flex items-center justify-between mb-2">
+          <div className="border border-border1 bg-s2/50 px-3 py-2 mb-3">
+            <div className="flex items-center justify-between mb-1.5">
               <div className="font-mono text-[9px] text-neon tracking-[0.2em]">ÚLTIMO REGISTRO</div>
               <div className="font-mono text-[9px] text-muted/50">
                 {new Date(history.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                 {history.kg > 0 && <span className="text-neon/70 ml-1.5">{fmtKg(history.kg)}</span>}
               </div>
             </div>
-            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
-              {history.warmups?.filter(w => w.reps > 0).map((w, i) => (
+            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 max-h-[74px] overflow-hidden">
+              {history.warmups?.filter(w => w.reps > 0).slice(0, 2).map((w, i) => (
                 <>
                   <span key={`wl${i}`} className="font-mono text-[9px] text-muted/50">AQUEC. {i+1}</span>
                   <span key={`wr${i}`} className="font-mono text-[10px] text-muted">{w.reps}r · {fmtKg(w.kg)}</span>
                 </>
               ))}
-              {history.feeders?.filter(f => f.reps > 0).map((f, i) => (
+              {history.feeders?.filter(f => f.reps > 0).slice(0, 2).map((f, i) => (
                 <>
                   <span key={`fl${i}`} className="font-mono text-[9px] text-muted/50">PREP {i+1}</span>
                   <span key={`fr${i}`} className="font-mono text-[10px] text-muted">{f.reps}r · {fmtKg(f.kg)}</span>
                 </>
               ))}
-              {history.sets?.map((s, i) => (
+              {history.sets?.slice(0, 3).map((s, i) => (
                 <>
                   <span key={`sl${i}`} className="font-mono text-[9px] text-muted/50">SÉRIE {i+1}</span>
                   <span key={`sr${i}`} className="font-mono text-[10px] text-ink/80">{fmtSetResult(s)}</span>
@@ -313,7 +313,7 @@ function WeightQuestionCard({ step, onConfirm, history, isLocked }) {
         )}
 
         {/* weight input */}
-        <div className="flex items-center gap-3 mb-5">
+        <div className="flex items-center gap-3 mt-auto mb-3">
           <button
             onClick={() => setWeight(w => String(Math.max(0, round25(parseFloat(w||0) - 2.5))))}
             className="w-12 h-12 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
@@ -324,7 +324,7 @@ function WeightQuestionCard({ step, onConfirm, history, isLocked }) {
             <input
               type="number"
               inputMode="decimal"
-              className="w-full bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-3 focus:border-neon outline-none transition-colors"
+              className="w-full bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-2.5 focus:border-neon outline-none transition-colors"
               placeholder="0"
               value={weight}
               onChange={e => setWeight(e.target.value)}
@@ -343,7 +343,7 @@ function WeightQuestionCard({ step, onConfirm, history, isLocked }) {
         <button
           onClick={handleConfirm}
           disabled={!parseFloat(weight) || isLocked}
-          className="w-full py-3.5 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+          className="w-full py-3 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
           style={{ background: typeInfo.color }}
         >
           CONFIRMAR PESO
@@ -364,21 +364,21 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, sav
   }
 
   return (
-    <div className="bg-s1 border border-border2 rounded-sm overflow-hidden">
+    <div className="h-full bg-s1 border border-border2 rounded-sm overflow-hidden flex flex-col">
       <div className="h-1 bg-muted/30" />
-      <div className="p-5">
+      <div className="p-4 flex-1 min-h-0 overflow-hidden flex flex-col">
         <div className="font-mono text-[10px] text-muted tracking-[0.25em] mb-1">{step.exerciseName}</div>
 
-        <div className="font-display text-xl tracking-wider text-ink mb-1">
+        <div className="font-display text-lg tracking-wider text-ink mb-1 truncate">
           {isWarmup
             ? `AQUECIMENTO ${step.setNum} DE ${step.totalSets ?? 2}`
             : `PREP ${step.setNum} DE ${step.totalSets ?? 1}`}
         </div>
-        <div className="font-mono text-[11px] text-muted/60 tracking-wider mb-4">
+        <div className="font-mono text-[10px] text-muted/60 tracking-wider mb-3">
           {isWarmup ? 'Prepare os tecidos' : `Ativação progressiva — GER ${step.gerTarget ?? 7}`}
         </div>
 
-        <div className="bg-s2 border border-border1 px-4 py-4 mb-4 flex items-center gap-4">
+        <div className="bg-s2 border border-border1 px-3 py-3 mb-3 flex items-center gap-4">
           <div>
             <div className="font-mono text-[10px] text-muted tracking-wider mb-1">REPS</div>
             <div className="font-display text-2xl tracking-wider text-ink">{step.reps}</div>
@@ -401,7 +401,7 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, sav
         </div>
 
         {!isWarmup && (
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3">
             <DoomFace face={GER_CONFIG[step.gerTarget ?? 7]?.face} size={28}/>
             <div className="font-mono text-[10px] text-muted leading-relaxed">
               Mantenha GER {step.gerTarget ?? 7} nestas séries.<br/>Sentir o movimento, não chegar perto da falha.
@@ -412,7 +412,7 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, sav
         <PrevRecord prevData={prevData} />
 
         {/* reps done */}
-        <div className="mb-4">
+        <div className="mt-auto mb-3">
           <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">REPS REALIZADAS</label>
           <div className="flex items-center gap-3">
             <button
@@ -421,7 +421,7 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, sav
             ><LuMinus size={16}/></button>
             <input
               type="number" inputMode="numeric"
-              className="flex-1 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-2.5 focus:border-neon outline-none transition-colors"
+              className="flex-1 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-2 focus:border-neon outline-none transition-colors"
               placeholder="0"
               value={reps}
               onChange={e => setReps(e.target.value)}
@@ -436,7 +436,7 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, sav
         <button
           onClick={handleDone}
           disabled={isLocked}
-          className="w-full py-3.5 font-display text-sm tracking-[0.2em] bg-s2 border border-border2 text-muted hover:text-ink hover:border-neon disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          className="w-full py-3 font-display text-sm tracking-[0.2em] bg-s2 border border-border2 text-muted hover:text-ink hover:border-neon disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
         >
           <LuCheck size={16}/> CONCLUÍDO
         </button>
@@ -455,17 +455,17 @@ function NormalSetCard({ step, workingWeight, onDone, isLocked, prevData, savedR
   }
 
   return (
-    <div className="bg-s1 border border-border2 rounded-sm overflow-hidden">
+    <div className="h-full bg-s1 border border-border2 rounded-sm overflow-hidden flex flex-col">
       <div className="h-1" style={{ background: typeInfo.color }} />
-      <div className="p-5">
+      <div className="p-4 flex-1 min-h-0 overflow-hidden flex flex-col">
         <div className="font-mono text-[10px] text-muted tracking-[0.25em] mb-1">{step.muscle}</div>
-        <div className="font-display text-xl tracking-wider text-ink mb-0.5">{step.exerciseName}</div>
-        <div className="font-display text-xs tracking-[0.2em] mb-4" style={{ color: typeInfo.color }}>
+        <div className="font-display text-lg tracking-wider text-ink mb-0.5 truncate">{step.exerciseName}</div>
+        <div className="font-display text-xs tracking-[0.2em] mb-3" style={{ color: typeInfo.color }}>
           {step.totalSets > 1 ? `SÉRIE ${step.setNum} DE ${step.totalSets}` : 'SÉRIE PRINCIPAL'}
         </div>
 
         {/* GER face */}
-        <div className="flex items-center gap-3 bg-s2 border border-border1 px-4 py-3 mb-4">
+        <div className="flex items-center gap-3 bg-s2 border border-border1 px-3 py-2.5 mb-3">
           <DoomFace face={gerCfg.face} size={40}/>
           <div>
             <div className="font-display text-sm tracking-wider" style={{ color: typeInfo.color }}>
@@ -477,8 +477,8 @@ function NormalSetCard({ step, workingWeight, onDone, isLocked, prevData, savedR
         </div>
 
         {/* weight + rep range */}
-        <div className="flex gap-3 mb-4">
-          <div className="flex-1 bg-s2 border border-border1 px-3 py-3 text-center">
+        <div className="flex gap-3 mb-3">
+          <div className="flex-1 bg-s2 border border-border1 px-3 py-2.5 text-center">
             <div className="font-mono text-[10px] text-muted tracking-wider mb-1">CARGA</div>
             <div className="font-display text-2xl tracking-wider text-neon">{fmtKg(workingWeight)}</div>
           </div>
@@ -493,7 +493,7 @@ function NormalSetCard({ step, workingWeight, onDone, isLocked, prevData, savedR
         <PrevRecord prevData={prevData} setDef={step.setDef} />
 
         {/* reps hit input */}
-        <div className="mb-4">
+        <div className="mt-auto mb-3">
           <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">REPS REALIZADAS</label>
           <div className="flex items-center gap-3">
             <button
@@ -503,7 +503,7 @@ function NormalSetCard({ step, workingWeight, onDone, isLocked, prevData, savedR
             <input
               type="number"
               inputMode="numeric"
-              className="flex-1 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-2.5 focus:border-neon outline-none transition-colors"
+              className="flex-1 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-2 focus:border-neon outline-none transition-colors"
               placeholder="0"
               value={repsHit}
               onChange={e => setRepsHit(e.target.value)}
@@ -518,7 +518,7 @@ function NormalSetCard({ step, workingWeight, onDone, isLocked, prevData, savedR
         <button
           onClick={handleDone}
           disabled={isLocked}
-          className="w-full py-3.5 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-opacity"
+          className="w-full py-3 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-opacity"
           style={{ background: typeInfo.color }}
         >
           <LuCheck size={16}/> SÉRIE CONCLUÍDA
@@ -574,17 +574,17 @@ function RestPauseCard({ step, workingWeight, onDone, isLocked, prevData }) {
   const [localReps, setLocalReps] = useState('')
 
   return (
-    <div className="bg-s1 border border-border2 rounded-sm overflow-hidden">
+    <div className="h-full bg-s1 border border-border2 rounded-sm overflow-hidden flex flex-col">
       <div className="h-1" style={{ background: typeInfo.color }}/>
-      <div className="p-5">
+      <div className="p-4 flex-1 min-h-0 overflow-hidden flex flex-col">
         <div className="font-mono text-[10px] text-muted tracking-[0.25em] mb-1">{step.muscle}</div>
-        <div className="font-display text-xl tracking-wider text-ink mb-0.5">{step.exerciseName}</div>
-        <div className="font-display text-xs tracking-[0.2em] mb-4" style={{ color: typeInfo.color }}>
+        <div className="font-display text-lg tracking-wider text-ink mb-0.5 truncate">{step.exerciseName}</div>
+        <div className="font-display text-xs tracking-[0.2em] mb-3" style={{ color: typeInfo.color }}>
           DC STYLE REST PAUSE · {fmtKg(workingWeight)}
         </div>
 
         {/* GER face */}
-        <div className="flex items-center gap-3 bg-s2 border border-border1 px-4 py-3 mb-4">
+        <div className="flex items-center gap-3 bg-s2 border border-border1 px-3 py-2.5 mb-3">
           <DoomFace face={GER_CONFIG[typeInfo.ger].face} size={40}/>
           <div>
             <div className="font-display text-sm tracking-wider" style={{ color: typeInfo.color }}>
@@ -595,17 +595,17 @@ function RestPauseCard({ step, workingWeight, onDone, isLocked, prevData }) {
         </div>
 
         {/* instructions */}
-        <div className="bg-s2 border border-border1 px-3 py-3 mb-4 font-mono text-[10px] text-muted leading-relaxed">
+        <div className="bg-s2 border border-border1 px-3 py-2.5 mb-3 font-mono text-[10px] text-muted leading-snug">
           Carga para ~8 reps. Vai até a falha → <span className="text-orange-400">Pausa 20s</span> → vai até a falha de novo.
           <br/>Quando chegar 10-11 reps no bloco 1: progride carga.
         </div>
 
         {/* blocks */}
-        <div className="flex flex-col gap-2 mb-4">
+        <div className="flex flex-col gap-1.5 mb-3">
           {blocks.map((b, i) => (
             <div
               key={i}
-              className={`flex items-center gap-3 border px-3 py-2.5 ${
+              className={`flex items-center gap-3 border px-3 py-2 ${
                 i < currentBlock ? 'border-border2 bg-s2 opacity-60' :
                 i === currentBlock ? 'border-orange-500/50 bg-orange-500/5' :
                 'border-border1 opacity-30'
@@ -626,7 +626,7 @@ function RestPauseCard({ step, workingWeight, onDone, isLocked, prevData }) {
 
         {/* 20s inter-block countdown */}
         {phase === 'rest20' && timer20 !== null && (
-          <div className="bg-orange-500/10 border border-orange-500/30 px-4 py-4 mb-4">
+          <div className="bg-orange-500/10 border border-orange-500/30 px-4 py-3 mb-3">
             <div className="flex items-center justify-between">
               <div>
                 <div className="font-mono text-[10px] text-orange-400 tracking-wider mb-1">PAUSA 20s</div>
@@ -644,7 +644,7 @@ function RestPauseCard({ step, workingWeight, onDone, isLocked, prevData }) {
 
         {/* block rep input */}
         {phase === 'block' && !isDone && (
-          <div className="mb-4">
+          <div className="mt-auto mb-3">
             <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">
               REPS DO BLOCO {currentBlock + 1}
             </label>
@@ -655,7 +655,7 @@ function RestPauseCard({ step, workingWeight, onDone, isLocked, prevData }) {
               ><LuMinus size={16}/></button>
               <input
                 type="number" inputMode="numeric"
-                className="flex-1 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-2.5 focus:border-neon outline-none transition-colors"
+                className="flex-1 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-2 focus:border-neon outline-none transition-colors"
                 placeholder="0"
                 value={localReps}
                 onChange={e => setLocalReps(e.target.value)}
@@ -680,7 +680,7 @@ function RestPauseCard({ step, workingWeight, onDone, isLocked, prevData }) {
           <button
             onClick={handleFinish}
             disabled={isLocked}
-            className="w-full py-3.5 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 flex items-center justify-center gap-2"
+            className="w-full py-3 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 flex items-center justify-center gap-2 mt-auto"
             style={{ background: typeInfo.color }}
           >
             <LuFlame size={16}/> REST PAUSE CONCLUÍDO
@@ -735,16 +735,16 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked, prevData }) {
   }
 
   return (
-    <div className="bg-s1 border border-border2 rounded-sm overflow-hidden">
+    <div className="h-full bg-s1 border border-border2 rounded-sm overflow-hidden flex flex-col">
       <div className="h-1" style={{ background: typeInfo.color }}/>
-      <div className="p-5">
+      <div className="p-4 flex-1 min-h-0 overflow-hidden flex flex-col">
         <div className="font-mono text-[10px] text-muted tracking-[0.25em] mb-1">{step.muscle}</div>
-        <div className="font-display text-xl tracking-wider text-ink mb-0.5">{step.exerciseName}</div>
-        <div className="font-display text-xs tracking-[0.2em] mb-4" style={{ color: typeInfo.color }}>
+        <div className="font-display text-lg tracking-wider text-ink mb-0.5 truncate">{step.exerciseName}</div>
+        <div className="font-display text-xs tracking-[0.2em] mb-3" style={{ color: typeInfo.color }}>
           MUSCLE ROUND · {fmtKg(workingWeight)}
         </div>
 
-        <div className="bg-s2 border border-border1 px-3 py-3 mb-4 font-mono text-[10px] text-muted leading-relaxed">
+        <div className="bg-s2 border border-border1 px-3 py-2.5 mb-3 font-mono text-[10px] text-muted leading-snug">
           Blocos de <span className="text-red-400 font-bold">4 reps</span> com 10s de descanso entre blocos.
           Continue até falhar uma vez.
         </div>
@@ -752,7 +752,7 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked, prevData }) {
         <PrevRecord prevData={prevData} />
 
         {/* block grid */}
-        <div className="grid grid-cols-6 gap-1.5 mb-4">
+        <div className="grid grid-cols-6 gap-1.5 mb-3">
           {Array(TOTAL_BLOCKS).fill(null).map((_, i) => {
             const done   = i < completedBlocks
             const isFail = failedInfo !== null && i === failedInfo.block - 1
@@ -760,7 +760,7 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked, prevData }) {
             return (
               <div
                 key={i}
-                className={`aspect-square flex items-center justify-center border font-display text-xs transition-all ${
+                className={`h-8 flex items-center justify-center border font-display text-xs transition-all ${
                   isFail ? 'border-red-500 bg-red-500/20 text-red-400' :
                   done   ? 'border-red-400/60 bg-red-400/20 text-red-300' :
                   isCurr ? 'border-red-500 bg-red-500/10 text-red-400' :
@@ -775,7 +775,7 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked, prevData }) {
 
         {/* 10s inter-block rest */}
         {phase === 'rest10' && blockTimer !== null && (
-          <div className="bg-red-500/10 border border-red-500/30 px-4 py-3 mb-4">
+          <div className="bg-red-500/10 border border-red-500/30 px-4 py-3 mb-3">
             <div className="flex items-center justify-between">
               <div>
                 <div className="font-mono text-[10px] text-red-400 tracking-wider mb-1">DESCANSO 10s</div>
@@ -792,7 +792,7 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked, prevData }) {
         )}
 
         {phase === 'done' && failedInfo && (
-          <div className="bg-red-500/10 border border-red-500/30 px-3 py-2.5 mb-4 text-center">
+          <div className="bg-red-500/10 border border-red-500/30 px-3 py-2 mb-3 text-center">
             <div className="font-mono text-[11px] text-red-400">
               Falha no bloco {failedInfo.block}
               {failedInfo.reps > 0 && ` · ${failedInfo.reps} reps`}
@@ -804,7 +804,7 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked, prevData }) {
         {/* current block reps input + actions */}
         {phase === 'ready' && failedInfo === null && (
           <>
-            <div className="mb-3">
+            <div className="mt-auto mb-3">
               <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">
                 REPS NO BLOCO {completedBlocks + 1} (deixe 0 se não iniciou)
               </label>
@@ -815,7 +815,7 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked, prevData }) {
                 ><LuMinus size={16}/></button>
                 <input
                   type="number" inputMode="numeric"
-                  className="flex-1 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-2.5 focus:border-neon outline-none transition-colors"
+                  className="flex-1 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-2 focus:border-neon outline-none transition-colors"
                   placeholder="0"
                   value={currentReps}
                   onChange={e => setCurrentReps(e.target.value)}
@@ -849,7 +849,7 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked, prevData }) {
           <button
             onClick={handleFinish}
             disabled={isLocked}
-            className="w-full py-3.5 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 flex items-center justify-center gap-2 mt-3"
+            className="w-full py-3 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 flex items-center justify-center gap-2 mt-auto"
             style={{ background: typeInfo.color }}
           >
             <LuCheck size={16}/> MUSCLE ROUND CONCLUÍDO
@@ -874,17 +874,17 @@ function WidowmakerCard({ step, workingWeight, onDone, isLocked, prevData }) {
   }
 
   return (
-    <div className="bg-s1 border border-border2 rounded-sm overflow-hidden">
+    <div className="h-full bg-s1 border border-border2 rounded-sm overflow-hidden flex flex-col">
       <div className="h-1" style={{ background: typeInfo.color }}/>
-      <div className="p-5">
+      <div className="p-4 flex-1 min-h-0 overflow-hidden flex flex-col">
         <div className="font-mono text-[10px] text-muted tracking-[0.25em] mb-1">{step.muscle}</div>
-        <div className="font-display text-xl tracking-wider text-ink mb-0.5">{step.exerciseName}</div>
-        <div className="font-display text-xs tracking-[0.2em] mb-4" style={{ color: typeInfo.color }}>
+        <div className="font-display text-lg tracking-wider text-ink mb-0.5 truncate">{step.exerciseName}</div>
+        <div className="font-display text-xs tracking-[0.2em] mb-3" style={{ color: typeInfo.color }}>
           DC STYLE WIDOWMAKER · {fmtKg(workingWeight)}
         </div>
 
         {/* GER face */}
-        <div className="flex items-center gap-3 bg-s2 border border-border1 px-4 py-3 mb-4">
+        <div className="flex items-center gap-3 bg-s2 border border-border1 px-3 py-2.5 mb-3">
           <DoomFace face={GER_CONFIG[typeInfo.ger].face} size={40}/>
           <div>
             <div className="font-display text-sm tracking-wider" style={{ color: typeInfo.color }}>
@@ -895,14 +895,14 @@ function WidowmakerCard({ step, workingWeight, onDone, isLocked, prevData }) {
         </div>
 
         {phase === 'working' && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 px-3 py-3 mb-4 font-mono text-[10px] text-yellow-200 leading-relaxed">
+          <div className="bg-yellow-500/10 border border-yellow-500/30 px-3 py-2.5 mb-3 font-mono text-[10px] text-yellow-200 leading-snug">
             <span className="text-yellow-400 font-bold">FASE 1:</span> Carga pra falha TOTAL em 10-12 reps.
             Não economize nada.
           </div>
         )}
 
         {phase === 'extending' && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 px-3 py-3 mb-4 font-mono text-[10px] text-yellow-200 leading-relaxed">
+          <div className="bg-yellow-500/10 border border-yellow-500/30 px-3 py-2.5 mb-3 font-mono text-[10px] text-yellow-200 leading-snug">
             <span className="text-yellow-400 font-bold">FASE 2:</span> Continue até 15-20 reps.
             Dê quanto intervalo precisar entre reps. <span className="text-yellow-400">Não solte a barra.</span>
           </div>
@@ -911,9 +911,9 @@ function WidowmakerCard({ step, workingWeight, onDone, isLocked, prevData }) {
         <PrevRecord prevData={prevData} />
 
         {/* rep counter */}
-        <div className="bg-s2 border border-border1 px-4 py-5 mb-4 text-center">
+        <div className="bg-s2 border border-border1 px-4 py-3 mb-3 text-center">
           <div className="font-mono text-[10px] text-muted tracking-wider mb-2">REPS TOTAIS</div>
-          <div className="font-display text-5xl tracking-wider" style={{ color: typeInfo.color }}>{reps}</div>
+          <div className="font-display text-4xl tracking-wider" style={{ color: typeInfo.color }}>{reps}</div>
           <div className="font-mono text-[10px] mt-2">
             {phase === 'working' && reps < 8 && reps > 0 && (
               <span className="text-muted">{8 - reps} reps para a zona de falha</span>
@@ -936,7 +936,7 @@ function WidowmakerCard({ step, workingWeight, onDone, isLocked, prevData }) {
           </div>
         </div>
 
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2 mt-auto mb-3">
           <button
             onClick={() => setReps(r => Math.max(0, r-1))}
             className="w-12 h-12 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
@@ -962,7 +962,7 @@ function WidowmakerCard({ step, workingWeight, onDone, isLocked, prevData }) {
           <button
             onClick={handleFinish}
             disabled={isLocked}
-            className="w-full py-3.5 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 flex items-center justify-center gap-2"
+            className="w-full py-3 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 flex items-center justify-center gap-2"
             style={{ background: typeInfo.color }}
           >
             <LuCheck size={16}/> WIDOWMAKER CONCLUÍDO
@@ -1006,19 +1006,19 @@ function PulseSetCard({ step, workingWeight, onDone, isLocked, prevData }) {
   const cur = SEQUENCE[current] || {}
 
   return (
-    <div className="bg-s1 border border-border2 rounded-sm overflow-hidden">
+    <div className="h-full bg-s1 border border-border2 rounded-sm overflow-hidden flex flex-col">
       <div className="h-1" style={{ background: typeInfo.color }}/>
-      <div className="p-5">
+      <div className="p-4 flex-1 min-h-0 overflow-hidden flex flex-col">
         <div className="font-mono text-[10px] text-muted tracking-[0.25em] mb-1">{step.muscle}</div>
-        <div className="font-display text-xl tracking-wider text-ink mb-0.5">{step.exerciseName}</div>
-        <div className="font-display text-xs tracking-[0.2em] mb-4" style={{ color: typeInfo.color }}>
+        <div className="font-display text-lg tracking-wider text-ink mb-0.5 truncate">{step.exerciseName}</div>
+        <div className="font-display text-xs tracking-[0.2em] mb-3" style={{ color: typeInfo.color }}>
           DC STYLE PULSE SET · {fmtKg(workingWeight)}
         </div>
 
         <PrevRecord prevData={prevData} />
 
         {/* sequence display */}
-        <div className="flex flex-col gap-1 mb-4">
+        <div className="flex flex-col gap-1 mb-3">
           {SEQUENCE.map((s, i) => (
             <div
               key={i}
@@ -1047,7 +1047,7 @@ function PulseSetCard({ step, workingWeight, onDone, isLocked, prevData }) {
 
         {!isDone && (
           <>
-            <div className="bg-pink-500/10 border border-pink-500/30 px-4 py-4 text-center mb-4">
+            <div className="bg-pink-500/10 border border-pink-500/30 px-4 py-3 text-center mt-auto mb-3">
               <div className="font-mono text-[10px] text-muted tracking-wider mb-1">AGORA</div>
               <div className="font-display text-2xl tracking-wider" style={{ color: typeInfo.color }}>
                 {phase === 'reps' ? `${cur.reps} REPS COMPLETAS` :
@@ -1058,7 +1058,7 @@ function PulseSetCard({ step, workingWeight, onDone, isLocked, prevData }) {
 
             <button
               onClick={handlePhaseNext}
-              className="w-full py-3.5 font-display text-sm tracking-[0.2em] text-bg"
+              className="w-full py-3 font-display text-sm tracking-[0.2em] text-bg"
               style={{ background: typeInfo.color }}
             >
               {phase === 'reps' ? 'REPS FEITAS →' :
@@ -1072,7 +1072,7 @@ function PulseSetCard({ step, workingWeight, onDone, isLocked, prevData }) {
           <button
             onClick={handleFinish}
             disabled={isLocked}
-            className="w-full py-3.5 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 flex items-center justify-center gap-2"
+            className="w-full py-3 font-display text-sm tracking-[0.2em] text-bg disabled:opacity-40 flex items-center justify-center gap-2 mt-auto"
             style={{ background: typeInfo.color }}
           >
             <LuCheck size={16}/> PULSE SET CONCLUÍDO
@@ -1226,10 +1226,13 @@ function ActiveWorkout() {
   const { steps, currentStepIdx, exerciseWeights, weekIdx, dayIdx, setResults } = activeWorkout
   const day = userProtocol.weeks[weekIdx].days[dayIdx]
 
-  // CARD_H fixo (por render) — todo tipo de série cabe nele, sem scroll interno.
-  // STEP < CARD_H de propósito: gera a sobreposição/peek de ~80px do vizinho.
-  const CARD_H = Math.max(1, Math.round(reelH * 0.74))
-  const STEP   = Math.max(1, CARD_H - 80)
+  // CARD_H fixo (por render): cabe dentro do viewport do reel com respiro.
+  // STEP < CARD_H de propósito: mantém o peek, mas o centro do ativo é sempre o mesmo.
+  const CARD_H = Math.max(
+    1,
+    Math.round(Math.min(460, Math.max(320, reelH - 56), Math.max(1, reelH - 24)))
+  )
+  const STEP   = Math.max(1, CARD_H - Math.min(84, Math.max(56, Math.round(CARD_H * 0.18))))
 
   // Sync viewingStepIdx to follow currentStepIdx when user was on the current step
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -1579,8 +1582,8 @@ function ActiveWorkout() {
               const dist = (i - viewingStepIdx) - dragY / STEP
               const ad = Math.abs(dist)
               if (ad > 2) return null // fora do alcance visível (opacidade já bateu 0 antes disso)
-              const scale   = Math.max(0.82, 1 - ad * 0.18)
-              const opacity = Math.max(0, 1 - ad * 0.6)
+              const scale   = Math.max(0.82, 1 - ad * 0.13)
+              const opacity = Math.max(0.25, 1 - ad * 0.5)
               const z       = 100 - Math.round(ad * 10)
               return (
                 <div
@@ -1589,10 +1592,12 @@ function ActiveWorkout() {
                   style={{
                     position: 'absolute',
                     top: i * STEP,
-                    left: 0,
-                    right: 0,
+                    left: '50%',
+                    width: 'calc(100% - 4px)',
+                    maxWidth: 420,
                     height: CARD_H,
-                    transform: `scale(${scale})`,
+                    transform: `translateX(-50%) scale(${scale})`,
+                    transformOrigin: 'center center',
                     opacity,
                     zIndex: z,
                     transition: animating ? `transform 260ms cubic-bezier(.22,.61,.36,1), opacity 260ms cubic-bezier(.22,.61,.36,1)` : 'none',
