@@ -149,6 +149,9 @@ export const useStore = create(
       tutorialSeen: false,
       setTutorialSeen: (v = true) => set({ tutorialSeen: v }),
 
+      stackNavHintSeen: false,
+      setStackNavHintSeen: (v = true) => set({ stackNavHintSeen: v }),
+
       // ── admin feedback button ─────────────────────────────────────────────────
       adminFeedbackButtonEnabled: true,
       adminFeedbackButtonPos: null, // { x, y } em px (canto top-left do botão); null = posição padrão
@@ -763,6 +766,7 @@ export const useStore = create(
         savedExercises:  state.savedExercises,
         achievements:    state.achievements,
         tutorialSeen:    state.tutorialSeen,
+        stackNavHintSeen: state.stackNavHintSeen,
         adminFeedbackButtonEnabled: state.adminFeedbackButtonEnabled,
         adminFeedbackButtonPos:     state.adminFeedbackButtonPos,
         // _viewerSnapshot e pendingAchievements nunca persistem — só existem em memória

@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  LuPlay, LuCheck, LuChevronRight, LuSwords, LuTriangleAlert,
-  LuFlame, LuDumbbell, LuPlus, LuMinus, LuChevronLeft,
+  LuPlay, LuCheck, LuSwords, LuTriangleAlert,
+  LuFlame, LuDumbbell, LuPlus, LuMinus,
 } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 import { DAY_NAMES, SET_TYPES, GER_CONFIG, getWeightQuestion, MIN_PLATE_INCREMENT } from '../data/protocol'
@@ -1194,6 +1194,8 @@ function ActiveWorkout() {
   const exerciseHistory            = useStore(s => s.exerciseHistory)
   const pendingAchievements        = useStore(s => s.pendingAchievements)
   const dismissPendingAchievement  = useStore(s => s.dismissPendingAchievement)
+  const stackNavHintSeen           = useStore(s => s.stackNavHintSeen)
+  const setStackNavHintSeen        = useStore(s => s.setStackNavHintSeen)
 
   const [showConfirm,  setShowConfirm]  = useState(false)
   const [showAbandon,  setShowAbandon]  = useState(false)
@@ -1202,6 +1204,7 @@ function ActiveWorkout() {
   const [viewingStepIdx, setViewingStepIdx] = useState(0)
   const [shownGamif,   setShownGamif]   = useState(() => new Set())
   const [gamifPopup,   setGamifPopup]   = useState(null) // { type, exerciseName }
+  const [showStackHint, setShowStackHint] = useState(false)
 
   // ── stack drag (scroll/swipe vertical entre séries) ──────────────────────
   const [stackOffset, setStackOffset]   = useState(0)
@@ -1225,6 +1228,18 @@ function ActiveWorkout() {
     }
     prevCurIdxRef.current = currentStepIdx
   }, [currentStepIdx]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Dica discreta de navegação (só na primeira vez que o usuário vê a pilha)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (stackNavHintSeen) return
+    setShowStackHint(true)
+    const t = setTimeout(() => {
+      setShowStackHint(false)
+      setStackNavHintSeen(true)
+    }, 4000)
+    return () => clearTimeout(t)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Show gamification popup when landing on a WEIGHT_QUESTION step
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -1343,19 +1358,6 @@ function ActiveWorkout() {
     }
     // future steps: button is disabled, this won't be called
   }, [isCurrentStep, isPastStep, advance, saveSetResult, viewingStepIdx])
-
-  const handleNavPrev = () => {
-    if (viewingStepIdx > 0) {
-      setDir(-1)
-      setViewingStepIdx(v => v - 1)
-    }
-  }
-  const handleNavNext = () => {
-    if (viewingStepIdx < steps.length - 1) {
-      setDir(1)
-      setViewingStepIdx(v => v + 1)
-    }
-  }
 
   // ── stack drag/scroll: navega entre séries sem tocar no progresso real ───
   const STACK_DRAG_COMMIT_PX = 60
@@ -1499,20 +1501,39 @@ function ActiveWorkout() {
         onWheel={handleStackWheel}
         className="relative flex-1 min-h-0 flex flex-col"
       >
+        {/* dica discreta — só na primeira vez */}
+        <AnimatePresence>
+          {showStackHint && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="absolute top-1 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 bg-black/80 border border-neon/30 font-mono text-[9px] text-neon/90 tracking-wider text-center pointer-events-none whitespace-nowrap"
+            >
+              ↕ ROLE PARA CIMA/BAIXO PARA VER A SÉRIE ANTERIOR/PRÓXIMA
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* peek: anterior — janela fixa pequena, sempre reservada (mesmo vazia) */}
         <div className="flex-shrink-0 h-16 relative overflow-hidden pointer-events-none select-none">
           {viewingStepIdx > 0 && (
             <div
               className="absolute bottom-0 left-0 right-0"
-              style={{ transform: 'scale(0.85)', transformOrigin: 'bottom center', opacity: 0.4 }}
+              style={{
+                transform: `scale(0.85) translateY(${stackOffset}px)`,
+                transformOrigin: 'bottom center',
+                opacity: 0.4,
+                transition: stackDragging ? 'none' : 'transform 220ms cubic-bezier(0.22,1,0.36,1)',
+              }}
             >
               {renderPeekCard(-1)}
             </div>
           )}
         </div>
 
-        {/* card atual */}
-        <div className="flex-1 min-h-0 relative z-10">
+        {/* card atual — centralizado, nunca cresce sobre os peeks (scroll interno só em caso extremo) */}
+        <div className="flex-1 min-h-0 relative z-10 overflow-y-auto flex flex-col justify-center">
           <div style={{
             transform: `translateY(${stackOffset}px)`,
             transition: stackDragging ? 'none' : 'transform 220ms cubic-bezier(0.22,1,0.36,1)',
@@ -1567,7 +1588,12 @@ function ActiveWorkout() {
           {viewingStepIdx < steps.length - 1 && (
             <div
               className="absolute top-0 left-0 right-0"
-              style={{ transform: 'scale(0.85)', transformOrigin: 'top center', opacity: 0.4 }}
+              style={{
+                transform: `scale(0.85) translateY(${stackOffset}px)`,
+                transformOrigin: 'top center',
+                opacity: 0.4,
+                transition: stackDragging ? 'none' : 'transform 220ms cubic-bezier(0.22,1,0.36,1)',
+              }}
             >
               {renderPeekCard(1)}
             </div>
@@ -1615,33 +1641,9 @@ function ActiveWorkout() {
         </div>
       )}
 
-      {/* step navigation */}
-      <div className="flex-shrink-0 flex items-center gap-2 mt-3">
-        <button
-          onClick={handleNavPrev}
-          disabled={viewingStepIdx === 0}
-          className="flex items-center gap-1 px-3 py-1.5 border border-border2 font-mono text-[10px] text-muted hover:text-ink hover:border-neon/40 disabled:opacity-25 transition-colors"
-        >
-          <LuChevronLeft size={13}/> ANT
-        </button>
-        {!isCurrentStep && (
-          <button
-            onClick={() => { setDir(viewingStepIdx < currentStepIdx ? 1 : -1); setViewingStepIdx(currentStepIdx) }}
-            className="px-3 py-1.5 border border-neon/40 font-mono text-[10px] text-neon hover:bg-neon/5 transition-colors"
-          >
-            ATUAL
-          </button>
-        )}
-        <div className="flex-1 text-center font-mono text-[9px] text-muted/50 tracking-wider">
-          {viewingStepIdx + 1}/{steps.length}
-        </div>
-        <button
-          onClick={handleNavNext}
-          disabled={viewingStepIdx >= steps.length - 1}
-          className="flex items-center gap-1 px-3 py-1.5 border border-border2 font-mono text-[10px] text-muted hover:text-ink hover:border-neon/40 disabled:opacity-25 transition-colors"
-        >
-          PRÓ <LuChevronRight size={13}/>
-        </button>
+      {/* contador de posição na sessão */}
+      <div className="flex-shrink-0 text-center font-mono text-[9px] text-muted/40 tracking-wider mt-2">
+        {viewingStepIdx + 1}/{steps.length}
       </div>
 
       <AnimatePresence>
