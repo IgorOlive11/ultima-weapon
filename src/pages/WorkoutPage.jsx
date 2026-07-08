@@ -1333,6 +1333,12 @@ function ActiveWorkout() {
     setAnimating(true)
   }
 
+  const returnToCurrent = () => {
+    setAnimating(true)
+    setDragY(0)
+    setViewingStepIdx(currentStepIdx)
+  }
+
   const handlePointerDown = (e) => {
     e.currentTarget.setPointerCapture(e.pointerId)
     dragStartYRef.current = e.clientY
@@ -1458,8 +1464,7 @@ function ActiveWorkout() {
   const curExIdx     = exerciseIds.indexOf(curStep?.exerciseId)
   const isLast       = currentStepIdx === steps.length - 1
 
-  const trackTransform = `translateY(calc(50% - ${viewingStepIdx * STEP + CARD_H / 2}px + ${dragY}px))`
-  const snapTransition = 'transform 260ms cubic-bezier(.22,.61,.36,1)'
+  const snapTransition = 'transform 260ms cubic-bezier(.22,.61,.36,1), opacity 260ms cubic-bezier(.22,.61,.36,1)'
 
   return (
     <div className="h-full flex flex-col p-3 pb-3 overflow-hidden">
@@ -1474,7 +1479,7 @@ function ActiveWorkout() {
         <div className="flex-1 h-[3px] bg-border1">
           <div
             className="h-full bg-neon transition-all duration-500"
-            style={{ width: `${workingSteps > 0 ? (workingDone/workingSteps)*100 : 0}%` }}
+            style={{ width: `${steps.length > 0 ? (currentStepIdx/steps.length)*100 : 0}%` }}
           />
         </div>
         <div className="font-mono text-[10px] text-muted tracking-wider">
@@ -1482,15 +1487,20 @@ function ActiveWorkout() {
         </div>
       </div>
 
-      {/* past/future banner */}
+      {/* past/future banner — toque volta pra série atual */}
       {!isCurrentStep && (
-        <div className={`flex-shrink-0 mb-2 px-3 py-1.5 font-mono text-[10px] tracking-widest text-center border ${
-          isPastStep
-            ? 'border-amber-500/30 text-amber-400/70 bg-amber-500/5'
-            : 'border-border2 text-muted/50'
-        }`}>
-          {isPastStep ? '◂ EDITANDO RESULTADO ANTERIOR' : 'PRÉVIA — AGUARDE SUA VEZ ▸'}
-        </div>
+        <button
+          onClick={returnToCurrent}
+          className={`flex-shrink-0 mb-2 px-3 py-1.5 font-mono text-[10px] tracking-widest text-center border w-full transition-colors ${
+            isPastStep
+              ? 'border-amber-500/30 text-amber-400/70 bg-amber-500/5 hover:bg-amber-500/10'
+              : 'border-border2 text-muted/50 hover:bg-s2'
+          }`}
+        >
+          {isPastStep
+            ? '◂ VISUALIZANDO SÉRIE ANTERIOR — TOQUE PARA VOLTAR À ATUAL'
+            : 'VISUALIZANDO PRÓXIMA SÉRIE — TOQUE PARA VOLTAR À ATUAL ▸'}
+        </button>
       )}
 
       {/* trilho único (reel): todos os steps num único elemento que translada de uma vez só */}
@@ -1501,7 +1511,11 @@ function ActiveWorkout() {
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
         onWheel={handleWheel}
-        style={{ touchAction: 'none' }}
+        style={{
+          touchAction: 'none',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent)',
+          maskImage: 'linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent)',
+        }}
         className="relative flex-1 min-h-0 overflow-hidden"
       >
         {/* dica discreta — só na primeira vez */}
@@ -1518,48 +1532,42 @@ function ActiveWorkout() {
           )}
         </AnimatePresence>
 
-        {reelH > 0 && (
-          <div
-            className="absolute left-0 right-0 top-0"
-            style={{
-              transform: trackTransform,
-              transition: animating ? snapTransition : 'none',
-            }}
-            onTransitionEnd={() => setAnimating(false)}
-          >
-            {steps.map((s, i) => {
-              const dist = (i - viewingStepIdx) - dragY / STEP
-              const ad = Math.abs(dist)
-              if (ad > 2) return null // fora do alcance visível (opacidade já bateu 0 antes disso)
-              const scale   = Math.max(0.82, 1 - ad * 0.13)
-              const opacity = Math.max(0.25, 1 - ad * 0.5)
-              const z       = 100 - Math.round(ad * 10)
-              return (
-                <div
-                  key={i}
-                  className={i === viewingStepIdx ? '' : 'pointer-events-none select-none'}
-                  style={{
-                    position: 'absolute',
-                    top: i * STEP,
-                    left: '50%',
-                    width: 'calc(100% - 4px)',
-                    maxWidth: 420,
-                    height: CARD_H,
-                    transform: `translateX(-50%) scale(${scale})`,
-                    transformOrigin: 'center center',
-                    opacity,
-                    zIndex: z,
-                    transition: animating ? `transform 260ms cubic-bezier(.22,.61,.36,1), opacity 260ms cubic-bezier(.22,.61,.36,1)` : 'none',
-                  }}
-                >
-                  <div style={{ height: '100%', overflow: 'hidden' }}>
-                    {renderRailCard(i)}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+        {reelH > 0 && steps.map((s, i) => {
+          const dist = (i - viewingStepIdx) - dragY / STEP
+          const ad = Math.abs(dist)
+          if (ad > 2) return null // fora do alcance visível (opacidade já bateu 0 antes disso)
+          const scale    = Math.max(0.82, 1 - ad * 0.13)
+          const opacity  = Math.max(0.25, 1 - ad * 0.5)
+          const z        = 100 - Math.round(ad * 10)
+          const offsetPx = (i - viewingStepIdx) * STEP + dragY
+          const isActive = i === viewingStepIdx
+          return (
+            <div
+              key={i}
+              className={isActive ? '' : 'pointer-events-none select-none'}
+              onTransitionEnd={isActive ? () => setAnimating(false) : undefined}
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                width: 'calc(100% - 4px)',
+                maxWidth: 420,
+                height: CARD_H,
+                // cada card centraliza pelo próprio centro (translate -50%/-50%) — não depende
+                // de um wrapper de trilho com translateY(%), então centraliza certo mesmo se
+                // a altura real do card variar
+                transform: `translate(-50%, calc(-50% + ${offsetPx}px)) scale(${scale})`,
+                opacity,
+                zIndex: z,
+                transition: animating ? snapTransition : 'none',
+              }}
+            >
+              <div style={{ height: '100%', overflow: 'hidden' }}>
+                {renderRailCard(i)}
+              </div>
+            </div>
+          )
+        })}
       </div>
 
       {/* rest timer — always visible when resting, regardless of viewing step */}
