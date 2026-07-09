@@ -1149,39 +1149,59 @@ function ActiveWorkout() {
   const [gamifPopup,   setGamifPopup]   = useState(null) // { type, exerciseName }
   const [showStackHint, setShowStackHint] = useState(false)
 
-  // ── reel (trilho único) ────────────────────────────────────────────────────
-  const [reelH,     setReelH]     = useState(0)     // altura medida do viewport do reel, em px
+  // ── reel (trilho único, altura medida por conteúdo) ───────────────────────
   const [dragY,     setDragY]     = useState(0)     // offset ao vivo do arrasto, em px
   const [animating, setAnimating] = useState(false) // true só durante o snap (commit/bounce-back)
+  const [heights,   setHeights]   = useState([])    // altura real de cada card, medida por índice
 
-  const reelRef         = useRef(null)
+  const wrapRefs        = useRef([])
   const prevCurIdxRef   = useRef(0)
   const dragStartYRef   = useRef(null)
   const pointerDownRef  = useRef(false)
   const wheelAccumRef   = useRef(0)
   const wheelLockRef    = useRef(false)
 
-  // mede a altura real do viewport do reel (varia com o dispositivo e com o layout ao redor)
-  useLayoutEffect(() => {
-    const el = reelRef.current
-    if (!el) return
-    const ro = new ResizeObserver((entries) => {
-      const h = entries[0]?.contentRect?.height
-      if (h) setReelH(h)
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
+  const REEL_EST = 210 // estimativa só pro primeiro paint, antes da 1ª medição
+  const REEL_GAP = 14
+  const REEL_DECAY = 160
 
   if (!activeWorkout) return null
 
   const { steps, currentStepIdx, exerciseWeights, weekIdx, dayIdx, setResults } = activeWorkout
   const day = userProtocol.weeks[weekIdx].days[dayIdx]
 
-  // CARD_H fixo: card mais compacto que o viewport, para sobrar peek acima/abaixo.
-  // STEP controla a distância entre centros; menor que CARD_H para manter a pilha visível.
-  const CARD_H = Math.max(1, Math.round(Math.min(400, Math.max(300, reelH * 0.62))))
-  const STEP   = Math.max(1, Math.round(CARD_H * 0.78))
+  // garante tamanho fixo (sem "buracos" esparsos) — refs de índices ainda não
+  // renderizados ficam undefined, não ausentes
+  if (wrapRefs.current.length < steps.length) {
+    wrapRefs.current = wrapRefs.current.concat(Array(steps.length - wrapRefs.current.length).fill(undefined))
+  }
+
+  // mede a altura real de cada card (ref + ResizeObserver) — sem isso o reel não
+  // sabe onde centralizar os vizinhos quando a altura varia por tipo/conteúdo
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useLayoutEffect(() => {
+    const measure = () => {
+      setHeights(prev => {
+        const next = wrapRefs.current.map((el, i) => el ? el.offsetHeight : (prev[i] ?? REEL_EST))
+        return next.some((h, i) => h !== prev[i]) ? next : prev
+      })
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    wrapRefs.current.forEach(el => el && ro.observe(el))
+    return () => ro.disconnect()
+  }) // sem deps: re-mede a cada render (barato — só lê offsetHeight já commitado)
+
+  // prefix sum das alturas reais -> centro (em px) de cada card na fita
+  const centers = []
+  {
+    let acc = 0
+    for (let i = 0; i < steps.length; i++) {
+      const h = heights[i] ?? REEL_EST
+      centers[i] = acc + h / 2
+      acc += h + REEL_GAP
+    }
+  }
 
   // Sync viewingStepIdx to follow currentStepIdx when user was on the current step
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -1324,7 +1344,7 @@ function ActiveWorkout() {
   }, [isCurrentStep, isPastStep, advance, saveSetResult, viewingStepIdx])
 
   // ── reel: commit troca a série exibida; currentStepIdx (progresso real) nunca é tocado ──
-  const DRAG_COMMIT_PX = 48
+  const DRAG_COMMIT_PX = 50
 
   const commit = (dir) => {
     const next = viewingStepIdx + dir
@@ -1503,9 +1523,8 @@ function ActiveWorkout() {
         </button>
       )}
 
-      {/* trilho único (reel): todos os steps num único elemento que translada de uma vez só */}
+      {/* trilho único (reel): altura de cada card medida por conteúdo, nada é cortado */}
       <div
-        ref={reelRef}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -1513,8 +1532,8 @@ function ActiveWorkout() {
         onWheel={handleWheel}
         style={{
           touchAction: 'none',
-          WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent)',
-          maskImage: 'linear-gradient(to bottom, transparent, #000 10%, #000 90%, transparent)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent)',
+          maskImage: 'linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent)',
         }}
         className="relative flex-1 min-h-0 overflow-hidden"
       >
@@ -1532,18 +1551,18 @@ function ActiveWorkout() {
           )}
         </AnimatePresence>
 
-        {reelH > 0 && steps.map((s, i) => {
-          const dist = (i - viewingStepIdx) - dragY / STEP
-          const ad = Math.abs(dist)
-          if (ad > 2) return null // fora do alcance visível (opacidade já bateu 0 antes disso)
-          const scale    = Math.max(0.82, 1 - ad * 0.13)
-          const opacity  = Math.max(0.25, 1 - ad * 0.5)
+        {steps.map((s, i) => {
+          const offsetPx = (centers[i] - centers[viewingStepIdx]) + dragY
+          const ad = Math.abs(offsetPx) / REEL_DECAY
+          if (ad > 2.2) return null // fora do alcance visível (opacidade já bateu no piso antes disso)
+          const scale    = Math.max(0.84, 1 - ad * 0.12)
+          const opacity  = Math.max(0.22, 1 - ad * 0.5)
           const z        = 100 - Math.round(ad * 10)
-          const offsetPx = (i - viewingStepIdx) * STEP + dragY
           const isActive = i === viewingStepIdx
           return (
             <div
               key={i}
+              ref={el => { wrapRefs.current[i] = el }}
               className={isActive ? '' : 'pointer-events-none select-none'}
               onTransitionEnd={isActive ? () => setAnimating(false) : undefined}
               style={{
@@ -1552,19 +1571,16 @@ function ActiveWorkout() {
                 left: '50%',
                 width: 'calc(100% - 4px)',
                 maxWidth: 420,
-                height: CARD_H,
-                // cada card centraliza pelo próprio centro (translate -50%/-50%) — não depende
-                // de um wrapper de trilho com translateY(%), então centraliza certo mesmo se
-                // a altura real do card variar
+                // altura auto (mede o conteúdo real) — cada card centraliza pelo próprio
+                // centro via translate(-50%,-50%), então a posição respeita a altura real
+                // de todo mundo na fita, sem depender de um CARD_H fixo
                 transform: `translate(-50%, calc(-50% + ${offsetPx}px)) scale(${scale})`,
                 opacity,
                 zIndex: z,
                 transition: animating ? snapTransition : 'none',
               }}
             >
-              <div style={{ height: '100%', overflow: 'hidden' }}>
-                {renderRailCard(i)}
-              </div>
+              {renderRailCard(i)}
             </div>
           )
         })}
