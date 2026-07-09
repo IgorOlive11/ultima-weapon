@@ -97,6 +97,10 @@ function scheduleSyncSection(section, get) {
     mealLog:         state0.mealLog,
     microLog:        state0.microLog,
     achievements:    state0.achievements,
+    // adicionados depois — precisam estar aqui, senão scheduleSyncSection aborta em
+    // silêncio (capturedData fica undefined) mesmo persistindo local certinho
+    workoutSessions: state0.workoutSessions,
+    pushSubscription: state0.pushSubscription,
   }[section]
 
   console.log('[sync] scheduleSyncSection', section, '| viewing=', state0.viewingUserId, '| target=', targetUserId)
@@ -117,6 +121,29 @@ function scheduleSyncSection(section, get) {
       if (error) console.error('[sync] próprio upsert falhou:', error.message)
     }
   }, 1500)
+}
+
+// Fire-and-forget: pede pro backend agendar um push pro fim do descanso (best-effort,
+// ver limitação documentada em supabase/functions/schedule-rest-push). Só dispara se o
+// usuário ligou o toggle de notificações e já tem uma subscription salva.
+async function scheduleRestPush(seconds, get) {
+  const { pushNotificationsEnabled, pushSubscription } = get()
+  if (!pushNotificationsEnabled || !pushSubscription?.endpoint) return
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) return
+    await fetch(`${supabase.supabaseUrl}/functions/v1/schedule-rest-push`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ seconds, title: 'Descanso finalizado', body: 'Hora da próxima série 💪' }),
+    })
+  } catch (err) {
+    console.error('[push] scheduleRestPush falhou:', err)
+  }
 }
 
 function startTimerTick(seconds, endsAt, set) {
@@ -160,6 +187,15 @@ export const useStore = create(
       adminFeedbackButtonPos: null, // { x, y } em px (canto top-left do botão); null = posição padrão
       setAdminFeedbackButtonEnabled: (v) => set({ adminFeedbackButtonEnabled: v }),
       setAdminFeedbackButtonPos: (pos) => set({ adminFeedbackButtonPos: pos }),
+
+      // ── push notifications (fim do rest timer em background) ─────────────────
+      pushNotificationsEnabled: false, // toggle do usuário — permissão só é pedida ao ligar
+      pushSubscription: null,          // PushSubscription.toJSON(), sincronizada como qualquer outra seção
+      setPushNotificationsEnabled: (v) => set({ pushNotificationsEnabled: v }),
+      setPushSubscription: (sub) => {
+        set({ pushSubscription: sub })
+        scheduleSyncSection('pushSubscription', get)
+      },
 
       // ── auth ─────────────────────────────────────────────────────────────────
       authUser:        null,
@@ -346,6 +382,7 @@ export const useStore = create(
         const endsAt = Date.now() + seconds * 1000
         set(state => ({ restTimer: { ...state.restTimer, running: true, preset: seconds, seconds, endsAt } }))
         startTimerTick(seconds, endsAt, set)
+        scheduleRestPush(seconds, get)
       },
 
       stopRestTimer: () => {
@@ -778,6 +815,8 @@ export const useStore = create(
         stackNavHintSeen: state.stackNavHintSeen,
         adminFeedbackButtonEnabled: state.adminFeedbackButtonEnabled,
         adminFeedbackButtonPos:     state.adminFeedbackButtonPos,
+        pushNotificationsEnabled:   state.pushNotificationsEnabled,
+        pushSubscription:           state.pushSubscription,
         // _viewerSnapshot e pendingAchievements nunca persistem — só existem em memória
       }),
       onRehydrateStorage: () => (state) => {

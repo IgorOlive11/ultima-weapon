@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
-import { LuSave, LuCircleCheck, LuLock, LuBug } from 'react-icons/lu'
+import { LuSave, LuCircleCheck, LuLock, LuBug, LuBellRing } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 import { DAY_NAMES } from '../data/protocol'
 import { ACHIEVEMENTS } from '../data/achievements'
 import DoomFace from '../components/DoomFace'
+import { isPushSupported, subscribeToPush, unsubscribeFromPush } from '../utils/pushNotifications'
 
 function SaveBtn({ saved, onClick }) {
   return (
@@ -36,6 +37,37 @@ export default function SettingsPage() {
   const authUser                      = useStore((s) => s.authUser)
   const adminFeedbackButtonEnabled    = useStore((s) => s.adminFeedbackButtonEnabled)
   const setAdminFeedbackButtonEnabled = useStore((s) => s.setAdminFeedbackButtonEnabled)
+
+  const pushNotificationsEnabled    = useStore((s) => s.pushNotificationsEnabled)
+  const setPushNotificationsEnabled = useStore((s) => s.setPushNotificationsEnabled)
+  const setPushSubscription         = useStore((s) => s.setPushSubscription)
+  const [pushBusy, setPushBusy]     = useState(false)
+  const [pushError, setPushError]   = useState('')
+
+  const togglePush = async () => {
+    setPushError('')
+    if (pushNotificationsEnabled) {
+      setPushBusy(true)
+      await unsubscribeFromPush()
+      setPushSubscription(null)
+      setPushNotificationsEnabled(false)
+      setPushBusy(false)
+      return
+    }
+    if (!isPushSupported()) {
+      setPushError('Notificações push não são suportadas neste navegador.')
+      return
+    }
+    setPushBusy(true)
+    const sub = await subscribeToPush() // permissão só é pedida aqui, dentro do toque no toggle
+    setPushBusy(false)
+    if (!sub) {
+      setPushError('Permissão negada ou indisponível.')
+      return
+    }
+    setPushSubscription(sub)
+    setPushNotificationsEnabled(true)
+  }
 
   const weekData = userProtocol.weeks[currentWeek]
   const day = weekData?.days[currentDay]
@@ -166,6 +198,36 @@ export default function SettingsPage() {
             STREAK ATUAL: <span className="text-neon">{achievements.streak} DIA{achievements.streak !== 1 ? 'S' : ''}</span>
             {' · '}TREINOS: <span className="text-neon">{achievements.workoutCount}</span>
           </div>
+        )}
+      </div>
+
+      {/* Notificações push (fim do descanso, com app em background) */}
+      <div className="bg-s1 border border-border1 p-4">
+        <div className="font-display text-sm text-neon tracking-[0.2em] mb-3 pb-2 border-b border-border1 flex items-center gap-2">
+          <LuBellRing size={14} /> NOTIFICAÇÕES
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-mono text-[10px] text-muted tracking-wider leading-relaxed">
+            Em primeiro plano, o fim do descanso sempre toca um som e pisca na tela.
+            Ligando aqui, com o app instalado, tenta avisar também se o app estiver em
+            segundo plano — o disparo exato não é garantido pelo sistema.
+          </p>
+          <button
+            onClick={togglePush}
+            disabled={pushBusy}
+            className={`flex-shrink-0 w-12 h-7 rounded-full relative transition-colors disabled:opacity-50 ${
+              pushNotificationsEnabled ? 'bg-neon/80' : 'bg-border2'
+            }`}
+          >
+            <span
+              className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-s1 transition-transform ${
+                pushNotificationsEnabled ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+        {pushError && (
+          <div className="mt-2 font-mono text-[10px] text-red-400 tracking-wider">{pushError}</div>
         )}
       </div>
 

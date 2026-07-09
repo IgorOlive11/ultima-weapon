@@ -14,6 +14,8 @@ export default defineConfig({
       manifest: false,
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,gif,svg,woff2,ico}'],
+        // handlers de push/notificationclick, fora do que o workbox gera sozinho
+        importScripts: ['sw-push.js'],
       },
       devOptions: {
         // permite testar o SW em `npm run dev` (fica registrado mesmo fora de build/preview)
