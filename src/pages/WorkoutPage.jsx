@@ -37,6 +37,12 @@ function getGerConfig(ger) {
   return GER_CONFIG[ger] || GER_CONFIG[10]
 }
 
+function fmtRir(ger, cfg) {
+  const { min, max } = cfg.rirRange || {}
+  if (min == null || max == null) return cfg.rir || cfg.subtitle // GER 11-13: sem número, cai pro texto
+  return `GER ${ger} · ${min === max ? min : `${min}-${max}`} na reserva`
+}
+
 function GerEffortPanel({ ger, color }) {
   const cfg = getGerConfig(ger)
   return (
@@ -48,7 +54,7 @@ function GerEffortPanel({ ger, color }) {
         </div>
         <div className="font-mono text-[10px] text-muted truncate">{cfg.title}</div>
         <div className="font-mono text-[10px] text-muted/60 mt-0.5">
-          {cfg.label} · {cfg.rir || cfg.subtitle}
+          {fmtRir(ger, cfg)}
         </div>
       </div>
     </div>
