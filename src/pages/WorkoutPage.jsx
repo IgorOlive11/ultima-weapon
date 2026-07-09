@@ -46,7 +46,7 @@ function ElapsedClock({ sec, color }) {
   const parts = fmtDuration(sec).split(':')
   return (
     <div className="flex-shrink-0 flex items-center justify-center gap-2 mt-1 mb-3">
-      <LuClock size={14} className="text-muted/50 flex-shrink-0" />
+      <LuClock size={22} className="flex-shrink-0 transition-colors duration-500" style={{ color, opacity: 0.55 }} />
       <span
         className="font-mono text-3xl font-bold leading-none transition-colors duration-500"
         style={{ fontVariantNumeric: 'tabular-nums', color, textShadow: `0 0 14px ${hexToRgba(color, 0.4)}` }}
@@ -1204,6 +1204,7 @@ function ActiveWorkout() {
   const [shownGamif,   setShownGamif]   = useState(() => new Set())
   const [gamifPopup,   setGamifPopup]   = useState(null) // { type, exerciseName }
   const [showStackHint, setShowStackHint] = useState(false)
+  const [pastEditSaved, setPastEditSaved] = useState(false) // flash "SÉRIE ATUALIZADA" ao editar step já concluído
   const [nowTick, setNowTick] = useState(() => Date.now()) // só pra forçar re-render do cronômetro geral
 
   // ── reel (trilho único, altura medida por conteúdo) ───────────────────────
@@ -1275,11 +1276,13 @@ function ActiveWorkout() {
     }
   }
 
-  // Sync viewingStepIdx to follow currentStepIdx when user was on the current step
+  // Sync viewingStepIdx to follow currentStepIdx when user was on the current step —
+  // via commit() (mesmo caminho do arrasto/scroll), pra ligar animating e sair com a
+  // MESMA transição de ~260ms, tanto ao concluir série quanto ao pular o descanso.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     if (viewingStepIdx === prevCurIdxRef.current) {
-      setViewingStepIdx(currentStepIdx)
+      commit(currentStepIdx - prevCurIdxRef.current)
     }
     prevCurIdxRef.current = currentStepIdx
   }, [currentStepIdx]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -1411,6 +1414,8 @@ function ActiveWorkout() {
     } else if (isPastStep) {
       // just update the saved result for that past step
       saveSetResult(String(viewingStepIdx), result)
+      setPastEditSaved(true)
+      setTimeout(() => setPastEditSaved(false), 1800)
     }
     // future steps: button is disabled, this won't be called
   }, [isCurrentStep, isPastStep, advance, saveSetResult, viewingStepIdx])
@@ -1626,6 +1631,21 @@ function ActiveWorkout() {
               className="absolute top-1 left-1/2 -translate-x-1/2 z-[200] w-[85%] max-w-[280px] px-3 py-1.5 bg-black/80 border border-neon/30 font-mono text-[9px] text-neon/90 tracking-wider text-center leading-relaxed pointer-events-none"
             >
               ↕ ROLE PARA VER A SÉRIE ANTERIOR/PRÓXIMA
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* feedback de sucesso ao editar uma série já concluída */}
+        <AnimatePresence>
+          {pastEditSaved && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="absolute top-1 left-1/2 -translate-x-1/2 z-[200] px-3 py-1.5 bg-black/80 border font-mono text-[10px] tracking-wider text-center leading-relaxed pointer-events-none flex items-center gap-1.5"
+              style={{ borderColor: `${PHASE_COLOR_PREP}4d`, color: PHASE_COLOR_PREP }}
+            >
+              <LuCheck size={12}/> SÉRIE ATUALIZADA
             </motion.div>
           )}
         </AnimatePresence>
