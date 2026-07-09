@@ -482,10 +482,6 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, sav
       workingWeight={workingWeight}
       ger={isWarmup ? null : (step.gerTarget ?? 7)}
     >
-      <div className="font-mono text-[10px] text-muted/60 tracking-wider mb-2.5">
-        {isWarmup ? 'Prepare os tecidos' : 'Ativação progressiva'}
-      </div>
-
       <TargetLoadRow
         alvo={step.reps}
         alvoSub="reps"
