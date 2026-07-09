@@ -61,8 +61,10 @@ function GerEffortPanel({ ger, color }) {
   )
 }
 
-// alvo (reps) e carga na mesma linha — mesmo esqueleto em todo tipo de série
-function TargetLoadRow({ alvo, alvoSub, workingWeight }) {
+// alvo (reps) e carga na mesma linha — mesmo esqueleto em todo tipo de série.
+// editableKg/onEditableKgChange: quando presentes, a carga vira um input (warmup/feeder,
+// onde o peso é uma sugestão ajustável); sem eles, é só o peso de trabalho (read-only).
+function TargetLoadRow({ alvo, alvoSub, workingWeight, editableKg, onEditableKgChange }) {
   return (
     <div className="flex gap-2 mb-2.5">
       <div className="flex-1 bg-s2 border border-border1 px-3 py-2 text-center">
@@ -72,23 +74,36 @@ function TargetLoadRow({ alvo, alvoSub, workingWeight }) {
       </div>
       <div className="flex-1 bg-s2 border border-border1 px-3 py-2 text-center">
         <div className="font-mono text-[9px] text-muted tracking-wider mb-0.5">CARGA</div>
-        <div className="font-display text-xl tracking-wider text-neon leading-none">{fmtKg(workingWeight)}</div>
+        {editableKg !== undefined ? (
+          <input
+            type="number"
+            inputMode="decimal"
+            className="w-full bg-transparent text-center font-display text-xl tracking-wider text-neon leading-none outline-none"
+            value={editableKg}
+            onChange={onEditableKgChange}
+          />
+        ) : (
+          <div className="font-display text-xl tracking-wider text-neon leading-none">{fmtKg(workingWeight)}</div>
+        )}
       </div>
     </div>
   )
 }
 
-function WorkingSetShell({ step, typeInfo, label, workingWeight, children }) {
+// ger: override explícito do GER a mostrar (null = não mostra o painel — caso do aquecimento,
+// que não tem meta de esforço/falha). Sem override, usa o GER da série de trabalho normalmente.
+function WorkingSetShell({ step, typeInfo, label, workingWeight, ger, children }) {
+  const resolvedGer = ger !== undefined ? ger : (step.setDef?.ger ?? typeInfo.ger)
   return (
     <div className="h-full bg-s1 border border-border2 rounded-sm overflow-hidden flex flex-col">
       <div className="h-1 flex-shrink-0" style={{ background: typeInfo.color }} />
       <div className="p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
-        <div className="font-mono text-[9px] text-muted tracking-[0.22em] mb-0.5">{step.muscle}</div>
+        {step.muscle && <div className="font-mono text-[9px] text-muted tracking-[0.22em] mb-0.5">{step.muscle}</div>}
         <div className="font-display text-base tracking-wider text-ink leading-none mb-1 truncate">{step.exerciseName}</div>
         <div className="font-display text-[11px] tracking-[0.18em] mb-2" style={{ color: typeInfo.color }}>
           {label}{workingWeight > 0 ? ` · ${fmtKg(workingWeight)}` : ''}
         </div>
-        <GerEffortPanel ger={step.setDef?.ger ?? typeInfo.ger} color={typeInfo.color}/>
+        {resolvedGer != null && <GerEffortPanel ger={resolvedGer} color={typeInfo.color}/>}
         {children}
       </div>
     </div>
@@ -430,85 +445,64 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, sav
   const [reps, setReps] = useState(savedResult?.reps != null ? String(savedResult.reps) : '')
   const [kg, setKg]     = useState(savedResult?.kg   != null ? String(savedResult.kg)   : (defaultKg > 0 ? String(defaultKg) : ''))
   const isWarmup = step.type === 'WARMUP'
+  const typeInfo = { color: '#888888' }
 
   const handleDone = () => {
     onDone({ reps: parseInt(reps) || 0, kg: parseFloat(kg) || defaultKg })
   }
 
   return (
-    <div className="h-full bg-s1 border border-border2 rounded-sm overflow-hidden flex flex-col">
-      <div className="h-1 bg-muted/30" />
-      <div className="p-4 flex-1 min-h-0 overflow-hidden flex flex-col">
-        <div className="font-mono text-[10px] text-muted tracking-[0.25em] mb-1">{step.exerciseName}</div>
-
-        <div className="font-display text-lg tracking-wider text-ink mb-1 truncate">
-          {isWarmup
-            ? `AQUECIMENTO ${step.setNum} DE ${step.totalSets ?? 2}`
-            : `PREP ${step.setNum} DE ${step.totalSets ?? 1}`}
-        </div>
-        <div className="font-mono text-[10px] text-muted/60 tracking-wider mb-3">
-          {isWarmup ? 'Prepare os tecidos' : `Ativação progressiva — GER ${step.gerTarget ?? 7}`}
-        </div>
-
-        <div className="bg-s2 border border-border1 px-3 py-3 mb-3 flex items-center gap-4">
-          <div>
-            <div className="font-mono text-[10px] text-muted tracking-wider mb-1">REPS</div>
-            <div className="font-display text-2xl tracking-wider text-ink">{step.reps}</div>
-            {!isWarmup && step.gerTarget != null && (
-              <div className="font-mono text-[9px] text-neon/70 mt-0.5">GER {step.gerTarget}</div>
-            )}
-          </div>
-          {workingWeight > 0 && (
-            <div className="flex-1 min-w-0">
-              <div className="font-mono text-[10px] text-muted tracking-wider mb-1">CARGA</div>
-              <input
-                type="number"
-                inputMode="decimal"
-                className="w-full bg-s1 border border-border2 text-center font-display text-xl tracking-wider text-neon py-1.5 focus:border-neon outline-none transition-colors"
-                value={kg}
-                onChange={e => setKg(e.target.value)}
-              />
-            </div>
-          )}
-        </div>
-
-        {!isWarmup && (
-          <GerEffortPanel ger={step.gerTarget ?? 7} color="#39FF14"/>
-        )}
-
-        <PrevRecord prevData={prevData} />
-
-        {/* reps done */}
-        <div className="mt-auto mb-3">
-          <label className="font-mono text-[10px] text-muted tracking-wider block mb-1.5">REPS REALIZADAS</label>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setReps(r => String(Math.max(0, (parseInt(r)||0) - 1)))}
-              className="w-11 h-11 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
-            ><LuMinus size={16}/></button>
-            <input
-              type="number" inputMode="numeric"
-              className="flex-1 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-2 focus:border-neon outline-none transition-colors"
-              placeholder="0"
-              value={reps}
-              onChange={e => setReps(e.target.value)}
-            />
-            <button
-              onClick={() => setReps(r => String((parseInt(r)||0) + 1))}
-              className="w-11 h-11 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
-            ><LuPlus size={16}/></button>
-          </div>
-        </div>
-
-        <button
-          onClick={handleDone}
-          disabled={isLocked}
-          className="w-full py-3 font-display text-sm tracking-[0.2em] bg-s2 border border-border2 text-muted hover:text-ink hover:border-neon disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-        >
-          <LuCheck size={16}/> CONCLUÍDO
-        </button>
+    <WorkingSetShell
+      step={step}
+      typeInfo={typeInfo}
+      label={isWarmup ? `AQUECIMENTO ${step.setNum} DE ${step.totalSets ?? 2}` : `PREP ${step.setNum} DE ${step.totalSets ?? 1}`}
+      workingWeight={workingWeight}
+      ger={isWarmup ? null : (step.gerTarget ?? 7)}
+    >
+      <div className="font-mono text-[10px] text-muted/60 tracking-wider mb-2.5">
+        {isWarmup ? 'Prepare os tecidos' : 'Ativação progressiva'}
       </div>
-    </div>
+
+      <TargetLoadRow
+        alvo={step.reps}
+        alvoSub="reps"
+        workingWeight={workingWeight}
+        editableKg={workingWeight > 0 ? kg : undefined}
+        onEditableKgChange={e => setKg(e.target.value)}
+      />
+
+      <PrevRecord prevData={prevData} />
+
+      <div className="mt-auto mb-2.5">
+        <label className="font-mono text-[9px] text-muted tracking-wider block mb-1">REPS REALIZADAS</label>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setReps(r => String(Math.max(0, (parseInt(r)||0) - 1)))}
+            className="w-10 h-10 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
+          ><LuMinus size={16}/></button>
+          <input
+            type="number" inputMode="numeric"
+            className="flex-1 min-w-0 bg-s2 border border-border2 text-center font-display text-2xl tracking-wider text-ink py-1.5 focus:border-neon outline-none transition-colors"
+            placeholder="0"
+            value={reps}
+            onChange={e => setReps(e.target.value)}
+          />
+          <button
+            onClick={() => setReps(r => String((parseInt(r)||0) + 1))}
+            className="w-10 h-10 border border-border2 flex items-center justify-center text-muted hover:text-ink hover:border-neon transition-colors"
+          ><LuPlus size={16}/></button>
+        </div>
+      </div>
+
+      <button
+        onClick={handleDone}
+        disabled={isLocked}
+        className="w-full py-2.5 font-display text-sm tracking-[0.18em] text-bg disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-opacity"
+        style={{ background: typeInfo.color }}
+      >
+        <LuCheck size={16}/> CONCLUÍDO
+      </button>
+    </WorkingSetShell>
   )
 }
 
