@@ -1,0 +1,4 @@
+node_modules/
+
+# artefato de dev do service worker (vite-plugin-pwa devOptions.enabled)
+dev-dist/
