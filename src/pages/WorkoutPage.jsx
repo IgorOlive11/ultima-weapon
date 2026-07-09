@@ -23,25 +23,24 @@ function roundToMinPlate(v) {
   return Math.round(v / MIN_PLATE_INCREMENT) * MIN_PLATE_INCREMENT
 }
 
-const WORKING_GER_FACE_SIZE = 56
+const WORKING_GER_FACE_SIZE = 40
 
 function getGerConfig(ger) {
   return GER_CONFIG[ger] || GER_CONFIG[10]
 }
 
-// doom face em destaque + GER com o texto de reps-na-reserva sempre explícito —
-// usado em todo card que envolve esforço até a falha (working sets, prep, pergunta de peso)
 function GerEffortPanel({ ger, color }) {
   const cfg = getGerConfig(ger)
   return (
-    <div className="flex items-center gap-3 bg-s2 border border-border1 px-3 py-2.5 mb-2.5">
+    <div className="flex items-center gap-3 bg-s2 border border-border1 px-3 py-2 mb-2.5 min-h-[74px]">
       <DoomFace face={cfg.face} size={WORKING_GER_FACE_SIZE}/>
       <div className="min-w-0">
-        <div className="font-display text-sm tracking-wider leading-none mb-1 truncate" style={{ color }}>
-          {cfg.label} · {cfg.title}
+        <div className="font-display text-sm tracking-wider leading-none mb-1" style={{ color }}>
+          {cfg.label}
         </div>
-        <div className="font-mono text-[12px] font-bold text-ink leading-tight">
-          {cfg.subtitle}
+        <div className="font-mono text-[10px] text-muted truncate">{cfg.title}</div>
+        <div className="font-mono text-[10px] text-muted/60 mt-0.5">
+          {cfg.label} · {cfg.rir || cfg.subtitle}
         </div>
       </div>
     </div>
@@ -332,8 +331,6 @@ function WeightQuestionCard({ step, onConfirm, history, isLocked }) {
           {typeInfo.label}
         </div>
 
-        <GerEffortPanel ger={step.setDef?.ger} color={typeInfo.color}/>
-
         <div className="bg-s2 border border-border1 px-3 py-3 mb-3">
           <div className="font-mono text-[10px] text-muted tracking-wider leading-snug">
             {question}
@@ -462,12 +459,12 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, sav
         </div>
 
         {!isWarmup && (
-          <>
-            <GerEffortPanel ger={step.gerTarget ?? 7} color="#39FF14"/>
-            <div className="font-mono text-[10px] text-muted leading-relaxed mb-3">
-              Sentir o movimento, não chegar perto da falha.
+          <div className="flex items-center gap-2 mb-3">
+            <DoomFace face={GER_CONFIG[step.gerTarget ?? 7]?.face} size={28}/>
+            <div className="font-mono text-[10px] text-muted leading-relaxed">
+              Mantenha GER {step.gerTarget ?? 7} nestas séries.<br/>Sentir o movimento, não chegar perto da falha.
             </div>
-          </>
+          </div>
         )}
 
         <PrevRecord prevData={prevData} />
