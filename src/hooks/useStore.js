@@ -602,6 +602,7 @@ export const useStore = create(
 
       // ── active workout session ────────────────────────────────────────────────
       activeWorkout: null,
+      workoutSessions: [], // histórico de sessões concluídas: { weekIdx, dayIdx, startedAt, completedAt, durationSec }
 
       startWorkout: (weekIdx, dayIdx) => {
         const day = get().userProtocol.weeks[weekIdx].days[dayIdx]
@@ -653,7 +654,11 @@ export const useStore = create(
       completeWorkout: () => {
         const { activeWorkout, saveLog, saveExerciseHistory } = get()
         if (!activeWorkout) return
-        const { weekIdx, dayIdx, steps, exerciseWeights, setResults } = activeWorkout
+        const { weekIdx, dayIdx, steps, exerciseWeights, setResults, startedAt } = activeWorkout
+        // completedAt pode já estar setado (fluxo normal, via advanceWorkoutStep) ou não
+        // (usuário tocou "concluir treino" direto) — nesse caso fixa agora, na hora real do fechamento
+        const completedAt = activeWorkout.completedAt || new Date().toISOString()
+        const durationSec = Math.max(0, Math.round((new Date(completedAt) - new Date(startedAt)) / 1000))
 
         const exerciseMap = {}
         steps.forEach((step, idx) => {
@@ -746,8 +751,15 @@ export const useStore = create(
           updatedAchievements.unlockedIds = [...prev.unlockedIds, ...newIds]
         }
 
-        set({ activeWorkout: null, achievements: updatedAchievements, pendingAchievements: newIds })
+        // histórico de sessões — registra a duração final do treino concluído
+        const workoutSessions = [
+          ...get().workoutSessions,
+          { weekIdx, dayIdx, startedAt, completedAt, durationSec },
+        ].slice(-50)
+
+        set({ activeWorkout: null, achievements: updatedAchievements, pendingAchievements: newIds, workoutSessions })
         scheduleSyncSection('achievements', get)
+        scheduleSyncSection('workoutSessions', get)
       },
 
       abandonWorkout: () => set({ activeWorkout: null }),
@@ -761,6 +773,7 @@ export const useStore = create(
         mealLog:         state.mealLog,
         userProtocol:    state.userProtocol,
         activeWorkout:   state.activeWorkout,
+        workoutSessions: state.workoutSessions,
         restTimer:       state.restTimer,
         exerciseHistory: state.exerciseHistory,
         savedExercises:  state.savedExercises,

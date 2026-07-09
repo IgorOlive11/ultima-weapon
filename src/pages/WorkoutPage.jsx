@@ -23,6 +23,14 @@ function roundToMinPlate(v) {
   return Math.round(v / MIN_PLATE_INCREMENT) * MIN_PLATE_INCREMENT
 }
 
+function fmtDuration(totalSec) {
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
 const WORKING_GER_FACE_SIZE = 40
 
 function getGerConfig(ger) {
@@ -1166,6 +1174,7 @@ function ActiveWorkout() {
   const [shownGamif,   setShownGamif]   = useState(() => new Set())
   const [gamifPopup,   setGamifPopup]   = useState(null) // { type, exerciseName }
   const [showStackHint, setShowStackHint] = useState(false)
+  const [nowTick, setNowTick] = useState(() => Date.now()) // só pra forçar re-render do cronômetro geral
 
   // ── reel (trilho único, altura medida por conteúdo) ───────────────────────
   const [dragY,     setDragY]     = useState(0)     // offset ao vivo do arrasto, em px
@@ -1209,6 +1218,21 @@ function ActiveWorkout() {
     wrapRefs.current.forEach(el => el && ro.observe(el))
     return () => ro.disconnect()
   }) // sem deps: re-mede a cada render (barato — só lê offsetHeight já commitado)
+
+  // Cronômetro geral da sessão — recalcula sempre a partir de startedAt (timestamp
+  // durável, sobrevive a refresh), nunca de um contador em memória. Para de tiquetaquear
+  // quando o treino é concluído (completedAt fixa o fim).
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (activeWorkout.completedAt) return
+    const id = setInterval(() => setNowTick(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [activeWorkout.completedAt]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const elapsedSec = Math.max(0, Math.floor(
+    ((activeWorkout.completedAt ? new Date(activeWorkout.completedAt).getTime() : nowTick)
+      - new Date(activeWorkout.startedAt).getTime()) / 1000
+  ))
 
   // prefix sum das alturas reais -> centro (em px) de cada card na fita
   const centers = []
@@ -1483,8 +1507,11 @@ function ActiveWorkout() {
           TREINO
           <br/>CONCLUÍDO
         </div>
-        <div className="font-mono text-[11px] text-muted tracking-wider mb-8">
+        <div className="font-mono text-[11px] text-muted tracking-wider mb-2">
           Recupere-se. Você merece.
+        </div>
+        <div className="font-mono text-sm text-neon/80 tracking-wider mb-8">
+          DURAÇÃO: {fmtDuration(elapsedSec)}
         </div>
         <button
           onClick={completeWorkout}
@@ -1507,7 +1534,7 @@ function ActiveWorkout() {
   return (
     <div className="h-full flex flex-col p-3 pb-3 overflow-hidden">
       {/* top bar */}
-      <div className="flex-shrink-0 flex items-center gap-2 mb-3">
+      <div className="flex-shrink-0 flex items-center gap-2 mb-1">
         <button
           onClick={() => setShowAbandon(true)}
           className="font-mono text-[10px] text-muted hover:text-red-400 tracking-wider transition-colors"
@@ -1523,6 +1550,9 @@ function ActiveWorkout() {
         <div className="font-mono text-[10px] text-muted tracking-wider">
           {workingDone}/{workingSteps}
         </div>
+      </div>
+      <div className="flex-shrink-0 text-center font-mono text-[11px] text-neon/70 tracking-[0.15em] mb-2">
+        {fmtDuration(elapsedSec)}
       </div>
 
       {/* past/future banner — toque volta pra série atual */}
