@@ -47,6 +47,23 @@ function GerEffortPanel({ ger, color }) {
   )
 }
 
+// alvo (reps) e carga na mesma linha — mesmo esqueleto em todo tipo de série
+function TargetLoadRow({ alvo, alvoSub, workingWeight }) {
+  return (
+    <div className="flex gap-2 mb-2.5">
+      <div className="flex-1 bg-s2 border border-border1 px-3 py-2 text-center">
+        <div className="font-mono text-[9px] text-muted tracking-wider mb-0.5">ALVO</div>
+        <div className="font-display text-xl tracking-wider text-ink leading-none">{alvo}</div>
+        {alvoSub && <div className="font-mono text-[9px] text-muted/60 mt-0.5">{alvoSub}</div>}
+      </div>
+      <div className="flex-1 bg-s2 border border-border1 px-3 py-2 text-center">
+        <div className="font-mono text-[9px] text-muted tracking-wider mb-0.5">CARGA</div>
+        <div className="font-display text-xl tracking-wider text-neon leading-none">{fmtKg(workingWeight)}</div>
+      </div>
+    </div>
+  )
+}
+
 function WorkingSetShell({ step, typeInfo, label, workingWeight, children }) {
   return (
     <div className="h-full bg-s1 border border-border2 rounded-sm overflow-hidden flex flex-col">
@@ -501,18 +518,7 @@ function NormalSetCard({ step, workingWeight, onDone, isLocked, prevData, savedR
       label={step.totalSets > 1 ? `SÉRIE ${step.setNum} DE ${step.totalSets}` : 'SÉRIE PRINCIPAL'}
       workingWeight={workingWeight}
     >
-      <div className="flex gap-2 mb-2.5">
-        <div className="flex-1 bg-s2 border border-border1 px-3 py-2 text-center">
-          <div className="font-mono text-[9px] text-muted tracking-wider mb-0.5">CARGA</div>
-          <div className="font-display text-xl tracking-wider text-neon leading-none">{fmtKg(workingWeight)}</div>
-        </div>
-        {step.setDef.repRange && (
-          <div className="flex-1 bg-s2 border border-border1 px-3 py-2 text-center">
-            <div className="font-mono text-[9px] text-muted tracking-wider mb-0.5">REP RANGE</div>
-            <div className="font-display text-xl tracking-wider text-ink leading-none">{step.setDef.repRange}</div>
-          </div>
-        )}
-      </div>
+      <TargetLoadRow alvo={step.setDef.repRange || '—'} alvoSub="reps" workingWeight={workingWeight} />
 
       <PrevRecord prevData={prevData} setDef={step.setDef} />
 
@@ -597,6 +603,8 @@ function RestPauseCard({ step, workingWeight, onDone, isLocked, prevData }) {
 
   return (
     <WorkingSetShell step={step} typeInfo={typeInfo} label="DC STYLE REST PAUSE" workingWeight={workingWeight}>
+      <TargetLoadRow alvo="~8" alvoSub="reps/bloco" workingWeight={workingWeight} />
+
       <div className="bg-s2 border border-border1 px-3 py-2 mb-2.5 font-mono text-[10px] text-muted leading-snug">
         Carga para ~8 reps. Falha → <span className="text-orange-400">20s</span> → falha de novo.
         <br/>10-11 reps no bloco 1: progride carga.
@@ -734,6 +742,8 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked, prevData }) {
 
   return (
     <WorkingSetShell step={step} typeInfo={typeInfo} label="MUSCLE ROUND" workingWeight={workingWeight}>
+      <TargetLoadRow alvo="4" alvoSub="reps/bloco" workingWeight={workingWeight} />
+
       <div className="bg-s2 border border-border1 px-3 py-2 mb-2.5 font-mono text-[10px] text-muted leading-snug">
         Blocos de <span className="text-red-400 font-bold">4 reps</span>, 10s entre blocos, até falhar uma vez.
       </div>
@@ -860,6 +870,8 @@ function WidowmakerCard({ step, workingWeight, onDone, isLocked, prevData }) {
 
   return (
     <WorkingSetShell step={step} typeInfo={typeInfo} label="DC STYLE WIDOWMAKER" workingWeight={workingWeight}>
+      <TargetLoadRow alvo={phase === 'working' ? '10-12' : '15-20'} alvoSub="reps" workingWeight={workingWeight} />
+
       {phase === 'working' && (
         <div className="bg-yellow-500/10 border border-yellow-500/30 px-3 py-2 mb-2.5 font-mono text-[10px] text-yellow-200 leading-snug">
           <span className="text-yellow-400 font-bold">FASE 1:</span> Falha total em 10-12 reps. Não economize nada.
@@ -969,6 +981,12 @@ function PulseSetCard({ step, workingWeight, onDone, isLocked, prevData }) {
 
   return (
     <WorkingSetShell step={step} typeInfo={typeInfo} label="DC STYLE PULSE SET" workingWeight={workingWeight}>
+      <TargetLoadRow
+        alvo={isDone ? '—' : (phase === 'reps' ? cur.reps : (cur.pulses ?? 'falha'))}
+        alvoSub={isDone ? null : (phase === 'reps' ? 'reps' : 'pulsos')}
+        workingWeight={workingWeight}
+      />
+
       <PrevRecord prevData={prevData} />
 
       <div className="flex flex-col gap-1 mb-2.5">
