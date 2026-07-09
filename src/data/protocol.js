@@ -94,6 +94,43 @@ export function getWeightQuestion(setDef) {
   }
 }
 
+// Estado do músculo no momento em que o exercício é montado — determina quantos
+// warmups/feeders (hoje) ou quantas séries de rampa (depois da unificação) o
+// exercício recebe. Detecção preservada exatamente como estava.
+export function detectMuscleState(primaryIdx, hasBeenAccessory) {
+  if (primaryIdx === 0 && !hasBeenAccessory) return 'estreante'
+  if (primaryIdx === 0 && hasBeenAccessory)  return 'pre_ativado'
+  return 'ja_primario'
+}
+
+// Extração pura do bloco que gerava warmups+feeders (era buildWorkoutSteps:121-157).
+// NENHUMA mudança de comportamento nesta extração — mesmo shape de saída de hoje
+// (listas separadas de warmup/feeder, com pct+reps, sem exerciseId/type/exerciseName,
+// que o caller já adiciona). Isolado assim dá pra trocar só o CONTEÚDO da rampa depois
+// sem mexer em buildWorkoutSteps de novo.
+export function buildPrepRamp(state) {
+  const warmups = []
+  const feeders = []
+
+  if (state === 'estreante') {
+    // ramp 2 sets: 50%×8 → 65%×6 (antecede feeders 70×5 / 75×4 / 80×3)
+    warmups.push({ setNum: 1, totalSets: 2, pct: 0.50, reps: '8' })
+    warmups.push({ setNum: 2, totalSets: 2, pct: 0.65, reps: '6' })
+  } else if (state === 'pre_ativado') {
+    // 1 warmup em 60%×6 (antecede feeders 70×5 / 78×3)
+    warmups.push({ setNum: 1, totalSets: 1, pct: 0.60, reps: '6' })
+  }
+  // 'ja_primario': sem warmup
+
+  let feederCount = state === 'estreante' ? 3 : state === 'pre_ativado' ? 2 : 1
+  feederCount = Math.max(1, feederCount) // piso inegociável — nenhum exercício sem prep
+  FEEDER_RAMPS[feederCount].forEach((slot, i) => {
+    feeders.push({ setNum: i + 1, totalSets: feederCount, pct: slot.pct, reps: slot.reps, gerTarget: 7 })
+  })
+
+  return { warmups, feeders }
+}
+
 // Build the ordered step list for an active workout session
 export function buildWorkoutSteps(exercises) {
   if (!exercises || exercises.length === 0) return []
@@ -119,42 +156,12 @@ export function buildWorkoutSteps(exercises) {
       setDef: firstSet,
     })
 
-    // Warmup only for first occurrence of each primary muscle
-    // Usa primaryIdx (pré-incremento) e accessoryMuscleSeen antes do add(accessory)
-    if (primaryIdx === 0) {
-      if (accessoryMuscleSeen.has(muscle)) {
-        // Pré-ativado como acessório → 1 warmup em 60%×6 (antecede feeders 70×5 / 78×3)
-        steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 1, totalSets: 1, pct: 0.60, reps: '6' })
-      } else {
-        // Estreante → ramp 2 sets: 50%×8 → 65%×6 (antecede feeders 70×5 / 75×4 / 80×3)
-        steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 1, totalSets: 2, pct: 0.50, reps: '8' })
-        steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, setNum: 2, totalSets: 2, pct: 0.65, reps: '6' })
-      }
-    }
+    // Estado do músculo usa primaryIdx (pré-incremento) e accessoryMuscleSeen antes do add(accessory)
+    const state = detectMuscleState(primaryIdx, accessoryMuscleSeen.has(muscle))
+    const { warmups, feeders } = buildPrepRamp(state)
 
-    // Feeders — ramp progressivo (pct crescente, reps decrescentes) por estado do músculo
-    // Usa primaryIdx (pré-incremento) e accessoryMuscleSeen antes do add(accessory)
-    let feederCount
-    if (primaryIdx === 0 && !accessoryMuscleSeen.has(muscle)) {
-      feederCount = 3  // estreante
-    } else if (primaryIdx === 0 && accessoryMuscleSeen.has(muscle)) {
-      feederCount = 2  // pré-ativado como acessório
-    } else {
-      feederCount = 1  // já trabalhou como primário
-    }
-    feederCount = Math.max(1, feederCount)  // piso inegociável — nenhum exercício sem prep
-    FEEDER_RAMPS[feederCount].forEach((slot, i) => {
-      steps.push({
-        type: 'FEEDER',
-        exerciseId: exercise.id,
-        exerciseName: exercise.name,
-        setNum: i + 1,
-        totalSets: feederCount,
-        pct: slot.pct,
-        reps: slot.reps,
-        gerTarget: 7,
-      })
-    })
+    warmups.forEach(w => steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, ...w }))
+    feeders.forEach(f => steps.push({ type: 'FEEDER', exerciseId: exercise.id, exerciseName: exercise.name, ...f }))
 
     // Register accessory muscle for subsequent exercises
     if (accessory) accessoryMuscleSeen.add(accessory)
