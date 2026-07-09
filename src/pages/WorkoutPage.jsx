@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LuPlay, LuCheck, LuSwords, LuTriangleAlert,
-  LuFlame, LuDumbbell, LuPlus, LuMinus,
+  LuFlame, LuDumbbell, LuPlus, LuMinus, LuClock,
 } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 import { DAY_NAMES, SET_TYPES, GER_CONFIG, getWeightQuestion, MIN_PLATE_INCREMENT } from '../data/protocol'
@@ -29,6 +29,29 @@ function fmtDuration(totalSec) {
   const s = totalSec % 60
   if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+// cronômetro geral do treino — número grande, tabular (sem trepidação a cada
+// segundo), separador ":" pulsando discretamente
+function ElapsedClock({ sec }) {
+  const parts = fmtDuration(sec).split(':')
+  return (
+    <div className="flex-shrink-0 flex items-center justify-center gap-2 mt-1 mb-3">
+      <LuClock size={13} className="text-muted/50" />
+      <span className="font-mono text-[9px] text-muted/50 tracking-[0.25em]">TEMPO</span>
+      <span
+        className="font-mono text-3xl font-bold text-neon leading-none"
+        style={{ fontVariantNumeric: 'tabular-nums', textShadow: '0 0 14px rgba(57,255,20,0.4)' }}
+      >
+        {parts.map((p, i) => (
+          <span key={i}>
+            {i > 0 && <span className="animate-pulse">:</span>}
+            {p}
+          </span>
+        ))}
+      </span>
+    </div>
+  )
 }
 
 const WORKING_GER_FACE_SIZE = 40
@@ -1546,9 +1569,7 @@ function ActiveWorkout() {
           {workingDone}/{workingSteps}
         </div>
       </div>
-      <div className="flex-shrink-0 text-center font-mono text-[11px] text-neon/70 tracking-[0.15em] mb-2">
-        {fmtDuration(elapsedSec)}
-      </div>
+      <ElapsedClock sec={elapsedSec} />
 
       {/* past/future banner — toque volta pra série atual */}
       {!isCurrentStep && (
