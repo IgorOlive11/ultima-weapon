@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { JS_DAY_TO_IDX, defaultUserProtocol, buildWorkoutSteps } from '../data/protocol'
 import { defaultAchievements, checkNewAchievements } from '../data/achievements'
 import { timerManager } from '../utils/timerManager'
+import { playRestDoneAlarm, warmAlarmAudio } from '../utils/alarmSound'
 import { round25 } from '../utils/loads'
 import { supabase } from '../lib/supabase'
 
@@ -124,7 +125,9 @@ function startTimerTick(seconds, endsAt, set) {
     (s) => set(state => ({ restTimer: { ...state.restTimer, running: true, seconds: s } })),
     () => {
       set(state => ({ restTimer: { ...state.restTimer, running: false, seconds: 0 } }))
+      // vibrate não funciona no Safari/iOS — o som é quem garante o feedback ali
       if (navigator.vibrate) navigator.vibrate([200, 100, 200])
+      playRestDoneAlarm()
     }
   )
 }
@@ -338,6 +341,7 @@ export const useStore = create(
       restTimer: { running: false, seconds: 120, preset: 120, endsAt: 0 },
 
       startRestTimer: (seconds) => {
+        warmAlarmAudio() // chamado dentro do gesto (tap em "concluído"), não no callback do timer
         timerManager.clear()
         const endsAt = Date.now() + seconds * 1000
         set(state => ({ restTimer: { ...state.restTimer, running: true, preset: seconds, seconds, endsAt } }))

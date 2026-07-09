@@ -67,13 +67,22 @@ export default function GlobalRestTimer() {
               />
             </div>
 
-            <div className="bg-s1 border-t border-border1 px-4 py-3 flex items-center gap-3">
+            <div className="relative bg-s1 border-t border-border1 px-4 py-3 flex items-center gap-3 overflow-hidden">
+              {/* destaque visual — pulsa enquanto o descanso terminou e não foi reconhecido */}
+              {isDone && (
+                <motion.div
+                  className="absolute inset-0 z-0 pointer-events-none"
+                  animate={{ backgroundColor: ['rgba(57,255,20,0.04)', 'rgba(57,255,20,0.22)', 'rgba(57,255,20,0.04)'] }}
+                  transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              )}
+
               {/* time */}
               <motion.div
                 key={restTimer.seconds}
                 initial={{ scale: 1.15, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className={`font-display text-3xl leading-none tracking-wider min-w-[72px] ${
+                className={`relative z-10 font-display text-3xl leading-none tracking-wider min-w-[72px] ${
                   isDone ? 'text-neon' : 'text-ink'
                 }`}
               >
@@ -81,7 +90,7 @@ export default function GlobalRestTimer() {
               </motion.div>
 
               {/* label */}
-              <div className="flex-1">
+              <div className="relative z-10 flex-1">
                 <div className="font-mono text-[10px] text-muted tracking-[0.2em] uppercase">
                   {isDone ? 'DESCANSADO — BOA SORTE' : 'DESCANSO'}
                 </div>
@@ -98,7 +107,7 @@ export default function GlobalRestTimer() {
               {/* dismiss */}
               <button
                 onClick={stopRestTimer}
-                className="p-2 rounded-sm text-muted hover:text-neon hover:bg-neon/10 transition-colors"
+                className="relative z-10 p-2 rounded-sm text-muted hover:text-neon hover:bg-neon/10 transition-colors"
               >
                 {isDone ? <LuSkipForward size={18} /> : <LuX size={18} />}
               </button>

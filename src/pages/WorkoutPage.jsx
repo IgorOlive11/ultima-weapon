@@ -1126,8 +1126,17 @@ function InlineRestTimer({ onNext }) {
         />
       </div>
 
-      <div className="flex items-center gap-4 px-4 py-3">
-        <div>
+      <div className="relative overflow-hidden flex items-center gap-4 px-4 py-3">
+        {/* destaque visual — pulsa enquanto o descanso terminou e não foi reconhecido */}
+        {isDone && (
+          <motion.div
+            className="absolute inset-0 z-0 pointer-events-none"
+            animate={{ backgroundColor: ['rgba(57,255,20,0.04)', 'rgba(57,255,20,0.22)', 'rgba(57,255,20,0.04)'] }}
+            transition={{ duration: 1.1, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        )}
+
+        <div className="relative z-10">
           <div className="font-mono text-[9px] text-muted tracking-[0.2em]">
             {isDone ? 'PRONTO' : 'DESCANSO'}
           </div>
@@ -1141,7 +1150,7 @@ function InlineRestTimer({ onNext }) {
           </motion.div>
         </div>
 
-        <div className="flex-1 h-2 bg-border1 rounded-full overflow-hidden">
+        <div className="relative z-10 flex-1 h-2 bg-border1 rounded-full overflow-hidden">
           <motion.div
             className="h-full rounded-full"
             animate={{ width: `${pct * 100}%` }}
@@ -1152,7 +1161,7 @@ function InlineRestTimer({ onNext }) {
 
         <button
           onClick={handleNext}
-          className={`px-4 py-2 font-display text-xs tracking-[0.15em] border transition-colors ${
+          className={`relative z-10 px-4 py-2 font-display text-xs tracking-[0.15em] border transition-colors ${
             isDone
               ? 'border-neon text-bg bg-neon'
               : 'border-border2 text-muted hover:text-ink hover:border-neon'
