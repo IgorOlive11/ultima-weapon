@@ -31,17 +31,25 @@ function fmtDuration(totalSec) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
+function hexToRgba(hex, alpha) {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.substring(0, 2), 16)
+  const g = parseInt(h.substring(2, 4), 16)
+  const b = parseInt(h.substring(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 // cronômetro geral do treino — número grande, tabular (sem trepidação a cada
-// segundo), separador ":" pulsando discretamente
-function ElapsedClock({ sec }) {
+// segundo), separador ":" pulsando discretamente. Cor acompanha a fase atual
+// (prep vs série válida), com fade suave em vez de trocar seco.
+function ElapsedClock({ sec, color }) {
   const parts = fmtDuration(sec).split(':')
   return (
     <div className="flex-shrink-0 flex items-center justify-center gap-2 mt-1 mb-3">
-      <LuClock size={13} className="text-muted/50" />
-      <span className="font-mono text-[9px] text-muted/50 tracking-[0.25em]">TEMPO</span>
+      <LuClock size={14} className="text-muted/50 flex-shrink-0" />
       <span
-        className="font-mono text-3xl font-bold text-neon leading-none"
-        style={{ fontVariantNumeric: 'tabular-nums', textShadow: '0 0 14px rgba(57,255,20,0.4)' }}
+        className="font-mono text-3xl font-bold leading-none transition-colors duration-500"
+        style={{ fontVariantNumeric: 'tabular-nums', color, textShadow: `0 0 14px ${hexToRgba(color, 0.4)}` }}
       >
         {parts.map((p, i) => (
           <span key={i}>
@@ -55,6 +63,14 @@ function ElapsedClock({ sec }) {
 }
 
 const WORKING_GER_FACE_SIZE = 40
+
+// cor principal por fase: aquecimento/feeder (preparo) = verde; séries válidas
+// (working sets de qualquer tipo, incl. a pergunta de peso que as precede) = vermelho
+const PHASE_COLOR_PREP    = '#39FF14'
+const PHASE_COLOR_WORKING = '#FF1414'
+function phaseColorForStepType(type) {
+  return (type === 'WARMUP' || type === 'FEEDER') ? PHASE_COLOR_PREP : PHASE_COLOR_WORKING
+}
 
 function getGerConfig(ger) {
   return GER_CONFIG[ger] || GER_CONFIG[10]
@@ -360,7 +376,7 @@ function PrevRecord({ prevData, setDef }) {
 function WeightQuestionCard({ step, onConfirm, history, isLocked }) {
   const [weight, setWeight] = useState('')
   const question = getWeightQuestion(step.setDef)
-  const typeInfo = SET_TYPES[step.setDef?.type] || SET_TYPES.NORMAL
+  const typeInfo = { ...(SET_TYPES[step.setDef?.type] || SET_TYPES.NORMAL), color: PHASE_COLOR_WORKING }
 
   const handleConfirm = () => {
     const w = parseFloat(weight)
@@ -468,7 +484,7 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, sav
   const [reps, setReps] = useState(savedResult?.reps != null ? String(savedResult.reps) : '')
   const [kg, setKg]     = useState(savedResult?.kg   != null ? String(savedResult.kg)   : (defaultKg > 0 ? String(defaultKg) : ''))
   const isWarmup = step.type === 'WARMUP'
-  const typeInfo = { color: '#888888' }
+  const typeInfo = { color: PHASE_COLOR_PREP }
 
   const handleDone = () => {
     onDone({ reps: parseInt(reps) || 0, kg: parseFloat(kg) || defaultKg })
@@ -527,7 +543,7 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, sav
 
 function NormalSetCard({ step, workingWeight, onDone, isLocked, prevData, savedResult }) {
   const [repsHit, setRepsHit] = useState(savedResult?.reps != null ? String(savedResult.reps) : '')
-  const typeInfo  = SET_TYPES[step.setDef.type] || SET_TYPES.NORMAL
+  const typeInfo  = { ...(SET_TYPES[step.setDef.type] || SET_TYPES.NORMAL), color: PHASE_COLOR_WORKING }
 
   const handleDone = () => {
     onDone({ kg: workingWeight, reps: parseInt(repsHit) || 0 })
@@ -583,7 +599,7 @@ function RestPauseCard({ step, workingWeight, onDone, isLocked, prevData }) {
   const [phase, setPhase]     = useState('block') // 'block' | 'rest20'
   const [timer20, setTimer20] = useState(null)
   const ivRef = useRef(null)
-  const typeInfo  = SET_TYPES.REST_PAUSE
+  const typeInfo  = { ...SET_TYPES.REST_PAUSE, color: PHASE_COLOR_WORKING }
 
   const currentBlock = blocks.length - 1
   const isDone = blocks.length >= 2 && blocks[blocks.length-1].reps !== null
@@ -727,7 +743,7 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked, prevData }) {
   const [phase, setPhase]                     = useState('ready') // ready | rest10 | done
   const [currentReps, setCurrentReps]         = useState('')
   const ivRef = useRef(null)
-  const typeInfo = SET_TYPES.MUSCLE_ROUND
+  const typeInfo = { ...SET_TYPES.MUSCLE_ROUND, color: PHASE_COLOR_WORKING }
 
   const resumeReady = () => { setPhase('ready'); setBlockTimer(null); setCurrentReps('') }
 
@@ -880,7 +896,7 @@ function MuscleRoundCard({ step, workingWeight, onDone, isLocked, prevData }) {
 function WidowmakerCard({ step, workingWeight, onDone, isLocked, prevData }) {
   const [reps, setReps]   = useState(0)
   const [phase, setPhase] = useState('working') // 'working' | 'extending'
-  const typeInfo          = SET_TYPES.WIDOWMAKER
+  const typeInfo          = { ...SET_TYPES.WIDOWMAKER, color: PHASE_COLOR_WORKING }
 
   const handleFail = () => {
     setPhase('extending')
@@ -979,7 +995,7 @@ function PulseSetCard({ step, workingWeight, onDone, isLocked, prevData }) {
   ]
   const [current, setCurrent] = useState(0)
   const [phase, setPhase]     = useState('reps') // 'reps' | 'pulses'
-  const typeInfo               = SET_TYPES.PULSE
+  const typeInfo               = { ...SET_TYPES.PULSE, color: PHASE_COLOR_WORKING }
   const isDone = current >= SEQUENCE.length
 
   const handlePhaseNext = () => {
@@ -1544,6 +1560,9 @@ function ActiveWorkout() {
   const isLast       = currentStepIdx === steps.length - 1
 
   const snapTransition = 'transform 260ms cubic-bezier(.22,.61,.36,1), opacity 260ms cubic-bezier(.22,.61,.36,1)'
+  // cor de fase do header inteiro segue o que está sendo exibido (prep vs série válida),
+  // com fade suave em vez de trocar seco
+  const phaseColor = phaseColorForStepType(vStep?.type)
 
   return (
     <div className="h-full flex flex-col p-3 pb-3 overflow-hidden">
@@ -1557,15 +1576,15 @@ function ActiveWorkout() {
         </button>
         <div className="flex-1 h-[3px] bg-border1">
           <div
-            className="h-full bg-neon transition-all duration-500"
-            style={{ width: `${steps.length > 0 ? (currentStepIdx/steps.length)*100 : 0}%` }}
+            className="h-full transition-all duration-500"
+            style={{ width: `${steps.length > 0 ? (currentStepIdx/steps.length)*100 : 0}%`, backgroundColor: phaseColor }}
           />
         </div>
-        <div className="font-mono text-[10px] text-muted tracking-wider">
+        <div className="font-mono text-[10px] tracking-wider transition-colors duration-500" style={{ color: phaseColor }}>
           {workingDone}/{workingSteps}
         </div>
       </div>
-      <ElapsedClock sec={elapsedSec} />
+      <ElapsedClock sec={elapsedSec} color={phaseColor} />
 
       {/* past/future banner — toque volta pra série atual */}
       {!isCurrentStep && (
