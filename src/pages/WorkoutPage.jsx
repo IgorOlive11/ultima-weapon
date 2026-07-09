@@ -5,7 +5,7 @@ import {
   LuFlame, LuDumbbell, LuPlus, LuMinus, LuClock,
 } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
-import { DAY_NAMES, SET_TYPES, GER_CONFIG, getWeightQuestion, MIN_PLATE_INCREMENT } from '../data/protocol'
+import { DAY_NAMES, SET_TYPES, GER_CONFIG, getWeightQuestion, MIN_PLATE_INCREMENT, getPrepRestSeconds } from '../data/protocol'
 import { ACHIEVEMENTS } from '../data/achievements'
 import DoomFace from '../components/DoomFace'
 import { round25 } from '../utils/loads'
@@ -69,7 +69,7 @@ const WORKING_GER_FACE_SIZE = 40
 const PHASE_COLOR_PREP    = '#39FF14'
 const PHASE_COLOR_WORKING = '#FF1414'
 function phaseColorForStepType(type) {
-  return (type === 'WARMUP' || type === 'FEEDER') ? PHASE_COLOR_PREP : PHASE_COLOR_WORKING
+  return type === 'PREP' ? PHASE_COLOR_PREP : PHASE_COLOR_WORKING
 }
 
 function getGerConfig(ger) {
@@ -479,11 +479,12 @@ function WeightQuestionCard({ step, onConfirm, history, isLocked }) {
   )
 }
 
-function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, savedResult }) {
+// Rampa única de preparo — substituiu os antigos warmup+feeder separados (ver PR de
+// unificação). Um único esqueleto pra toda série de rampa, sem distinção de tipo.
+function PrepSetCard({ step, workingWeight, onDone, isLocked, prevData, savedResult }) {
   const defaultKg = workingWeight > 0 ? roundToMinPlate(workingWeight * step.pct) : 0
   const [reps, setReps] = useState(savedResult?.reps != null ? String(savedResult.reps) : '')
   const [kg, setKg]     = useState(savedResult?.kg   != null ? String(savedResult.kg)   : (defaultKg > 0 ? String(defaultKg) : ''))
-  const isWarmup = step.type === 'WARMUP'
   const typeInfo = { color: PHASE_COLOR_PREP }
 
   const handleDone = () => {
@@ -494,9 +495,9 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, sav
     <WorkingSetShell
       step={step}
       typeInfo={typeInfo}
-      label={isWarmup ? `AQUECIMENTO ${step.setNum} DE ${step.totalSets ?? 2}` : `PREP ${step.setNum} DE ${step.totalSets ?? 1}`}
+      label={`SÉRIE DE PREPARO ${step.setNum} DE ${step.totalSets ?? 1}`}
       workingWeight={workingWeight}
-      ger={isWarmup ? null : (step.gerTarget ?? 7)}
+      ger={step.gerTarget ?? 7}
     >
       <TargetLoadRow
         alvo={step.reps}
@@ -1317,32 +1318,32 @@ function ActiveWorkout() {
     }
   }, [viewingStepIdx, exerciseHistory]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Mudança 3b — corte de feeder na camada de execução (steps gerados permanecem íntegros)
+  // Mudança 3b — corte de prep na camada de execução (steps gerados permanecem íntegros)
   // Critério: peso arredondado a MIN_PLATE_INCREMENT ≥ peso de trabalho E reps ≥ mín. da série efetiva
   // Peso disponível em exerciseWeights após WEIGHT_QUESTION; buildWorkoutSteps não tem acesso a ele
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     const curStep = steps[currentStepIdx]
-    if (curStep?.type !== 'FEEDER') return
+    if (curStep?.type !== 'PREP') return
 
     // Ajuste 1 — guard de pré-visualização: sem peso informado não roda corte nem cálculo
     const ww = exerciseWeights[curStep.exerciseId] || 0
     if (ww <= 0) return
 
-    const feederKg = Math.round(ww * curStep.pct / MIN_PLATE_INCREMENT) * MIN_PLATE_INCREMENT
-    if (feederKg < ww) return
+    const prepKg = Math.round(ww * curStep.pct / MIN_PLATE_INCREMENT) * MIN_PLATE_INCREMENT
+    if (prepKg < ww) return
 
     const wsStep = steps.find(s => s.type === 'WORKING_SET' && s.exerciseId === curStep.exerciseId)
     // Ajuste 2 — tipos sem repRange (REST_PAUSE, MUSCLE_ROUND, PULSE) sempre diferem por GER
     // (7 vs 9+): nunca são duplicatas → wsMinReps = Infinity, corte nunca dispara para esses tipos
     const rawMinReps = parseInt(wsStep?.setDef?.repRange?.split('-')[0])
     const wsMinReps  = isNaN(rawMinReps) ? Infinity : rawMinReps
-    const feederReps = parseInt(curStep.reps) || 0
+    const prepReps   = parseInt(curStep.reps) || 0
 
-    if (feederReps < wsMinReps) return
+    if (prepReps < wsMinReps) return
 
     // Ajuste 2 — piso inegociável: preserva sempre o prep de MENOR carga (setNum=1, mais reps)
-    // Feeders mais pesados (setNum > 1) podem ser cortados; o mais leve nunca
+    // Preps mais pesados (setNum > 1) podem ser cortados; o mais leve nunca
     if (curStep.setNum === 1) return
 
     advanceWorkoutStep()
@@ -1384,8 +1385,7 @@ function ActiveWorkout() {
 
     const nextStep = steps[currentStepIdx + 1]
     let restSec = 0
-    if (nextStep?.type === 'WARMUP')           restSec = day.warmupRestSeconds  ?? 60
-    else if (nextStep?.type === 'FEEDER')      restSec = day.feederRestSeconds  ?? 60
+    if (nextStep?.type === 'PREP')             restSec = getPrepRestSeconds(day)
     else if (nextStep?.type === 'WORKING_SET') restSec = day.restSeconds        ?? 120
 
     if (restSec > 0) {
@@ -1480,15 +1480,16 @@ function ActiveWorkout() {
     const ww   = exerciseWeights[s.exerciseId] || 0
     const sr   = setResults?.[String(i)] ?? null
     const hist = exerciseHistory?.[s.exerciseName?.toUpperCase()?.trim()]
-    const pd   = s.type === 'WARMUP'      ? (hist?.warmups?.[s.setNum - 1] ?? null)
-               : s.type === 'FEEDER'      ? (hist?.feeders?.[s.setNum - 1] ?? null)
+    // hist.preps é o histórico unificado; se vier de uma sessão antes da unificação
+    // (só hist.feeders/hist.warmups existem), cai pro que tiver.
+    const pd   = s.type === 'PREP'        ? ((hist?.preps ?? hist?.feeders)?.[s.setNum - 1] ?? null)
                : s.type === 'WORKING_SET' ? (hist?.sets?.[s.setNum - 1] ?? null)
                : null
 
     if (!isActive) {
       const noop = () => {}
       if (s.type === 'WEIGHT_QUESTION') return <WeightQuestionCard step={s} onConfirm={noop} history={hist} isLocked />
-      if (s.type === 'WARMUP' || s.type === 'FEEDER') return <WarmupFeederCard step={s} workingWeight={ww} onDone={noop} isLocked prevData={pd} savedResult={sr} />
+      if (s.type === 'PREP') return <PrepSetCard step={s} workingWeight={ww} onDone={noop} isLocked prevData={pd} savedResult={sr} />
       if (s.type === 'WORKING_SET') return <WorkingSetCard step={s} workingWeight={ww} onDone={noop} isLocked prevData={pd} savedResult={sr} />
       return null
     }
@@ -1503,9 +1504,9 @@ function ActiveWorkout() {
         />
       )
     }
-    if (s.type === 'WARMUP' || s.type === 'FEEDER') {
+    if (s.type === 'PREP') {
       return (
-        <WarmupFeederCard
+        <PrepSetCard
           step={s}
           workingWeight={ww}
           onDone={handleCardDone}

@@ -15,7 +15,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useStore } from '../hooks/useStore'
 import {
-  DAY_NAMES, MUSCLE_GROUP_LIST, SET_TYPES, SET_TYPE_DESCRIPTIONS, GER_CONFIG,
+  DAY_NAMES, MUSCLE_GROUP_LIST, SET_TYPES, SET_TYPE_DESCRIPTIONS, GER_CONFIG, getPrepRestSeconds,
 } from '../data/protocol'
 import { downloadTemplateCsv, parseProtocolCsv, downloadProtocolCsv } from '../utils/protocolCsv'
 import DoomFace from '../components/DoomFace'
@@ -247,10 +247,19 @@ function EditExerciseModal({ exercise, onSave, onClose }) {
   const [name, setName]             = useState(exercise.name)
   const [muscle, setMuscle]         = useState(exercise.muscle)
   const [accessoryMuscle, setAccessoryMuscle] = useState(exercise.accessoryMuscle || '')
+  // null = automático (segue o estado do músculo); 0-3 = trava manual
+  const [prepOverride, setPrepOverride] = useState(
+    exercise.prepSetsOverride != null ? exercise.prepSetsOverride : null
+  )
 
   const submit = () => {
     if (!name.trim()) return
-    onSave({ name: name.trim(), muscle, ...(accessoryMuscle ? { accessoryMuscle } : { accessoryMuscle: undefined }) })
+    onSave({
+      name: name.trim(),
+      muscle,
+      ...(accessoryMuscle ? { accessoryMuscle } : { accessoryMuscle: undefined }),
+      prepSetsOverride: prepOverride,
+    })
     onClose()
   }
 
@@ -320,6 +329,34 @@ function EditExerciseModal({ exercise, onSave, onClose }) {
                   }`}
                 >
                   {m}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-5">
+            <label className="section-label block mb-1">SÉRIES DE PREPARO</label>
+            <div className="font-mono text-[9px] text-muted/60 mb-2">
+              AUTO segue o estado do músculo (estreante/pré-ativado/já-primário). Um número trava manualmente, inclusive 0.
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setPrepOverride(null)}
+                className={`px-2.5 py-1 font-mono text-[10px] border transition-all ${
+                  prepOverride === null ? 'bg-neon text-bg border-neon' : 'bg-s2 border-border2 text-muted hover:text-ink'
+                }`}
+              >
+                AUTO
+              </button>
+              {[0, 1, 2, 3].map(n => (
+                <button
+                  key={n}
+                  onClick={() => setPrepOverride(n)}
+                  className={`px-2.5 py-1 font-mono text-[10px] border transition-all ${
+                    prepOverride === n ? 'bg-amber-500/20 text-amber-400 border-amber-500/60' : 'bg-s2 border-border2 text-muted hover:text-ink'
+                  }`}
+                >
+                  {n}
                 </button>
               ))}
             </div>
@@ -726,6 +763,9 @@ function ExerciseEditor({ exercise, weekIdx, dayIdx, isDragging: isExDragging })
               {exercise.accessoryMuscle && (
                 <span className="text-amber-400/70 ml-1.5">+{exercise.accessoryMuscle}</span>
               )}
+              {exercise.prepSetsOverride != null && (
+                <span className="text-amber-400/70 ml-1.5">· PREP {exercise.prepSetsOverride}</span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -854,8 +894,7 @@ function DayEditor({ weekIdx, dayIdx }) {
   const userProtocol            = useStore(s => s.userProtocol)
   const setDayRest              = useStore(s => s.setDayRest)
   const setDayRestSeconds       = useStore(s => s.setDayRestSeconds)
-  const setDayWarmupRestSeconds = useStore(s => s.setDayWarmupRestSeconds)
-  const setDayFeederRestSeconds = useStore(s => s.setDayFeederRestSeconds)
+  const setDayPrepRestSeconds   = useStore(s => s.setDayPrepRestSeconds)
   const addExercise             = useStore(s => s.addExercise)
   const reorderExercises        = useStore(s => s.reorderExercises)
 
@@ -907,18 +946,11 @@ function DayEditor({ weekIdx, dayIdx }) {
               opts: [60, 90, 120, 150, 180],
             },
             {
-              label: 'AQUECIMENTO',
-              sub: 'Descanso entre warmup sets',
-              field: 'warmupRestSeconds',
-              set: (v) => setDayWarmupRestSeconds(weekIdx, dayIdx, v),
-              opts: [30, 45, 60, 90],
-            },
-            {
-              label: 'PREP SETS',
-              sub: 'Descanso entre feeders',
-              field: 'feederRestSeconds',
-              set: (v) => setDayFeederRestSeconds(weekIdx, dayIdx, v),
-              opts: [45, 60, 90, 120],
+              label: 'SÉRIE DE PREPARO',
+              sub: 'Descanso entre as séries da rampa de preparo',
+              field: 'prepRestSeconds',
+              set: (v) => setDayPrepRestSeconds(weekIdx, dayIdx, v),
+              opts: [30, 40, 60, 90],
             },
           ].map(({ label, sub, field, set: setter, opts }) => (
             <div key={field} className="bg-s2 border border-border2 px-3 py-2.5 mb-2">
@@ -933,7 +965,9 @@ function DayEditor({ weekIdx, dayIdx }) {
                 {opts.map(s => {
                   const m = Math.floor(s / 60), sec = s % 60
                   const lbl = m === 0 ? `${s}s` : sec ? `${m}'${String(sec).padStart(2,'0')}` : `${m}'`
-                  const current = day[field] ?? opts[Math.floor(opts.length / 2)]
+                  // prepRestSeconds cai pros campos antigos (warmup/feeder) se o protocolo
+                  // ainda não foi salvo desde a unificação
+                  const current = field === 'prepRestSeconds' ? getPrepRestSeconds(day) : (day[field] ?? opts[Math.floor(opts.length / 2)])
                   return (
                     <button
                       key={s}

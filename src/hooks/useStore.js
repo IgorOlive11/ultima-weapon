@@ -481,19 +481,13 @@ export const useStore = create(
         scheduleSyncSection('userProtocol', get)
       },
 
-      setDayWarmupRestSeconds: (weekIdx, dayIdx, seconds) => {
+      // Substitui setDayWarmupRestSeconds/setDayFeederRestSeconds (warmup+feeder viraram
+      // uma rampa única). Protocolos antigos com os campos separados continuam lendo
+      // certo via getPrepRestSeconds (fallback em protocol.js); só a escrita muda.
+      setDayPrepRestSeconds: (weekIdx, dayIdx, seconds) => {
         set(state => {
           const p = JSON.parse(JSON.stringify(state.userProtocol))
-          p.weeks[weekIdx].days[dayIdx].warmupRestSeconds = seconds
-          return { userProtocol: p }
-        })
-        scheduleSyncSection('userProtocol', get)
-      },
-
-      setDayFeederRestSeconds: (weekIdx, dayIdx, seconds) => {
-        set(state => {
-          const p = JSON.parse(JSON.stringify(state.userProtocol))
-          p.weeks[weekIdx].days[dayIdx].feederRestSeconds = seconds
+          p.weeks[weekIdx].days[dayIdx].prepRestSeconds = seconds
           return { userProtocol: p }
         })
         scheduleSyncSection('userProtocol', get)
@@ -673,12 +667,10 @@ export const useStore = create(
             }
           }
           const result = setResults[String(idx)]
-          if (step.type === 'WARMUP') {
-            exerciseMap[key].warmups.push({
-              reps: result?.reps || 0,
-              kg: round25((exerciseWeights[key] || 0) * step.pct),
-            })
-          } else if (step.type === 'FEEDER') {
+          // PREP unifica os antigos WARMUP/FEEDER numa rampa só — history/log continuam
+          // guardando em `feeders` (não renomeado pra não quebrar leitura de dados antigos
+          // já persistidos); `warmups` fica só de compat, sempre vazio a partir daqui.
+          if (step.type === 'PREP') {
             exerciseMap[key].feeders.push({
               reps: result?.reps || 0,
               kg: round25((exerciseWeights[key] || 0) * step.pct),

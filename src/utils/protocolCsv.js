@@ -1,43 +1,44 @@
-import { defaultUserProtocol } from '../data/protocol'
+import { defaultUserProtocol, getPrepRestSeconds } from '../data/protocol'
 
 const HEADERS = [
-  'semana', 'dia', 'descanso_seg', 'aquecimento_seg', 'feeder_seg',
+  'semana', 'dia', 'descanso_seg', 'prep_seg',
   'dia_descanso', 'exercicio', 'musculo', 'tipo_serie', 'ger', 'rep_range',
-  'musculo_acessorio',
+  'musculo_acessorio', 'prep_override',
 ]
 
 // ─── Template ──────────────────────────────────────────────────────────────────
 // Tipos válidos: NORMAL | REST_PAUSE | MUSCLE_ROUND | WIDOWMAKER | PULSE
 // dia_descanso: S = dia de descanso (demais colunas ignoradas) | N = treino
+// prep_override: vazio = automático (segue o estado do músculo) | 0-3 = trava manual
 // Uma linha por série — mesmo exercício/dia com múltiplas linhas = múltiplas séries
 
 const EXAMPLE_ROWS = [
   // SEG: Peito
-  [1,1,120,60,60,'N','Supino Reto',    'PEITO',  'NORMAL',     10,'8-12',''],
-  [1,1,120,60,60,'N','Supino Reto',    'PEITO',  'NORMAL',     10,'8-12',''],
-  [1,1,120,60,60,'N','Supino Reto',    'PEITO',  'NORMAL',     10,'8-12',''],
-  [1,1,120,60,60,'N','Crucifixo',      'PEITO',  'REST_PAUSE', 12,'',   ''],
+  [1,1,120,40,'N','Supino Reto',    'PEITO',  'NORMAL',     10,'8-12','',''],
+  [1,1,120,40,'N','Supino Reto',    'PEITO',  'NORMAL',     10,'8-12','',''],
+  [1,1,120,40,'N','Supino Reto',    'PEITO',  'NORMAL',     10,'8-12','',''],
+  [1,1,120,40,'N','Crucifixo',      'PEITO',  'REST_PAUSE', 12,'',   '',''],
   // TER: Costas
-  [1,2,120,60,60,'N','Puxada Frontal', 'COSTAS', 'NORMAL',     10,'8-12',''],
-  [1,2,120,60,60,'N','Puxada Frontal', 'COSTAS', 'NORMAL',     10,'8-12',''],
-  [1,2,120,60,60,'N','Remada Curvada', 'COSTAS', 'NORMAL',     10,'8-12',''],
-  [1,2,120,60,60,'N','Remada Curvada', 'COSTAS', 'NORMAL',     10,'8-12',''],
+  [1,2,120,40,'N','Puxada Frontal', 'COSTAS', 'NORMAL',     10,'8-12','',''],
+  [1,2,120,40,'N','Puxada Frontal', 'COSTAS', 'NORMAL',     10,'8-12','',''],
+  [1,2,120,40,'N','Remada Curvada', 'COSTAS', 'NORMAL',     10,'8-12','',''],
+  [1,2,120,40,'N','Remada Curvada', 'COSTAS', 'NORMAL',     10,'8-12','',''],
   // QUA: Descanso
-  [1,3,'','','','S','','','','','',''],
+  [1,3,'','','S','','','','','','',''],
   // QUI: Ombros
-  [1,4,120,60,60,'N','Desenvolvimento','OMBROS', 'NORMAL',     10,'8-12',''],
-  [1,4,120,60,60,'N','Desenvolvimento','OMBROS', 'NORMAL',     10,'8-12',''],
-  [1,4,120,60,60,'N','Elevação Lateral','OMBROS','MUSCLE_ROUND',11,'',   ''],
+  [1,4,120,40,'N','Desenvolvimento','OMBROS', 'NORMAL',     10,'8-12','',''],
+  [1,4,120,40,'N','Desenvolvimento','OMBROS', 'NORMAL',     10,'8-12','',''],
+  [1,4,120,40,'N','Elevação Lateral','OMBROS','MUSCLE_ROUND',11,'',   '',''],
   // SEX: Pernas
-  [1,5,180,60,90,'N','Agachamento',   'QUADRÍCEPS','NORMAL',   10,'8-12',''],
-  [1,5,180,60,90,'N','Agachamento',   'QUADRÍCEPS','NORMAL',   10,'8-12',''],
-  [1,5,180,60,90,'N','Leg Press',     'QUADRÍCEPS','WIDOWMAKER',13,'10-12',''],
+  [1,5,180,40,'N','Agachamento',   'QUADRÍCEPS','NORMAL',   10,'8-12','',''],
+  [1,5,180,40,'N','Agachamento',   'QUADRÍCEPS','NORMAL',   10,'8-12','',''],
+  [1,5,180,40,'N','Leg Press',     'QUADRÍCEPS','WIDOWMAKER',13,'10-12','',''],
   // SAB: Braços
-  [1,6,90,60,60,'N','Rosca Direta',   'BÍCEPS',  'NORMAL',     10,'8-12',''],
-  [1,6,90,60,60,'N','Rosca Direta',   'BÍCEPS',  'NORMAL',     10,'8-12',''],
-  [1,6,90,60,60,'N','Tríceps Pulley', 'TRÍCEPS', 'REST_PAUSE', 12,'',   ''],
+  [1,6,90,40,'N','Rosca Direta',   'BÍCEPS',  'NORMAL',     10,'8-12','',''],
+  [1,6,90,40,'N','Rosca Direta',   'BÍCEPS',  'NORMAL',     10,'8-12','',''],
+  [1,6,90,40,'N','Tríceps Pulley', 'TRÍCEPS', 'REST_PAUSE', 12,'',   '',''],
   // DOM: Descanso
-  [1,7,'','','','S','','','','','',''],
+  [1,7,'','','S','','','','','','',''],
 ]
 
 export function generateTemplateCsv() {
@@ -68,32 +69,31 @@ export function exportProtocolCsv(protocol) {
       const dia    = dIdx + 1
 
       if (day.isRest) {
-        lines.push([semana, dia, '', '', '', 'S', '', '', '', '', '', ''].join(','))
+        lines.push([semana, dia, '', '', 'S', '', '', '', '', '', '', ''].join(','))
         return
       }
 
       if (day.exercises.length === 0) {
-        const ds = day.restSeconds        ?? 120
-        const as = day.warmupRestSeconds  ?? 60
-        const fs = day.feederRestSeconds  ?? 60
-        lines.push([semana, dia, ds, as, fs, 'N', '', '', '', '', '', ''].join(','))
+        const ds = day.restSeconds ?? 120
+        const ps = getPrepRestSeconds(day)
+        lines.push([semana, dia, ds, ps, 'N', '', '', '', '', '', '', ''].join(','))
         return
       }
 
       day.exercises.forEach(ex => {
-        const ds = day.restSeconds        ?? 120
-        const as = day.warmupRestSeconds  ?? 60
-        const fs = day.feederRestSeconds  ?? 60
+        const ds = day.restSeconds ?? 120
+        const ps = getPrepRestSeconds(day)
+        const po = ex.prepSetsOverride ?? ''
 
         if (ex.sets.length === 0) {
-          lines.push([semana, dia, ds, as, fs, 'N', ex.name, ex.muscle, '', '', '', ex.accessoryMuscle ?? ''].join(','))
+          lines.push([semana, dia, ds, ps, 'N', ex.name, ex.muscle, '', '', '', ex.accessoryMuscle ?? '', po].join(','))
           return
         }
 
         ex.sets.forEach(set => {
           lines.push([
-            semana, dia, ds, as, fs, 'N',
-            ex.name, ex.muscle, set.type, set.ger, set.repRange ?? '', ex.accessoryMuscle ?? '',
+            semana, dia, ds, ps, 'N',
+            ex.name, ex.muscle, set.type, set.ger, set.repRange ?? '', ex.accessoryMuscle ?? '', po,
           ].join(','))
         })
       })
@@ -150,12 +150,20 @@ export function parseProtocolCsv(text) {
     const dIdx = dia - 1
     const day  = protocol.weeks[wIdx].days[dIdx]
 
-    const dseg  = parseInt(get('descanso_seg'))
-    const aseg  = parseInt(get('aquecimento_seg'))
-    const fseg  = parseInt(get('feeder_seg'))
-    if (!isNaN(dseg) && dseg > 0) day.restSeconds        = dseg
-    if (!isNaN(aseg) && aseg > 0) day.warmupRestSeconds  = aseg
-    if (!isNaN(fseg) && fseg > 0) day.feederRestSeconds  = fseg
+    const dseg = parseInt(get('descanso_seg'))
+    if (!isNaN(dseg) && dseg > 0) day.restSeconds = dseg
+
+    // prep_seg é o novo formato (rampa única). CSVs de antes da unificação ainda têm
+    // aquecimento_seg/feeder_seg separados — aceita os dois pra não quebrar import antigo.
+    const pseg = col('prep_seg') >= 0 ? parseInt(get('prep_seg')) : NaN
+    if (!isNaN(pseg) && pseg > 0) {
+      day.prepRestSeconds = pseg
+    } else {
+      const aseg = parseInt(get('aquecimento_seg'))
+      const fseg = parseInt(get('feeder_seg'))
+      const legacy = !isNaN(fseg) && fseg > 0 ? fseg : (!isNaN(aseg) && aseg > 0 ? aseg : null)
+      if (legacy != null) day.prepRestSeconds = legacy
+    }
 
     if (get('dia_descanso').toUpperCase() === 'S') {
       day.isRest = true
@@ -171,12 +179,22 @@ export function parseProtocolCsv(text) {
     const repRange       = get('rep_range') || ''
     const accessoryMuscle = get('musculo_acessorio') || ''
 
+    // prep_override: vazio/inválido = automático (não trava); 0-3 = trava manual
+    const prepOverrideRaw = parseInt(get('prep_override'))
+    const prepSetsOverride = !isNaN(prepOverrideRaw) && prepOverrideRaw >= 0 && prepOverrideRaw <= 3
+      ? prepOverrideRaw
+      : null
+
     const VALID_TYPES = ['NORMAL','REST_PAUSE','MUSCLE_ROUND','WIDOWMAKER','PULSE']
     const tipo = VALID_TYPES.includes(tipoSerie) ? tipoSerie : 'NORMAL'
 
     let ex = day.exercises.find(e => e.name.toLowerCase() === exercicio.toLowerCase())
     if (!ex) {
-      ex = { id: genId(), name: exercicio, muscle: musculo, sets: [], ...(accessoryMuscle ? { accessoryMuscle } : {}) }
+      ex = {
+        id: genId(), name: exercicio, muscle: musculo, sets: [],
+        ...(accessoryMuscle ? { accessoryMuscle } : {}),
+        ...(prepSetsOverride != null ? { prepSetsOverride } : {}),
+      }
       day.exercises.push(ex)
     }
 

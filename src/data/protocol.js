@@ -44,14 +44,15 @@ export const MUSCLE_GROUP_LIST = [
 // Incremento mínimo montável em kg na maioria das academias (ajuste por equipamento)
 export const MIN_PLATE_INCREMENT = 5
 
-// Ramp alvo por número de feeders: pct crescente, reps decrescentes
-// Estreante:   warmups 50×8 / 65×6  → feeders 70×5 / 75×4 / 80×3  (sequência 50/65/70/75/80, reps 8/6/5/4/3)
-// Acessório:   warmup  60×6         → feeders 70×5 / 78×3          (sequência 60/70/78,       reps 6/5/3)
-// Já primário: (sem warmup)         → feeder  75×4                  (1 só, sem sequência)
-const FEEDER_RAMPS = {
-  3: [{ pct: 0.70, reps: '5' }, { pct: 0.75, reps: '4' }, { pct: 0.80, reps: '3' }],
-  2: [{ pct: 0.70, reps: '5' }, { pct: 0.78, reps: '3' }],
-  1: [{ pct: 0.75, reps: '4' }],
+// Rampa única de preparo (ex-warmup+feeder unificados): reps descendo, carga subindo.
+// Base científica (ver PR): 1-2 séries submáximas já aquecem o suficiente pra treinados,
+// benefício maior pra força que hipertrofia. Números de reps/pct exatos são escolha do
+// dono do produto, mantendo a lógica de reps↓/carga↑.
+const PREP_RAMPS = {
+  3: [{ pct: 0.55, reps: '8-10' }, { pct: 0.70, reps: '6-8' }, { pct: 0.85, reps: '4-6' }],
+  2: [{ pct: 0.60, reps: '8-10' }, { pct: 0.80, reps: '4-6' }],
+  1: [{ pct: 0.80, reps: '4-6' }],
+  0: [],
 }
 
 // Default protocol template for 8 weeks × 7 days
@@ -61,12 +62,18 @@ export function defaultUserProtocol() {
       days: Array(7).fill(null).map(() => ({
         isRest: false,
         restSeconds: 120,
-        warmupRestSeconds: 60,
-        feederRestSeconds: 60,
+        prepRestSeconds: 40,
         exercises: [],
       })),
     })),
   }
+}
+
+// Retrocompatibilidade: protocolos salvos antes da unificação warmup+feeder tinham
+// warmupRestSeconds/feederRestSeconds separados. Lê prepRestSeconds se existir; senão
+// cai pros campos antigos (prioriza feederRestSeconds, mais perto do novo default de 40s).
+export function getPrepRestSeconds(day) {
+  return day?.prepRestSeconds ?? day?.feederRestSeconds ?? day?.warmupRestSeconds ?? 40
 }
 
 // Returns the question to calibrate working weight for a given set definition
@@ -103,32 +110,33 @@ export function detectMuscleState(primaryIdx, hasBeenAccessory) {
   return 'ja_primario'
 }
 
-// Extração pura do bloco que gerava warmups+feeders (era buildWorkoutSteps:121-157).
-// NENHUMA mudança de comportamento nesta extração — mesmo shape de saída de hoje
-// (listas separadas de warmup/feeder, com pct+reps, sem exerciseId/type/exerciseName,
-// que o caller já adiciona). Isolado assim dá pra trocar só o CONTEÚDO da rampa depois
-// sem mexer em buildWorkoutSteps de novo.
-export function buildPrepRamp(state) {
-  const warmups = []
-  const feeders = []
+// Quantas séries de rampa o estado do músculo pede, automaticamente (sem override).
+// Piso de 1 — automático nunca zera o preparo. Override explícito (0-3) ignora o piso.
+function autoPrepCount(state) {
+  const base = state === 'estreante' ? 3 : state === 'pre_ativado' ? 2 : 1
+  return Math.max(1, base)
+}
 
-  if (state === 'estreante') {
-    // ramp 2 sets: 50%×8 → 65%×6 (antecede feeders 70×5 / 75×4 / 80×3)
-    warmups.push({ setNum: 1, totalSets: 2, pct: 0.50, reps: '8' })
-    warmups.push({ setNum: 2, totalSets: 2, pct: 0.65, reps: '6' })
-  } else if (state === 'pre_ativado') {
-    // 1 warmup em 60%×6 (antecede feeders 70×5 / 78×3)
-    warmups.push({ setNum: 1, totalSets: 1, pct: 0.60, reps: '6' })
-  }
-  // 'ja_primario': sem warmup
+// Gera a rampa única de preparo (substituiu warmups+feeders separados) pro estado do
+// músculo, com override manual opcional.
+// override: null (automático, segue o estado) | 0-3 (trava explícita, inclusive 0 —
+// bypassa o piso de 1 que o automático sempre respeita).
+// Cada série de rampa vem com countsForVolume:false — nunca entra na contagem de volume.
+export function buildPrepRamp(state, override = null) {
+  const count = override != null
+    ? Math.min(3, Math.max(0, override))
+    : autoPrepCount(state)
 
-  let feederCount = state === 'estreante' ? 3 : state === 'pre_ativado' ? 2 : 1
-  feederCount = Math.max(1, feederCount) // piso inegociável — nenhum exercício sem prep
-  FEEDER_RAMPS[feederCount].forEach((slot, i) => {
-    feeders.push({ setNum: i + 1, totalSets: feederCount, pct: slot.pct, reps: slot.reps, gerTarget: 7 })
-  })
+  const preps = (PREP_RAMPS[count] || []).map((slot, i) => ({
+    setNum: i + 1,
+    totalSets: count,
+    pct: slot.pct,
+    reps: slot.reps,
+    gerTarget: 7,
+    countsForVolume: false,
+  }))
 
-  return { warmups, feeders }
+  return { preps }
 }
 
 // Build the ordered step list for an active workout session
@@ -158,10 +166,9 @@ export function buildWorkoutSteps(exercises) {
 
     // Estado do músculo usa primaryIdx (pré-incremento) e accessoryMuscleSeen antes do add(accessory)
     const state = detectMuscleState(primaryIdx, accessoryMuscleSeen.has(muscle))
-    const { warmups, feeders } = buildPrepRamp(state)
+    const { preps } = buildPrepRamp(state, exercise.prepSetsOverride ?? null)
 
-    warmups.forEach(w => steps.push({ type: 'WARMUP', exerciseId: exercise.id, exerciseName: exercise.name, ...w }))
-    feeders.forEach(f => steps.push({ type: 'FEEDER', exerciseId: exercise.id, exerciseName: exercise.name, ...f }))
+    preps.forEach(p => steps.push({ type: 'PREP', exerciseId: exercise.id, exerciseName: exercise.name, ...p }))
 
     // Register accessory muscle for subsequent exercises
     if (accessory) accessoryMuscleSeen.add(accessory)
