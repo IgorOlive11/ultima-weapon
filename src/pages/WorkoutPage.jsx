@@ -473,12 +473,7 @@ function WarmupFeederCard({ step, workingWeight, onDone, isLocked, prevData, sav
         </div>
 
         {!isWarmup && (
-          <div className="flex items-center gap-2 mb-3">
-            <DoomFace face={GER_CONFIG[step.gerTarget ?? 7]?.face} size={28}/>
-            <div className="font-mono text-[10px] text-muted leading-relaxed">
-              Mantenha GER {step.gerTarget ?? 7} nestas séries.<br/>Sentir o movimento, não chegar perto da falha.
-            </div>
-          </div>
+          <GerEffortPanel ger={step.gerTarget ?? 7} color="#39FF14"/>
         )}
 
         <PrevRecord prevData={prevData} />
