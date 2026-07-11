@@ -6,6 +6,7 @@ import Header from './components/Header'
 import GlobalRestTimer from './components/GlobalRestTimer'
 import ViewingAsBanner from './components/ViewingAsBanner'
 import AdminFeedbackButton from './components/AdminFeedbackButton'
+import NeonGifFilters from './components/NeonGifFilters'
 import WorkoutPage from './pages/WorkoutPage'
 import ProtocolPage from './pages/ProtocolPage'
 import ExerciseLibraryPage from './pages/ExerciseLibraryPage'
@@ -39,6 +40,7 @@ export default function App() {
 
   return (
     <div className="scanlines flex flex-col h-dvh max-w-[430px] mx-auto bg-bg overflow-hidden relative">
+      <NeonGifFilters />
       <Sidebar />
       <Header scrollRef={scrollRef} />
       <ViewingAsBanner />

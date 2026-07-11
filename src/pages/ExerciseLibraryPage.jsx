@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { LuSearch } from 'react-icons/lu'
 import { exerciseSource } from '../lib/exerciseSource'
 import DoomFace from '../components/DoomFace'
+import ExerciseGif from '../components/ExerciseGif'
 import ExerciseDetailModal from '../components/ExerciseDetailModal'
 
 const PAGE_SIZE = 30
@@ -15,15 +16,7 @@ function ExerciseThumb({ gifUrl, name }) {
       </div>
     )
   }
-  return (
-    <img
-      src={gifUrl}
-      alt={name}
-      loading="lazy"
-      onError={() => setFailed(true)}
-      className="w-full h-full object-cover"
-    />
-  )
+  return <ExerciseGif src={gifUrl} alt={name} lite onError={() => setFailed(true)} />
 }
 
 export default function ExerciseLibraryPage() {

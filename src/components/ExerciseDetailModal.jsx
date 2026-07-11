@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { LuX } from 'react-icons/lu'
 import { exerciseSource } from '../lib/exerciseSource'
+import ExerciseGif from './ExerciseGif'
 
 export default function ExerciseDetailModal({ id, onClose }) {
   const [ex, setEx] = useState(null)
@@ -51,11 +52,11 @@ export default function ExerciseDetailModal({ id, onClose }) {
           <div className="px-4 py-4">
             <div className="bg-s2 border border-border1 aspect-square mb-4 overflow-hidden flex items-center justify-center">
               {ex.gifUrl && !gifFailed ? (
-                <img
+                <ExerciseGif
                   src={ex.gifUrl}
                   alt={ex.name}
+                  fit="contain"
                   onError={() => setGifFailed(true)}
-                  className="w-full h-full object-contain"
                 />
               ) : (
                 <div className="font-mono text-[10px] text-muted/40 tracking-wider">SEM GIF DISPONÍVEL</div>

@@ -182,6 +182,10 @@ export const useStore = create(
       stackNavHintSeen: false,
       setStackNavHintSeen: (v = true) => set({ stackNavHintSeen: v }),
 
+      // ── biblioteca de exercícios: filtro neon nos GIFs ────────────────────────
+      neonGifFilterEnabled: true,
+      setNeonGifFilterEnabled: (v) => set({ neonGifFilterEnabled: v }),
+
       // ── admin feedback button ─────────────────────────────────────────────────
       adminFeedbackButtonEnabled: true,
       adminFeedbackButtonPos: null, // { x, y } em px (canto top-left do botão); null = posição padrão
@@ -813,6 +817,7 @@ export const useStore = create(
         achievements:    state.achievements,
         tutorialSeen:    state.tutorialSeen,
         stackNavHintSeen: state.stackNavHintSeen,
+        neonGifFilterEnabled: state.neonGifFilterEnabled,
         adminFeedbackButtonEnabled: state.adminFeedbackButtonEnabled,
         adminFeedbackButtonPos:     state.adminFeedbackButtonPos,
         pushNotificationsEnabled:   state.pushNotificationsEnabled,

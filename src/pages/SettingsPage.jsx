@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { LuSave, LuCircleCheck, LuLock, LuBug, LuBellRing } from 'react-icons/lu'
+import { LuSave, LuCircleCheck, LuLock, LuBug, LuBellRing, LuSparkles } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 import { DAY_NAMES } from '../data/protocol'
 import { ACHIEVEMENTS } from '../data/achievements'
@@ -37,6 +37,9 @@ export default function SettingsPage() {
   const authUser                      = useStore((s) => s.authUser)
   const adminFeedbackButtonEnabled    = useStore((s) => s.adminFeedbackButtonEnabled)
   const setAdminFeedbackButtonEnabled = useStore((s) => s.setAdminFeedbackButtonEnabled)
+
+  const neonGifFilterEnabled    = useStore((s) => s.neonGifFilterEnabled)
+  const setNeonGifFilterEnabled = useStore((s) => s.setNeonGifFilterEnabled)
 
   const pushNotificationsEnabled    = useStore((s) => s.pushNotificationsEnabled)
   const setPushNotificationsEnabled = useStore((s) => s.setPushNotificationsEnabled)
@@ -229,6 +232,31 @@ export default function SettingsPage() {
         {pushError && (
           <div className="mt-2 font-mono text-[10px] text-red-400 tracking-wider">{pushError}</div>
         )}
+      </div>
+
+      {/* Filtro neon nos GIFs de exercício */}
+      <div className="bg-s1 border border-border1 p-4">
+        <div className="font-display text-sm text-neon tracking-[0.2em] mb-3 pb-2 border-b border-border1 flex items-center gap-2">
+          <LuSparkles size={14} /> FILTRO NEON NOS GIFS
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-mono text-[10px] text-muted tracking-wider leading-relaxed">
+            Aplica um filtro duotone verde/vermelho nos GIFs de exercício da biblioteca,
+            de acordo com o GER do treino. Desligado, mostra o GIF original.
+          </p>
+          <button
+            onClick={() => setNeonGifFilterEnabled(!neonGifFilterEnabled)}
+            className={`flex-shrink-0 w-12 h-7 rounded-full relative transition-colors ${
+              neonGifFilterEnabled ? 'bg-neon/80' : 'bg-border2'
+            }`}
+          >
+            <span
+              className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-s1 transition-transform ${
+                neonGifFilterEnabled ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
       </div>
 
       {/* Admin: feedback button */}

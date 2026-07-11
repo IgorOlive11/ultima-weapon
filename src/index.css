@@ -33,6 +33,16 @@
 
   .neon-glow { text-shadow: 0 0 20px rgba(255,20,20,0.4); }
 
+  /* Overlay de scanline LOCAL (absolute, não fixed) pra usar dentro de um container
+     qualquer (ex. GIF de exercício) sem cobrir a tela inteira como .scanlines faz. */
+  .gif-scan {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.14) 2px, rgba(0,0,0,0.14) 3px);
+    pointer-events: none;
+    mix-blend-mode: overlay;
+  }
+
   .section-label {
     display: flex;
     align-items: center;
