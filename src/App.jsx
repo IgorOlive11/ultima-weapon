@@ -8,6 +8,7 @@ import ViewingAsBanner from './components/ViewingAsBanner'
 import AdminFeedbackButton from './components/AdminFeedbackButton'
 import WorkoutPage from './pages/WorkoutPage'
 import ProtocolPage from './pages/ProtocolPage'
+import ExerciseLibraryPage from './pages/ExerciseLibraryPage'
 import HistoryPage from './pages/HistoryPage'
 import SettingsPage from './pages/SettingsPage'
 import TrainerPage from './pages/TrainerPage'
@@ -48,6 +49,7 @@ export default function App() {
       >
         {activeTab === 'workout'  && <WorkoutPage />}
         {activeTab === 'protocol' && <ProtocolPage />}
+        {activeTab === 'library'  && <ExerciseLibraryPage />}
         {activeTab === 'history'  && <HistoryPage />}
         {activeTab === 'settings' && <SettingsPage />}
         {activeTab === 'trainer'  && <TrainerPage />}

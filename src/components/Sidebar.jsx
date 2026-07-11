@@ -2,13 +2,14 @@ import React from 'react'
 import {
   LuSwords, LuClipboardList, LuTrendingUp,
   LuSlidersHorizontal, LuX, LuCalendar, LuFlame,
-  LuLogOut, LuUsers, LuShield,
+  LuLogOut, LuUsers, LuShield, LuDumbbell,
 } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 
 const BASE_NAV = [
   { id: 'workout',  label: 'TREINO',        Icon: LuSwords },
   { id: 'protocol', label: 'PROTOCOLO',     Icon: LuClipboardList },
+  { id: 'library',  label: 'EXERCÍCIOS',    Icon: LuDumbbell },
   { id: 'history',  label: 'HISTÓRICO',     Icon: LuTrendingUp },
   { id: 'settings', label: 'CONFIGURAÇÕES', Icon: LuSlidersHorizontal },
 ]
