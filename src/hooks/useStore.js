@@ -470,7 +470,13 @@ export const useStore = create(
           return {
             savedExercises: [
               ...state.savedExercises,
-              { id: genId(), name: exercise.name, muscle: exercise.muscle, ...(exercise.accessoryMuscle ? { accessoryMuscle: exercise.accessoryMuscle } : {}) },
+              {
+                id: genId(),
+                name: exercise.name,
+                muscle: exercise.muscle,
+                ...(exercise.accessoryMuscle ? { accessoryMuscle: exercise.accessoryMuscle } : {}),
+                ...(exercise.libraryId ? { libraryId: exercise.libraryId } : {}),
+              },
             ],
           }
         })

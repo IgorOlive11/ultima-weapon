@@ -2,12 +2,13 @@ import { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LuPlay, LuCheck, LuSwords, LuTriangleAlert,
-  LuFlame, LuDumbbell, LuPlus, LuMinus, LuClock,
+  LuFlame, LuDumbbell, LuPlus, LuMinus, LuClock, LuImage,
 } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 import { DAY_NAMES, SET_TYPES, GER_CONFIG, getWeightQuestion, MIN_PLATE_INCREMENT, getPrepRestSeconds } from '../data/protocol'
 import { ACHIEVEMENTS } from '../data/achievements'
 import DoomFace from '../components/DoomFace'
+import ExerciseDetailModal from '../components/ExerciseDetailModal'
 import { round25 } from '../utils/loads'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -129,6 +130,26 @@ function TargetLoadRow({ alvo, alvoSub, workingWeight, editableKg, onEditableKgC
   )
 }
 
+// Botão discreto "ver exercício" — só aparece quando o exercício está linkado à
+// biblioteca (exerciseLibraryId presente). Abre o mesmo modal de detalhe (GIF +
+// instruções) usado na tela EXERCÍCIOS.
+function ViewExerciseButton({ libraryId }) {
+  const [open, setOpen] = useState(false)
+  if (!libraryId) return null
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="flex-shrink-0 p-1 text-muted/60 hover:text-neon transition-colors"
+        title="Ver exercício"
+      >
+        <LuImage size={15} />
+      </button>
+      {open && <ExerciseDetailModal id={libraryId} onClose={() => setOpen(false)} />}
+    </>
+  )
+}
+
 // ger: override explícito do GER a mostrar (null = não mostra o painel — caso do aquecimento,
 // que não tem meta de esforço/falha). Sem override, usa o GER da série de trabalho normalmente.
 function WorkingSetShell({ step, typeInfo, label, workingWeight, ger, children }) {
@@ -138,7 +159,12 @@ function WorkingSetShell({ step, typeInfo, label, workingWeight, ger, children }
       <div className="h-1 flex-shrink-0" style={{ background: typeInfo.color }} />
       <div className="p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
         {step.muscle && <div className="font-mono text-[9px] text-muted tracking-[0.22em] mb-0.5">{step.muscle}</div>}
-        <div className="font-display text-base tracking-wider text-ink leading-none mb-1 truncate">{step.exerciseName}</div>
+        <div className="flex items-center gap-1.5 mb-1">
+          <div className="font-display text-base tracking-wider text-ink leading-none truncate">
+            {step.exerciseNamePt || step.exerciseName}
+          </div>
+          <ViewExerciseButton libraryId={step.exerciseLibraryId} />
+        </div>
         <div className="font-display text-[11px] tracking-[0.18em] mb-2" style={{ color: typeInfo.color }}>
           {label}{workingWeight > 0 ? ` · ${fmtKg(workingWeight)}` : ''}
         </div>
@@ -391,7 +417,12 @@ function WeightQuestionCard({ step, onConfirm, history, isLocked }) {
 
       <div className="p-4 flex-1 min-h-0 overflow-hidden flex flex-col">
         <div className="font-mono text-[10px] text-muted tracking-[0.25em] mb-1">{step.muscle}</div>
-        <div className="font-display text-lg tracking-wider text-ink mb-1 truncate">{step.exerciseName}</div>
+        <div className="flex items-center gap-1.5 mb-1">
+          <div className="font-display text-lg tracking-wider text-ink truncate">
+            {step.exerciseNamePt || step.exerciseName}
+          </div>
+          <ViewExerciseButton libraryId={step.exerciseLibraryId} />
+        </div>
         <div
           className="font-display text-xs tracking-[0.15em] mb-3"
           style={{ color: typeInfo.color }}

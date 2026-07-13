@@ -160,6 +160,8 @@ export function buildWorkoutSteps(exercises) {
       type: 'WEIGHT_QUESTION',
       exerciseId: exercise.id,
       exerciseName: exercise.name,
+      exerciseNamePt: exercise.namePt ?? null,
+      exerciseLibraryId: exercise.libraryId ?? null,
       muscle,
       setDef: firstSet,
     })
@@ -168,7 +170,14 @@ export function buildWorkoutSteps(exercises) {
     const state = detectMuscleState(primaryIdx, accessoryMuscleSeen.has(muscle))
     const { preps } = buildPrepRamp(state, exercise.prepSetsOverride ?? null)
 
-    preps.forEach(p => steps.push({ type: 'PREP', exerciseId: exercise.id, exerciseName: exercise.name, ...p }))
+    preps.forEach(p => steps.push({
+      type: 'PREP',
+      exerciseId: exercise.id,
+      exerciseName: exercise.name,
+      exerciseNamePt: exercise.namePt ?? null,
+      exerciseLibraryId: exercise.libraryId ?? null,
+      ...p,
+    }))
 
     // Register accessory muscle for subsequent exercises
     if (accessory) accessoryMuscleSeen.add(accessory)
@@ -178,6 +187,8 @@ export function buildWorkoutSteps(exercises) {
         type: 'WORKING_SET',
         exerciseId: exercise.id,
         exerciseName: exercise.name,
+        exerciseNamePt: exercise.namePt ?? null,
+        exerciseLibraryId: exercise.libraryId ?? null,
         muscle,
         setDef,
         setNum: setIdx + 1,
