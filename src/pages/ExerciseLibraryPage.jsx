@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { LuSearch } from 'react-icons/lu'
 import { exerciseSource } from '../lib/exerciseSource'
+import { bodyPartLabel } from '../lib/exercisePtDictionary'
 import DoomFace from '../components/DoomFace'
 import ExerciseGif from '../components/ExerciseGif'
 import ExerciseDetailModal from '../components/ExerciseDetailModal'
@@ -67,7 +68,7 @@ export default function ExerciseLibraryPage() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar exercício..."
+          placeholder="Buscar exercício (PT ou EN)..."
           className="w-full bg-s2 border border-border2 pl-9 pr-3 py-2.5 font-mono text-sm text-ink outline-none focus:border-neon transition-colors"
         />
       </div>
@@ -85,7 +86,7 @@ export default function ExerciseLibraryPage() {
             onClick={() => setBodyPart(bodyPart === bp ? null : bp)}
             className={chipCls(bodyPart === bp)}
           >
-            {bp.toUpperCase()}
+            {bodyPartLabel(bp).toUpperCase()}
           </button>
         ))}
       </div>

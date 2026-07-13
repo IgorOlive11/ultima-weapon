@@ -6,6 +6,8 @@ import { timerManager } from '../utils/timerManager'
 import { playRestDoneAlarm, warmAlarmAudio } from '../utils/alarmSound'
 import { round25 } from '../utils/loads'
 import { supabase } from '../lib/supabase'
+import { exerciseSource } from '../lib/exerciseSource'
+import { translateQueryToEnglish } from '../lib/exercisePtDictionary'
 
 function detectWeekDay() {
   const saved = localStorage.getItem('uw_start_date')
@@ -561,6 +563,54 @@ export const useStore = create(
           return { userProtocol: p }
         })
         scheduleSyncSection('userProtocol', get)
+      },
+
+      // Vincula à biblioteca (GIFs) os exercícios do protocolo que ainda não têm
+      // libraryId. Só linka quando reconhece vocabulário de academia no nome (PT
+      // traduzido — ver exercisePtDictionary) E o candidato da busca contém TODOS
+      // os termos traduzidos — ambíguo/sem reconhecimento fica como estava, sem
+      // perguntar (usuário escolheu "só matches muito confiantes"). Retorna um
+      // resumo { linked, skipped } pra UI mostrar.
+      autoLinkProtocolToLibrary: async () => {
+        const p = JSON.parse(JSON.stringify(get().userProtocol))
+        let linked = 0
+        let skipped = 0
+
+        for (const week of p.weeks) {
+          for (const day of week.days) {
+            if (day.isRest) continue
+            for (const ex of day.exercises) {
+              if (ex.libraryId) continue
+              const { query, translatedTokens } = translateQueryToEnglish(ex.name)
+              if (!translatedTokens.length) { skipped++; continue }
+
+              let items = []
+              try {
+                ;({ items } = await exerciseSource.listExercises({ search: query, pageSize: 5 }))
+              } catch {
+                skipped++
+                continue
+              }
+
+              const tokens = [...new Set(translatedTokens.map(t => t.toLowerCase()))]
+              const match = items.find(it => {
+                const n = it.name.toLowerCase()
+                return tokens.every(t => n.includes(t))
+              })
+
+              if (match) {
+                ex.libraryId = match.id
+                linked++
+              } else {
+                skipped++
+              }
+            }
+          }
+        }
+
+        set({ userProtocol: p })
+        scheduleSyncSection('userProtocol', get)
+        return { linked, skipped }
       },
 
       removeExercise: (weekIdx, dayIdx, exId) => {

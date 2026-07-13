@@ -35,6 +35,26 @@ const SET_TYPE_GER_DEFAULTS = {
   PULSE:        { ger: 9,  repRange: '' },
 }
 
+// Thumbnail compacto pra cards de exercício do protocolo já linkados à biblioteca.
+// O protocolo guarda só o libraryId (nunca duplica gifUrl) — busca sob demanda e
+// fica pequeno (28px) de propósito pra não estourar a altura da linha do card.
+function LibraryThumb({ libraryId, size = 28 }) {
+  const [gifUrl, setGifUrl] = useState(null)
+  useEffect(() => {
+    let cancelled = false
+    exerciseSource.getExercise(libraryId).then(ex => { if (!cancelled) setGifUrl(ex?.gifUrl ?? null) })
+    return () => { cancelled = true }
+  }, [libraryId])
+  return (
+    <div
+      className="flex-shrink-0 border border-border1 overflow-hidden bg-s1 rounded-sm"
+      style={{ width: size, height: size }}
+    >
+      {gifUrl ? <ExerciseGif src={gifUrl} alt="" lite /> : <div className="w-full h-full bg-s2" />}
+    </div>
+  )
+}
+
 // ─── AddExerciseModal ─────────────────────────────────────────────────────────
 
 function AddExerciseModal({ onAdd, onClose }) {
@@ -45,29 +65,30 @@ function AddExerciseModal({ onAdd, onClose }) {
   const [showLibrary, setShowLibrary] = useState(false)
   const [search, setSearch]         = useState('')
 
-  // ── busca na biblioteca de exercícios (GIFs, ExerciseDB) ──────────────────
-  const [showExDb, setShowExDb]     = useState(false)
-  const [exDbQuery, setExDbQuery]   = useState('')
-  const [exDbResults, setExDbResults] = useState([])
-  const [exDbLoading, setExDbLoading] = useState(false)
+  // ── busca automática na biblioteca de exercícios (GIFs, ExerciseDB) ────────
+  // Dispara sozinha enquanto o usuário digita o nome — sem tela separada. Aceita
+  // termos em português (ver exercisePtDictionary) além do nome original em inglês.
+  const [suggestions, setSuggestions]   = useState([])
+  const [suggestLoading, setSuggestLoading] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const [libraryId, setLibraryId]   = useState(null)
   const [libraryGif, setLibraryGif] = useState(null)
   const [showLibDetail, setShowLibDetail] = useState(false)
 
   useEffect(() => {
-    if (!showExDb) return
-    const q = exDbQuery.trim()
-    if (q.length < 2) { setExDbResults([]); setExDbLoading(false); return }
+    if (libraryId) { setSuggestions([]); return } // já linkado — não sugere mais
+    const q = name.trim()
+    if (q.length < 3) { setSuggestions([]); setSuggestLoading(false); return }
     let cancelled = false
-    setExDbLoading(true)
+    setSuggestLoading(true)
     const t = setTimeout(() => {
-      exerciseSource.listExercises({ search: q, pageSize: 20 })
-        .then(({ items }) => { if (!cancelled) setExDbResults(items) })
-        .catch(() => { if (!cancelled) setExDbResults([]) })
-        .finally(() => { if (!cancelled) setExDbLoading(false) })
-    }, 350)
+      exerciseSource.listExercises({ search: q, pageSize: 6 })
+        .then(({ items }) => { if (!cancelled) setSuggestions(items) })
+        .catch(() => { if (!cancelled) setSuggestions([]) })
+        .finally(() => { if (!cancelled) setSuggestLoading(false) })
+    }, 400)
     return () => { cancelled = true; clearTimeout(t) }
-  }, [exDbQuery, showExDb])
+  }, [name, libraryId])
 
   const savedExercises    = useStore(s => s.savedExercises)
   const addSavedExercise  = useStore(s => s.addSavedExercise)
@@ -91,7 +112,8 @@ function AddExerciseModal({ onAdd, onClose }) {
     setName(ex.name)
     setLibraryId(ex.id)
     setLibraryGif(ex.gifUrl)
-    setShowExDb(false)
+    setSuggestions([])
+    setShowSuggestions(false)
   }
 
   const submit = () => {
@@ -121,18 +143,10 @@ function AddExerciseModal({ onAdd, onClose }) {
       >
         <div className="flex items-center justify-between p-5 pb-3 flex-shrink-0">
           <span className="font-display text-lg tracking-[0.15em] text-neon">
-            {showLibrary ? 'EXERCÍCIOS SALVOS' : showExDb ? 'BUSCAR NA BIBLIOTECA' : 'NOVO EXERCÍCIO'}
+            {showLibrary ? 'EXERCÍCIOS SALVOS' : 'NOVO EXERCÍCIO'}
           </span>
           <div className="flex items-center gap-2">
-            {!showLibrary && !showExDb && (
-              <button
-                onClick={() => setShowExDb(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 border border-neon/40 text-neon font-mono text-[10px] tracking-wider hover:bg-neon/5 transition-colors"
-              >
-                <LuImage size={12}/> GIF
-              </button>
-            )}
-            {!showLibrary && !showExDb && savedExercises.length > 0 && (
+            {!showLibrary && savedExercises.length > 0 && (
               <button
                 onClick={() => setShowLibrary(true)}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 border border-neon/40 text-neon font-mono text-[10px] tracking-wider hover:bg-neon/5 transition-colors"
@@ -144,57 +158,7 @@ function AddExerciseModal({ onAdd, onClose }) {
           </div>
         </div>
 
-        {showExDb ? (
-          <div className="flex flex-col flex-1 overflow-hidden px-5 pb-6">
-            <div className="relative mb-3">
-              <LuSearch size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted/50"/>
-              <input
-                autoFocus
-                className="w-full bg-s2 border border-border2 pl-8 pr-3 py-2 font-mono text-sm text-ink focus:border-neon outline-none transition-colors"
-                placeholder="Nome do exercício (em inglês)..."
-                value={exDbQuery}
-                onChange={e => setExDbQuery(e.target.value)}
-              />
-            </div>
-
-            <div className="overflow-y-auto flex-1">
-              {exDbQuery.trim().length < 2 && (
-                <div className="text-center py-8 font-mono text-[11px] text-muted/40">Digite ao menos 2 letras.</div>
-              )}
-              {exDbQuery.trim().length >= 2 && exDbLoading && (
-                <div className="text-center py-8 font-mono text-[11px] text-muted/40">BUSCANDO...</div>
-              )}
-              {exDbQuery.trim().length >= 2 && !exDbLoading && exDbResults.length === 0 && (
-                <div className="text-center py-8 font-mono text-[11px] text-muted/40">Nenhum resultado.</div>
-              )}
-              {exDbResults.map(ex => (
-                <button
-                  key={ex.id}
-                  onClick={() => pickFromLibrary(ex)}
-                  className="w-full flex items-center gap-3 bg-s2 border border-border2 px-2.5 py-2 mb-1.5 text-left hover:border-neon/50 transition-colors"
-                >
-                  <div className="w-10 h-10 flex-shrink-0 border border-border1 overflow-hidden bg-s1">
-                    <ExerciseGif src={ex.gifUrl} alt={ex.name} lite />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-body text-sm text-ink truncate">{ex.name}</div>
-                    {ex.targetMuscles[0] && (
-                      <div className="font-mono text-[9px] text-neon/70 uppercase truncate">{ex.targetMuscles[0]}</div>
-                    )}
-                  </div>
-                  <LuPlus size={14} className="text-neon flex-shrink-0"/>
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={() => setShowExDb(false)}
-              className="mt-3 w-full py-2.5 font-display text-sm tracking-[0.15em] border border-border2 text-muted hover:text-ink transition-colors"
-            >
-              ← VOLTAR
-            </button>
-          </div>
-        ) : showLibrary ? (
+        {showLibrary ? (
           <div className="flex flex-col flex-1 overflow-hidden px-5 pb-6">
             {/* search */}
             <div className="relative mb-3">
@@ -252,15 +216,48 @@ function AddExerciseModal({ onAdd, onClose }) {
           </div>
         ) : (
           <div className="overflow-y-auto flex-1 px-5 pb-8">
-            <div className="mb-3">
+            <div className="mb-3 relative">
               <label className="section-label block mb-1">NOME DO EXERCÍCIO</label>
               <input
                 className="w-full bg-s2 border border-border2 px-3 py-2.5 font-body text-sm text-ink focus:border-neon outline-none transition-colors"
-                placeholder="Ex: Agachamento livre"
+                placeholder="Ex: Agachamento livre (busca a biblioteca automaticamente)"
                 value={name}
                 onChange={e => setName(e.target.value)}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                 onKeyDown={e => e.key === 'Enter' && submit()}
               />
+
+              {showSuggestions && !libraryId && name.trim().length >= 3 && (
+                <div className="absolute z-10 left-0 right-0 top-full mt-1 bg-s2 border border-border2 max-h-64 overflow-y-auto shadow-lg">
+                  {suggestLoading && (
+                    <div className="text-center py-3 font-mono text-[10px] text-muted/50">BUSCANDO NA BIBLIOTECA...</div>
+                  )}
+                  {!suggestLoading && suggestions.length === 0 && (
+                    <div className="text-center py-3 font-mono text-[10px] text-muted/50">
+                      Sem GIF na biblioteca — pode continuar com nome livre.
+                    </div>
+                  )}
+                  {suggestions.map(ex => (
+                    <button
+                      key={ex.id}
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => pickFromLibrary(ex)}
+                      className="w-full flex items-center gap-2.5 px-2.5 py-2 border-b border-border1 last:border-0 text-left hover:bg-s1 transition-colors"
+                    >
+                      <div className="w-8 h-8 flex-shrink-0 border border-border1 overflow-hidden bg-s1">
+                        <ExerciseGif src={ex.gifUrl} alt={ex.name} lite />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-body text-xs text-ink truncate">{ex.name}</div>
+                        {ex.targetMuscles[0] && (
+                          <div className="font-mono text-[9px] text-neon/70 uppercase truncate">{ex.targetMuscles[0]}</div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {libraryId && (
@@ -912,20 +909,18 @@ function ExerciseEditor({ exercise, weekIdx, dayIdx, isDragging: isExDragging })
           >
             <LuGripVertical size={14}/>
           </button>
+          {exercise.libraryId && (
+            <button
+              className="flex-shrink-0"
+              onClick={e => { e.stopPropagation(); setShowLibDetail(true) }}
+              title="Ver exercício"
+            >
+              <LibraryThumb libraryId={exercise.libraryId} size={30} />
+            </button>
+          )}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <div className="font-display text-sm tracking-wider text-ink truncate">
-                {exercise.namePt || exercise.name}
-              </div>
-              {exercise.libraryId && (
-                <button
-                  className="flex-shrink-0 text-muted/60 hover:text-neon transition-colors"
-                  onClick={e => { e.stopPropagation(); setShowLibDetail(true) }}
-                  title="Ver exercício"
-                >
-                  <LuImage size={13}/>
-                </button>
-              )}
+            <div className="font-display text-sm tracking-wider text-ink truncate">
+              {exercise.namePt || exercise.name}
             </div>
             <div className="font-mono text-[10px] text-muted tracking-wider">
               {exercise.muscle}

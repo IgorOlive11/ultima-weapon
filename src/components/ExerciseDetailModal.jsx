@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { LuX } from 'react-icons/lu'
 import { exerciseSource } from '../lib/exerciseSource'
@@ -19,10 +20,14 @@ export default function ExerciseDetailModal({ id, onClose }) {
     return () => { cancelled = true }
   }, [id])
 
-  return (
+  // Portal pra document.body: monta como filho de cards do reel de treino que têm
+  // `transform` no ancestral (o carrossel vertical), e position:fixed vira relativo a
+  // esse ancestral em vez do viewport — a modal ficaria presa/cortada dentro do card.
+  // Renderizando fora da árvore, o overlay sempre cobre a tela inteira de verdade.
+  return createPortal(
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[400] bg-black/85 flex items-end justify-center"
+      className="fixed inset-0 z-[600] bg-black/85 flex items-end justify-center"
       onClick={onClose}
     >
       <motion.div
@@ -90,11 +95,11 @@ export default function ExerciseDetailModal({ id, onClose }) {
               )}
             </div>
 
-            {ex.instructions.length > 0 && (
+            {(ex.instructionsPt?.length > 0 || ex.instructions.length > 0) && (
               <div className="mb-2">
                 <div className="font-mono text-[9px] text-muted tracking-wider mb-2">INSTRUÇÕES</div>
                 <ol className="space-y-2">
-                  {ex.instructions.map((step, i) => (
+                  {(ex.instructionsPt?.length > 0 ? ex.instructionsPt : ex.instructions).map((step, i) => (
                     <li key={i} className="font-mono text-[11px] text-muted leading-relaxed flex gap-2">
                       <span className="text-neon flex-shrink-0">{i + 1}.</span>
                       <span>{step.replace(/^Step:\d+\s*/i, '')}</span>
@@ -114,6 +119,7 @@ export default function ExerciseDetailModal({ id, onClose }) {
           </div>
         )}
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   )
 }

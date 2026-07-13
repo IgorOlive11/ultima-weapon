@@ -3,7 +3,7 @@ import { defaultUserProtocol, getPrepRestSeconds } from '../data/protocol'
 const HEADERS = [
   'semana', 'dia', 'descanso_seg', 'prep_seg',
   'dia_descanso', 'exercicio', 'musculo', 'tipo_serie', 'ger', 'rep_range',
-  'musculo_acessorio', 'prep_override',
+  'musculo_acessorio', 'prep_override', 'biblioteca_id', 'apelido_pt',
 ]
 
 // ─── Template ──────────────────────────────────────────────────────────────────
@@ -14,31 +14,31 @@ const HEADERS = [
 
 const EXAMPLE_ROWS = [
   // SEG: Peito
-  [1,1,120,40,'N','Supino Reto',    'PEITO',  'NORMAL',     10,'8-12','',''],
-  [1,1,120,40,'N','Supino Reto',    'PEITO',  'NORMAL',     10,'8-12','',''],
-  [1,1,120,40,'N','Supino Reto',    'PEITO',  'NORMAL',     10,'8-12','',''],
-  [1,1,120,40,'N','Crucifixo',      'PEITO',  'REST_PAUSE', 12,'',   '',''],
+  [1,1,120,40,'N','Supino Reto',    'PEITO',  'NORMAL',     10,'8-12','','','',''],
+  [1,1,120,40,'N','Supino Reto',    'PEITO',  'NORMAL',     10,'8-12','','','',''],
+  [1,1,120,40,'N','Supino Reto',    'PEITO',  'NORMAL',     10,'8-12','','','',''],
+  [1,1,120,40,'N','Crucifixo',      'PEITO',  'REST_PAUSE', 12,'',   '','','',''],
   // TER: Costas
-  [1,2,120,40,'N','Puxada Frontal', 'COSTAS', 'NORMAL',     10,'8-12','',''],
-  [1,2,120,40,'N','Puxada Frontal', 'COSTAS', 'NORMAL',     10,'8-12','',''],
-  [1,2,120,40,'N','Remada Curvada', 'COSTAS', 'NORMAL',     10,'8-12','',''],
-  [1,2,120,40,'N','Remada Curvada', 'COSTAS', 'NORMAL',     10,'8-12','',''],
+  [1,2,120,40,'N','Puxada Frontal', 'COSTAS', 'NORMAL',     10,'8-12','','','',''],
+  [1,2,120,40,'N','Puxada Frontal', 'COSTAS', 'NORMAL',     10,'8-12','','','',''],
+  [1,2,120,40,'N','Remada Curvada', 'COSTAS', 'NORMAL',     10,'8-12','','','',''],
+  [1,2,120,40,'N','Remada Curvada', 'COSTAS', 'NORMAL',     10,'8-12','','','',''],
   // QUA: Descanso
-  [1,3,'','','S','','','','','','',''],
+  [1,3,'','','S','','','','','','','','',''],
   // QUI: Ombros
-  [1,4,120,40,'N','Desenvolvimento','OMBROS', 'NORMAL',     10,'8-12','',''],
-  [1,4,120,40,'N','Desenvolvimento','OMBROS', 'NORMAL',     10,'8-12','',''],
-  [1,4,120,40,'N','Elevação Lateral','OMBROS','MUSCLE_ROUND',11,'',   '',''],
+  [1,4,120,40,'N','Desenvolvimento','OMBROS', 'NORMAL',     10,'8-12','','','',''],
+  [1,4,120,40,'N','Desenvolvimento','OMBROS', 'NORMAL',     10,'8-12','','','',''],
+  [1,4,120,40,'N','Elevação Lateral','OMBROS','MUSCLE_ROUND',11,'',   '','','',''],
   // SEX: Pernas
-  [1,5,180,40,'N','Agachamento',   'QUADRÍCEPS','NORMAL',   10,'8-12','',''],
-  [1,5,180,40,'N','Agachamento',   'QUADRÍCEPS','NORMAL',   10,'8-12','',''],
-  [1,5,180,40,'N','Leg Press',     'QUADRÍCEPS','WIDOWMAKER',13,'10-12','',''],
+  [1,5,180,40,'N','Agachamento',   'QUADRÍCEPS','NORMAL',   10,'8-12','','','',''],
+  [1,5,180,40,'N','Agachamento',   'QUADRÍCEPS','NORMAL',   10,'8-12','','','',''],
+  [1,5,180,40,'N','Leg Press',     'QUADRÍCEPS','WIDOWMAKER',13,'10-12','','','',''],
   // SAB: Braços
-  [1,6,90,40,'N','Rosca Direta',   'BÍCEPS',  'NORMAL',     10,'8-12','',''],
-  [1,6,90,40,'N','Rosca Direta',   'BÍCEPS',  'NORMAL',     10,'8-12','',''],
-  [1,6,90,40,'N','Tríceps Pulley', 'TRÍCEPS', 'REST_PAUSE', 12,'',   '',''],
+  [1,6,90,40,'N','Rosca Direta',   'BÍCEPS',  'NORMAL',     10,'8-12','','','',''],
+  [1,6,90,40,'N','Rosca Direta',   'BÍCEPS',  'NORMAL',     10,'8-12','','','',''],
+  [1,6,90,40,'N','Tríceps Pulley', 'TRÍCEPS', 'REST_PAUSE', 12,'',   '','','',''],
   // DOM: Descanso
-  [1,7,'','','S','','','','','','',''],
+  [1,7,'','','S','','','','','','','','',''],
 ]
 
 export function generateTemplateCsv() {
@@ -69,14 +69,14 @@ export function exportProtocolCsv(protocol) {
       const dia    = dIdx + 1
 
       if (day.isRest) {
-        lines.push([semana, dia, '', '', 'S', '', '', '', '', '', '', ''].join(','))
+        lines.push([semana, dia, '', '', 'S', '', '', '', '', '', '', '', '', ''].join(','))
         return
       }
 
       if (day.exercises.length === 0) {
         const ds = day.restSeconds ?? 120
         const ps = getPrepRestSeconds(day)
-        lines.push([semana, dia, ds, ps, 'N', '', '', '', '', '', '', ''].join(','))
+        lines.push([semana, dia, ds, ps, 'N', '', '', '', '', '', '', '', '', ''].join(','))
         return
       }
 
@@ -84,16 +84,18 @@ export function exportProtocolCsv(protocol) {
         const ds = day.restSeconds ?? 120
         const ps = getPrepRestSeconds(day)
         const po = ex.prepSetsOverride ?? ''
+        const libId  = ex.libraryId ?? ''
+        const namePt = ex.namePt ?? ''
 
         if (ex.sets.length === 0) {
-          lines.push([semana, dia, ds, ps, 'N', ex.name, ex.muscle, '', '', '', ex.accessoryMuscle ?? '', po].join(','))
+          lines.push([semana, dia, ds, ps, 'N', ex.name, ex.muscle, '', '', '', ex.accessoryMuscle ?? '', po, libId, namePt].join(','))
           return
         }
 
         ex.sets.forEach(set => {
           lines.push([
             semana, dia, ds, ps, 'N',
-            ex.name, ex.muscle, set.type, set.ger, set.repRange ?? '', ex.accessoryMuscle ?? '', po,
+            ex.name, ex.muscle, set.type, set.ger, set.repRange ?? '', ex.accessoryMuscle ?? '', po, libId, namePt,
           ].join(','))
         })
       })
@@ -178,6 +180,10 @@ export function parseProtocolCsv(text) {
     const ger            = parseInt(get('ger')) || 10
     const repRange       = get('rep_range') || ''
     const accessoryMuscle = get('musculo_acessorio') || ''
+    // biblioteca_id/apelido_pt são colunas novas (link com a biblioteca de exercícios
+    // GIFs) — ausentes em CSVs antigos, ficam '' e viram undefined normalmente.
+    const libraryId = get('biblioteca_id') || ''
+    const namePt    = get('apelido_pt') || ''
 
     // prep_override: vazio/inválido = automático (não trava); 0-3 = trava manual
     const prepOverrideRaw = parseInt(get('prep_override'))
@@ -194,6 +200,8 @@ export function parseProtocolCsv(text) {
         id: genId(), name: exercicio, muscle: musculo, sets: [],
         ...(accessoryMuscle ? { accessoryMuscle } : {}),
         ...(prepSetsOverride != null ? { prepSetsOverride } : {}),
+        ...(libraryId ? { libraryId } : {}),
+        ...(namePt ? { namePt } : {}),
       }
       day.exercises.push(ex)
     }

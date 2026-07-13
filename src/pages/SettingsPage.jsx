@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { LuSave, LuCircleCheck, LuLock, LuBug, LuBellRing, LuSparkles } from 'react-icons/lu'
+import { LuSave, LuCircleCheck, LuLock, LuBug, LuBellRing, LuSparkles, LuLink } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 import { DAY_NAMES } from '../data/protocol'
 import { ACHIEVEMENTS } from '../data/achievements'
@@ -40,6 +40,18 @@ export default function SettingsPage() {
 
   const neonGifFilterEnabled    = useStore((s) => s.neonGifFilterEnabled)
   const setNeonGifFilterEnabled = useStore((s) => s.setNeonGifFilterEnabled)
+
+  const autoLinkProtocolToLibrary = useStore((s) => s.autoLinkProtocolToLibrary)
+  const [autoLinkBusy, setAutoLinkBusy]     = useState(false)
+  const [autoLinkResult, setAutoLinkResult] = useState(null)
+
+  const runAutoLink = async () => {
+    setAutoLinkBusy(true)
+    setAutoLinkResult(null)
+    const result = await autoLinkProtocolToLibrary()
+    setAutoLinkResult(result)
+    setAutoLinkBusy(false)
+  }
 
   const pushNotificationsEnabled    = useStore((s) => s.pushNotificationsEnabled)
   const setPushNotificationsEnabled = useStore((s) => s.setPushNotificationsEnabled)
@@ -257,6 +269,32 @@ export default function SettingsPage() {
             />
           </button>
         </div>
+      </div>
+
+      {/* Vincular exercícios existentes à biblioteca (GIFs) */}
+      <div className="bg-s1 border border-border1 p-4">
+        <div className="font-display text-sm text-neon tracking-[0.2em] mb-3 pb-2 border-b border-border1 flex items-center gap-2">
+          <LuLink size={14} /> VINCULAR À BIBLIOTECA
+        </div>
+        <p className="font-mono text-[10px] text-muted tracking-wider leading-relaxed mb-3">
+          Procura um GIF na biblioteca pra cada exercício do seu protocolo que ainda
+          não tem um vinculado. Só vincula quando acha um match bem confiante — o
+          resto fica como está, sem chute.
+        </p>
+        <button
+          onClick={runAutoLink}
+          disabled={autoLinkBusy}
+          className="w-full py-2.5 font-display text-sm tracking-[0.15em] border border-neon/50 text-neon hover:bg-neon/5 transition-colors disabled:opacity-50"
+        >
+          {autoLinkBusy ? 'BUSCANDO...' : 'VINCULAR AUTOMATICAMENTE'}
+        </button>
+        {autoLinkResult && (
+          <div className="mt-2.5 font-mono text-[10px] text-muted tracking-wider text-center">
+            <span className="text-neon">{autoLinkResult.linked} vinculado{autoLinkResult.linked !== 1 ? 's' : ''}</span>
+            {' · '}
+            {autoLinkResult.skipped} sem match confiante
+          </div>
+        )}
       </div>
 
       {/* Admin: feedback button */}

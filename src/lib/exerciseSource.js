@@ -14,6 +14,7 @@
 //   listMuscles() / listBodyParts() / listEquipments() -> string[]
 
 import { supabase } from './supabase'
+import { translateQueryToEnglish } from './exercisePtDictionary'
 
 const EXERCISEDB_BASE = 'https://oss.exercisedb.dev/api/v1'
 const EXERCISEDB_PAGE_LIMIT = 25 // confirmado por teste manual — a API ignora limit>25 e devolve 25 mesmo assim
@@ -87,6 +88,9 @@ function rowToItem(row) {
     bodyParts: row.body_parts ?? [],
     equipments: row.equipments ?? [],
     instructions: row.instructions ?? [],
+    // Tradução manual, só dos exercícios do protocolo do usuário (ver
+    // 20260713000000_add_instructions_pt.sql) — nunca gerada automaticamente.
+    instructionsPt: row.instructions_pt ?? null,
   }
 }
 
@@ -111,7 +115,18 @@ export const exerciseSource = {
       .order('name', { ascending: true })
       .range(page * pageSize, page * pageSize + pageSize - 1)
 
-    if (search.trim()) query = query.ilike('name', `%${search.trim()}%`)
+    const rawSearch = search.trim()
+    if (rawSearch) {
+      // Nomes/dados da ExerciseDB são só em inglês — traduz vocabulário de academia
+      // reconhecido (ver exercisePtDictionary.js) e busca pelos dois termos (ILIKE OR),
+      // já que a tradução é parcial/heurística e o termo original pode bater direto.
+      const { query: translated } = translateQueryToEnglish(rawSearch)
+      if (translated && translated.toLowerCase() !== rawSearch.toLowerCase()) {
+        query = query.or(`name.ilike.%${rawSearch}%,name.ilike.%${translated}%`)
+      } else {
+        query = query.ilike('name', `%${rawSearch}%`)
+      }
+    }
     if (muscle)    query = query.contains('target_muscles', [muscle])
     if (bodyPart)  query = query.contains('body_parts', [bodyPart])
     if (equipment) query = query.contains('equipments', [equipment])
