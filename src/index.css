@@ -33,14 +33,20 @@
 
   .neon-glow { text-shadow: 0 0 20px rgba(255,20,20,0.4); }
 
-  /* Overlay de scanline LOCAL (absolute, não fixed) pra usar dentro de um container
-     qualquer (ex. GIF de exercício) sem cobrir a tela inteira como .scanlines faz. */
-  .gif-scan {
+  /* Filtro neon nos GIFs de exercício (ver NeonGifFilters/ExerciseGif). invert(1)
+     entra ANTES do filtro SVG de propósito — dá o efeito de negativo/termal. */
+  .neon-g { filter: invert(1) url(#neonG); }
+  .neon-r { filter: invert(1) url(#neonR); }
+
+  /* Overlay de scanline LOCAL (absolute num container position:relative) — não usa
+     .scanlines (que é position:fixed, cobre a tela inteira) pra não vazar do card. */
+  .neon-scan { position: relative; }
+  .neon-scan::after {
+    content: '';
     position: absolute;
     inset: 0;
-    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.14) 2px, rgba(0,0,0,0.14) 3px);
     pointer-events: none;
-    mix-blend-mode: overlay;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,.35) 0 1px, transparent 1px 3px);
   }
 
   .section-label {
