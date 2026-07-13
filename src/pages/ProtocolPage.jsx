@@ -379,6 +379,43 @@ function EditExerciseModal({ exercise, onSave, onClose }) {
     exercise.prepSetsOverride != null ? exercise.prepSetsOverride : null
   )
 
+  // ── vínculo com a biblioteca (GIFs) — editável aqui também, não só ao criar ──
+  const [libraryId, setLibraryId]   = useState(exercise.libraryId ?? null)
+  const [libraryGif, setLibraryGif] = useState(null)
+  const [suggestions, setSuggestions]     = useState([])
+  const [suggestLoading, setSuggestLoading] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+
+  useEffect(() => {
+    if (!exercise.libraryId) return
+    let cancelled = false
+    exerciseSource.getExercise(exercise.libraryId).then(ex => { if (!cancelled) setLibraryGif(ex?.gifUrl ?? null) })
+    return () => { cancelled = true }
+  }, [exercise.libraryId])
+
+  useEffect(() => {
+    if (libraryId) { setSuggestions([]); return }
+    const q = name.trim()
+    if (q.length < 3) { setSuggestions([]); setSuggestLoading(false); return }
+    let cancelled = false
+    setSuggestLoading(true)
+    const t = setTimeout(() => {
+      exerciseSource.listExercises({ search: q, pageSize: 6 })
+        .then(({ items }) => { if (!cancelled) setSuggestions(items) })
+        .catch(() => { if (!cancelled) setSuggestions([]) })
+        .finally(() => { if (!cancelled) setSuggestLoading(false) })
+    }, 400)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [name, libraryId])
+
+  const pickFromLibrary = (ex) => {
+    setName(ex.name)
+    setLibraryId(ex.id)
+    setLibraryGif(ex.gifUrl)
+    setSuggestions([])
+    setShowSuggestions(false)
+  }
+
   const submit = () => {
     if (!name.trim()) return
     onSave({
@@ -386,7 +423,8 @@ function EditExerciseModal({ exercise, onSave, onClose }) {
       muscle,
       ...(accessoryMuscle ? { accessoryMuscle } : { accessoryMuscle: undefined }),
       prepSetsOverride: prepOverride,
-      ...(exercise.libraryId ? { namePt: namePt.trim() || null } : {}),
+      libraryId: libraryId || null,
+      ...(libraryId ? { namePt: namePt.trim() || null } : {}),
     })
     onClose()
   }
@@ -409,30 +447,80 @@ function EditExerciseModal({ exercise, onSave, onClose }) {
         </div>
 
         <div className="px-5 pb-8">
-          <div className="mb-3">
+          <div className="mb-3 relative">
             <label className="section-label block mb-1">NOME DO EXERCÍCIO</label>
             <input
               className="w-full bg-s2 border border-border2 px-3 py-2.5 font-body text-sm text-ink focus:border-neon outline-none transition-colors"
               value={name}
               onChange={e => setName(e.target.value)}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
               onKeyDown={e => e.key === 'Enter' && submit()}
             />
+
+            {showSuggestions && !libraryId && name.trim().length >= 3 && (
+              <div className="absolute z-10 left-0 right-0 top-full mt-1 bg-s2 border border-border2 max-h-64 overflow-y-auto shadow-lg">
+                {suggestLoading && (
+                  <div className="text-center py-3 font-mono text-[10px] text-muted/50">BUSCANDO NA BIBLIOTECA...</div>
+                )}
+                {!suggestLoading && suggestions.length === 0 && (
+                  <div className="text-center py-3 font-mono text-[10px] text-muted/50">
+                    Sem GIF na biblioteca — pode continuar com nome livre.
+                  </div>
+                )}
+                {suggestions.map(ex => (
+                  <button
+                    key={ex.id}
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={() => pickFromLibrary(ex)}
+                    className="w-full flex items-center gap-2.5 px-2.5 py-2 border-b border-border1 last:border-0 text-left hover:bg-s1 transition-colors"
+                  >
+                    <div className="w-8 h-8 flex-shrink-0 border border-border1 overflow-hidden bg-s1">
+                      <ExerciseGif src={ex.gifUrl} alt={ex.name} lite />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-body text-xs text-ink truncate">{ex.name}</div>
+                      {ex.targetMuscles[0] && (
+                        <div className="font-mono text-[9px] text-neon/70 uppercase truncate">{ex.targetMuscles[0]}</div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          {exercise.libraryId && (
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-1">
-                <label className="section-label !mb-0">APELIDO EM PORTUGUÊS <span className="text-muted/50">(opcional)</span></label>
-                <button
-                  onClick={() => setShowLibDetail(true)}
-                  className="flex items-center gap-1 font-mono text-[10px] text-muted hover:text-neon transition-colors"
-                >
-                  <LuImage size={12}/> VER EXERCÍCIO
-                </button>
+          {libraryId && (
+            <div className="flex items-center gap-2.5 bg-s2 border border-neon/30 px-2.5 py-2 mb-4">
+              <div className="w-9 h-9 flex-shrink-0 border border-border1 overflow-hidden bg-s1">
+                <ExerciseGif src={libraryGif} alt={name} lite />
               </div>
+              <div className="flex-1 min-w-0 font-mono text-[10px] text-neon tracking-wider">
+                VINCULADO À BIBLIOTECA
+              </div>
+              <button
+                onClick={() => setShowLibDetail(true)}
+                className="text-muted hover:text-neon p-1 flex-shrink-0"
+                title="Ver exercício"
+              >
+                <LuImage size={14}/>
+              </button>
+              <button
+                onClick={() => { setLibraryId(null); setLibraryGif(null) }}
+                className="text-muted hover:text-red-400 p-1 flex-shrink-0"
+                title="Remover vínculo"
+              >
+                <LuX size={14}/>
+              </button>
+            </div>
+          )}
+
+          {libraryId && (
+            <div className="mb-4">
+              <label className="section-label block mb-1">APELIDO EM PORTUGUÊS <span className="text-muted/50">(opcional)</span></label>
               <input
                 className="w-full bg-s2 border border-border2 px-3 py-2.5 font-body text-sm text-ink focus:border-neon outline-none transition-colors"
-                placeholder={exercise.name}
+                placeholder={name}
                 value={namePt}
                 onChange={e => setNamePt(e.target.value)}
               />
@@ -521,7 +609,7 @@ function EditExerciseModal({ exercise, onSave, onClose }) {
           </button>
         </div>
       </motion.div>
-      {showLibDetail && <ExerciseDetailModal id={exercise.libraryId} onClose={() => setShowLibDetail(false)} />}
+      {showLibDetail && libraryId && <ExerciseDetailModal id={libraryId} onClose={() => setShowLibDetail(false)} />}
     </motion.div>
   )
 }
