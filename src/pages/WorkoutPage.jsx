@@ -526,6 +526,17 @@ function PrepSetCard({ step, workingWeight, onDone, isLocked, prevData, savedRes
   const [kg, setKg]     = useState(savedResult?.kg   != null ? String(savedResult.kg)   : (defaultKg > 0 ? String(defaultKg) : ''))
   const typeInfo = { color: PHASE_COLOR_PREP }
 
+  // Todo step do reel monta de uma vez só, antes de qualquer peso existir — no
+  // primeiro render workingWeight é sempre 0 (a weight question daquele exercício
+  // ainda nem foi respondida), então defaultKg também nasce 0 e o useState acima
+  // trava vazio pra sempre. Sincroniza assim que o peso de trabalho existir/mudar
+  // (confirmação inicial ou edição posterior da weight question) — não mexe se já
+  // tem um resultado salvo (série já concluída, valor é o que foi feito de verdade).
+  useEffect(() => {
+    if (savedResult?.kg != null) return
+    if (defaultKg > 0) setKg(String(defaultKg))
+  }, [defaultKg]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleDone = () => {
     onDone({ reps: parseInt(reps) || 0, kg: parseFloat(kg) || defaultKg })
   }
