@@ -1,13 +1,22 @@
 import React, { useState } from 'react'
-import { LuTrash2, LuTriangleAlert } from 'react-icons/lu'
+import { LuTrash2, LuTriangleAlert, LuClock } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 import { DAY_NAMES } from '../data/protocol'
 import DoomFace from '../components/DoomFace'
 
+function fmtDuration(totalSec) {
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
 export default function HistoryPage() {
-  const logs         = useStore((s) => s.logs)
-  const clearAllLogs = useStore((s) => s.clearAllLogs)
-  const userProtocol = useStore((s) => s.userProtocol)
+  const logs             = useStore((s) => s.logs)
+  const clearAllLogs     = useStore((s) => s.clearAllLogs)
+  const userProtocol     = useStore((s) => s.userProtocol)
+  const workoutSessions  = useStore((s) => s.workoutSessions)
   const [confirm, setConfirm] = useState(false)
 
   const groups = []
@@ -27,6 +36,14 @@ export default function HistoryPage() {
     g.entries.push({ ex, val, ei })
   })
   groups.sort((a, b) => (a.wi * 10 + a.di) - (b.wi * 10 + b.di))
+
+  // Duração total do treino daquele dia (workoutSessions já guarda durationSec por
+  // sessão concluída) — se o dia foi refeito mais de uma vez, mostra a mais recente,
+  // mesma regra de "só o estado atual" que os logs por exercício já seguem.
+  groups.forEach((g) => {
+    const sessions = (workoutSessions || []).filter(s => s.weekIdx === g.wi && s.dayIdx === g.di)
+    g.durationSec = sessions.length ? sessions[sessions.length - 1].durationSec : null
+  })
 
   if (!groups.length) {
     return (
@@ -50,6 +67,11 @@ export default function HistoryPage() {
             </span>
             <span className="font-display text-lg text-ink tracking-wider">{DAY_NAMES[g.di]}</span>
             <span className="font-mono text-[10px] text-muted flex-1 tracking-widest"/>
+            {g.durationSec != null && (
+              <span className="flex items-center gap-1 font-mono text-[10px] text-neon/80">
+                <LuClock size={11}/> {fmtDuration(g.durationSec)}
+              </span>
+            )}
             <span className="font-mono text-[10px] text-muted">{g.entries.length} exerc.</span>
           </div>
 
