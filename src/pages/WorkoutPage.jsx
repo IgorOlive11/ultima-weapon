@@ -5,7 +5,7 @@ import {
   LuFlame, LuDumbbell, LuPlus, LuMinus, LuClock, LuImage,
 } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
-import { DAY_NAMES, SET_TYPES, GER_CONFIG, getWeightQuestion, MIN_PLATE_INCREMENT, getPrepRestSeconds, WEEK_TYPE_CONFIG, DEFAULT_WEEK_TYPE } from '../data/protocol'
+import { DAY_NAMES, SET_TYPES, resolveGerConfig, getWeightQuestion, MIN_PLATE_INCREMENT, getPrepRestSeconds, WEEK_TYPE_CONFIG, DEFAULT_WEEK_TYPE } from '../data/protocol'
 import { ACHIEVEMENTS } from '../data/achievements'
 import DoomFace from '../components/DoomFace'
 import ExerciseDetailModal from '../components/ExerciseDetailModal'
@@ -73,10 +73,6 @@ function phaseColorForStepType(type) {
   return type === 'PREP' ? PHASE_COLOR_PREP : PHASE_COLOR_WORKING
 }
 
-function getGerConfig(ger) {
-  return GER_CONFIG[ger] || GER_CONFIG[10]
-}
-
 function fmtRir(ger, cfg) {
   const { min, max } = cfg.rirRange || {}
   if (min == null || max == null) return cfg.rir || cfg.subtitle // GER 11-13: sem número, cai pro texto
@@ -84,7 +80,7 @@ function fmtRir(ger, cfg) {
 }
 
 function GerEffortPanel({ ger, color }) {
-  const cfg = getGerConfig(ger)
+  const cfg = resolveGerConfig(ger)
   return (
     <div className="flex items-center gap-3 bg-s2 border border-border1 px-3 py-2 mb-2.5 min-h-[74px]">
       <DoomFace face={cfg.face} size={WORKING_GER_FACE_SIZE}/>

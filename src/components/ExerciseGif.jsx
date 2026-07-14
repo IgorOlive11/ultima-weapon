@@ -1,4 +1,5 @@
 import { useStore } from '../hooks/useStore'
+import { isHighEffortGer } from '../data/protocol'
 
 // GIF de exercício com filtro neon (posterize+tint+glow via SVG, ver NeonGifFilters).
 // Cor segue o GER de quem chama: <=10 verde (preparo/leve), >=11 vermelho (intenso) —
@@ -7,7 +8,7 @@ import { useStore } from '../hooks/useStore'
 // scanline (mantém o filtro, só evita o custo/ruído extra nas thumbnails da grade).
 export default function ExerciseGif({ src, alt, ger = null, lite = false, fit = 'cover', onError }) {
   const neonEnabled = useStore((s) => s.neonGifFilterEnabled)
-  const colorCls = ger != null && ger >= 11 ? 'neon-r' : 'neon-g'
+  const colorCls = isHighEffortGer(ger) ? 'neon-r' : 'neon-g'
 
   return (
     <div className={`w-full h-full ${neonEnabled && !lite ? 'neon-scan' : ''}`}>

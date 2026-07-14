@@ -11,6 +11,20 @@ export const GER_CONFIG = {
   13: { label: 'GER 13', title: 'EU SOU REINCARNAÇÃO DO LUCIFER', subtitle: 'widowmaker territory',        rir: 'além da falha extrema',             face: 'ger13', rirRange: { min: null, max: null } },
 }
 
+// Lookup de GER_CONFIG com fallback — cada tela cai num "GER padrão" diferente
+// quando falta valor (9 pra card de protocolo, 10 pra sessão de treino), então o
+// fallback é parâmetro, não hardcoded aqui.
+export function resolveGerConfig(ger, fallback = 10) {
+  return GER_CONFIG[ger] || GER_CONFIG[fallback]
+}
+
+// Corte de intensidade usado pelo filtro neon do GIF (verde <=10 preparo/leve,
+// vermelho >=11 intenso) — mesmo corte documentado em PHASE_COLOR_PREP/WORKING
+// (WorkoutPage.jsx), só que aquele é por fase do step, não por valor de GER.
+export function isHighEffortGer(ger) {
+  return ger != null && ger >= 11
+}
+
 export const SET_TYPES = {
   NORMAL:       { label: 'SÉRIE NORMAL',        color: '#39FF14', ger: 9  },
   REST_PAUSE:   { label: 'DC STYLE REST PAUSE', color: '#ff6600', ger: 12 },

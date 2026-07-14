@@ -4,7 +4,7 @@ import {
   LuDumbbell, LuRefreshCw, LuSkull, LuWaves,
 } from 'react-icons/lu'
 import DoomFace from './DoomFace'
-import { GER_CONFIG, SET_TYPES, SET_TYPE_DESCRIPTIONS } from '../data/protocol'
+import { resolveGerConfig, SET_TYPES, SET_TYPE_DESCRIPTIONS } from '../data/protocol'
 import { calcLoads, fmtKg } from '../utils/loads'
 import { useStore } from '../hooks/useStore'
 
@@ -38,7 +38,7 @@ export default function ExerciseCard({ exercise, weekIdx, dayIdx, exIdx, onSave,
   const calcCls   = CALC_CLS[exercise.type]    || 'calc-chip-neon'
   const ChipIcon  = TYPE_CHIP_ICON[exercise.type] || LuDumbbell
   const setType   = SET_TYPES[exercise.type]   || SET_TYPES.NORMAL
-  const topGerConf = GER_CONFIG[topGer]        || GER_CONFIG[9]
+  const topGerConf = resolveGerConfig(topGer, 9)
 
   // top set kg is the last set's kg for load calc
   const topKg  = parseFloat(kgValues[numSets - 1]) || 0
@@ -124,7 +124,7 @@ export default function ExerciseCard({ exercise, weekIdx, dayIdx, exIdx, onSave,
           <div className="section-label mb-1"><LuZap size={10} />SÉRIES</div>
 
           {exercise.sets.map((s, i) => {
-            const gerConf = GER_CONFIG[s.ger] || GER_CONFIG[9]
+            const gerConf = resolveGerConfig(s.ger, 9)
             const isConfirmed = confirmedSet === i
             const isActive    = isConfirmed && restTimer.running
             const isDone      = isConfirmed && !restTimer.running && restTimer.seconds === 0
