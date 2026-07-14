@@ -117,15 +117,15 @@ export const exerciseSource = {
 
     const rawSearch = search.trim()
     if (rawSearch) {
-      // Nomes/dados da ExerciseDB são só em inglês — traduz vocabulário de academia
-      // reconhecido (ver exercisePtDictionary.js) e busca pelos dois termos (ILIKE OR),
+      // Busca em name E name_pt ao mesmo tempo (acha "leg extension" OU "cadeira
+      // extensora"). Nomes/dados vindos da ExerciseDB são só em inglês — traduz
+      // vocabulário de academia reconhecido (exercisePtDictionary.js) e soma ao OR,
       // já que a tradução é parcial/heurística e o termo original pode bater direto.
       const { query: translated } = translateQueryToEnglish(rawSearch)
-      if (translated && translated.toLowerCase() !== rawSearch.toLowerCase()) {
-        query = query.or(`name.ilike.%${rawSearch}%,name.ilike.%${translated}%`)
-      } else {
-        query = query.ilike('name', `%${rawSearch}%`)
-      }
+      const terms = new Set([rawSearch])
+      if (translated && translated.toLowerCase() !== rawSearch.toLowerCase()) terms.add(translated)
+      const orClauses = [...terms].flatMap(t => [`name.ilike.%${t}%`, `name_pt.ilike.%${t}%`])
+      query = query.or(orClauses.join(','))
     }
     if (muscle)    query = query.contains('target_muscles', [muscle])
     if (bodyPart)  query = query.contains('body_parts', [bodyPart])
@@ -149,6 +149,85 @@ export const exerciseSource = {
     if (error) return null
     return rowToItem(data)
   },
+
+  // Valores distintos que já existem na tabela — usado pelos selects de filtro da
+  // tela de admin (Bloco B). Não é a taxonomia fixa da ExerciseDB: reflete o que
+  // realmente foi cadastrado (inclui os grupos musculares próprios do app quando o
+  // admin cria exercícios usando MUSCLE_GROUP_LIST).
+  async listDistinctTargetMuscles() {
+    const { data, error } = await supabase.from('exercises_library').select('target_muscles')
+    if (error) throw error
+    const set = new Set()
+    for (const row of data ?? []) for (const m of row.target_muscles ?? []) set.add(m)
+    return [...set].sort()
+  },
+
+  async listDistinctEquipments() {
+    const { data, error } = await supabase.from('exercises_library').select('equipments')
+    if (error) throw error
+    const set = new Set()
+    for (const row of data ?? []) for (const e of row.equipments ?? []) set.add(e)
+    return [...set].sort()
+  },
+
+  // ── admin: criar/editar/excluir (RLS em exercises_library exige role admin —
+  // ver 20260709000000_create_exercises_library.sql) ──────────────────────────
+  async createExercise(item) {
+    const id = item.id || slugId(item.name)
+    const { data, error } = await supabase
+      .from('exercises_library')
+      .insert({ id, ...itemToRow(item) })
+      .select()
+      .single()
+    if (error) throw error
+    return rowToItem(data)
+  },
+
+  async updateLibraryExercise(id, item) {
+    const { data, error } = await supabase
+      .from('exercises_library')
+      .update(itemToRow(item))
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) throw error
+    return rowToItem(data)
+  },
+
+  async deleteExercise(id) {
+    const { error } = await supabase.from('exercises_library').delete().eq('id', id)
+    if (error) throw error
+    // Best-effort — se o arquivo não sair do bucket, a linha já foi removida mesmo assim.
+    await supabase.storage.from('exercises').remove([`${id}.gif`]).catch(() => {})
+  },
+}
+
+function itemToRow(item) {
+  return {
+    name: item.name,
+    name_pt: item.namePt || null,
+    gif_url: item.gifUrl,
+    target_muscles: item.targetMuscles ?? [],
+    secondary_muscles: item.secondaryMuscles ?? [],
+    body_parts: item.bodyParts ?? [],
+    equipments: item.equipments ?? [],
+    instructions: item.instructions ?? [],
+    instructions_pt: item.instructionsPt ?? null,
+    updated_at: new Date().toISOString(),
+  }
+}
+
+// Id novo pra exercício cadastrado manualmente — prefixo "custom-" pra nunca colidir
+// com os ids curtos da ExerciseDB (ex. "0007", "WrYPP2g").
+export function slugId(name) {
+  const slug = (name || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-+|-+$)/g, '')
+    .slice(0, 40)
+  const rand = Math.random().toString(36).slice(2, 8)
+  return `custom-${slug || 'exercicio'}-${rand}`
 }
 
 // Sobe um GIF pro bucket 'exercises' (Storage) e devolve a URL pública. Só passa de
