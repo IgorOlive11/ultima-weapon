@@ -4,10 +4,11 @@ import { LuX, LuSkipForward } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 
 export default function GlobalRestTimer() {
-  const restTimer     = useStore(s => s.restTimer)
-  const stopRestTimer = useStore(s => s.stopRestTimer)
-  const activeTab     = useStore(s => s.activeTab)
-  const activeWorkout = useStore(s => s.activeWorkout)
+  const restTimer      = useStore(s => s.restTimer)
+  const stopRestTimer  = useStore(s => s.stopRestTimer)
+  const adjustRestTimer = useStore(s => s.adjustRestTimer)
+  const activeTab      = useStore(s => s.activeTab)
+  const activeWorkout  = useStore(s => s.activeWorkout)
 
   // On the workout tab with an active session, the timer is shown inline on the card
   const showFooter = restTimer.running && !(activeTab === 'workout' && activeWorkout)
@@ -88,6 +89,24 @@ export default function GlobalRestTimer() {
               >
                 {isDone ? 'GO!' : fmtTime(restTimer.seconds)}
               </motion.div>
+
+              {/* +/-15s */}
+              <div className="relative z-10 flex flex-col gap-1 flex-shrink-0">
+                <button
+                  onClick={() => adjustRestTimer(15)}
+                  disabled={isDone}
+                  className="px-1.5 py-0.5 border border-border2 font-mono text-[9px] text-muted tracking-wider hover:text-ink hover:border-neon/50 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                >
+                  +15S
+                </button>
+                <button
+                  onClick={() => adjustRestTimer(-15)}
+                  disabled={isDone}
+                  className="px-1.5 py-0.5 border border-border2 font-mono text-[9px] text-muted tracking-wider hover:text-ink hover:border-neon/50 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                >
+                  -15S
+                </button>
+              </div>
 
               {/* label */}
               <div className="relative z-10 flex-1">

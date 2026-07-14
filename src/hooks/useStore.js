@@ -402,6 +402,25 @@ export const useStore = create(
         set(state => ({ restTimer: { ...state.restTimer, running: false, seconds: s, preset: s, endsAt: 0 } }))
       },
 
+      // +/-15s etc. Só mexe no timer rodando — ajusta o fim (endsAt) e reinicia o
+      // tick do timerManager a partir do novo restante; preset não muda (é só a
+      // duração original, usada pra % da barra de progresso).
+      adjustRestTimer: (deltaSeconds) => {
+        const { restTimer } = get()
+        if (!restTimer.running) return
+        const remaining = Math.max(0, Math.round((restTimer.endsAt - Date.now()) / 1000))
+        const next = Math.max(0, remaining + deltaSeconds)
+        timerManager.clear()
+        if (next <= 0) {
+          set(state => ({ restTimer: { ...state.restTimer, running: false, seconds: 0, endsAt: 0 } }))
+          return
+        }
+        const endsAt = Date.now() + next * 1000
+        set(state => ({ restTimer: { ...state.restTimer, seconds: next, endsAt } }))
+        startTimerTick(next, endsAt, set)
+        scheduleRestPush(next, get)
+      },
+
       resumeRestTimer: () => {
         const { restTimer } = get()
         if (!restTimer.running || !restTimer.endsAt) return

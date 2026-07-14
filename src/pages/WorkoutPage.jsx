@@ -399,10 +399,18 @@ function PrevRecord({ prevData, setDef }) {
   )
 }
 
-function WeightQuestionCard({ step, onConfirm, history, isLocked }) {
-  const [weight, setWeight] = useState('')
+function WeightQuestionCard({ step, onConfirm, history, isLocked, initialWeight }) {
+  const [weight, setWeight] = useState(initialWeight > 0 ? String(initialWeight) : '')
   const question = getWeightQuestion(step.setDef)
   const typeInfo = { ...(SET_TYPES[step.setDef?.type] || SET_TYPES.NORMAL), color: PHASE_COLOR_WORKING }
+
+  // Todos os steps ficam montados o tempo todo (reel exibe tudo, só troca o
+  // destaque) — sem isso, voltar pra um WEIGHT_QUESTION já respondido mostraria o
+  // campo vazio em vez do peso confirmado (initialWeight só existe no momento do
+  // mount inicial, quando ainda ninguém confirmou nada).
+  useEffect(() => {
+    if (initialWeight > 0) setWeight(String(initialWeight))
+  }, [initialWeight])
 
   const handleConfirm = () => {
     const w = parseFloat(weight)
@@ -1126,8 +1134,9 @@ function PulseSetCard({ step, workingWeight, onDone, isLocked, prevData }) {
 // ─── InlineRestTimer ─────────────────────────────────────────────────────────
 
 function InlineRestTimer({ onNext }) {
-  const restTimer     = useStore(s => s.restTimer)
-  const stopRestTimer = useStore(s => s.stopRestTimer)
+  const restTimer      = useStore(s => s.restTimer)
+  const stopRestTimer  = useStore(s => s.stopRestTimer)
+  const adjustRestTimer = useStore(s => s.adjustRestTimer)
 
   const isDone  = !restTimer.running && restTimer.seconds === 0
   const pct     = restTimer.preset > 0 ? restTimer.seconds / restTimer.preset : 0
@@ -1167,6 +1176,14 @@ function InlineRestTimer({ onNext }) {
           />
         )}
 
+        <button
+          onClick={() => adjustRestTimer(-15)}
+          disabled={isDone}
+          className="relative z-10 flex-shrink-0 px-2 py-1.5 border border-border2 font-mono text-[10px] text-muted tracking-wider hover:text-ink hover:border-neon/50 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+        >
+          -15S
+        </button>
+
         <div className="relative z-10">
           <div className="font-mono text-[9px] text-muted tracking-[0.2em]">
             {isDone ? 'PRONTO' : 'DESCANSO'}
@@ -1180,6 +1197,14 @@ function InlineRestTimer({ onNext }) {
             {isDone ? 'GO!' : fmtTime(restTimer.seconds)}
           </motion.div>
         </div>
+
+        <button
+          onClick={() => adjustRestTimer(15)}
+          disabled={isDone}
+          className="relative z-10 flex-shrink-0 px-2 py-1.5 border border-border2 font-mono text-[10px] text-muted tracking-wider hover:text-ink hover:border-neon/50 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+        >
+          +15S
+        </button>
 
         <div className="relative z-10 flex-1 h-2 bg-border1 rounded-full overflow-hidden">
           <motion.div
@@ -1535,12 +1560,21 @@ function ActiveWorkout() {
     }
 
     if (s.type === 'WEIGHT_QUESTION') {
+      const handleWeightEdit = (w) => {
+        if (isCurrentStep) { handleWeightConfirm(w); return }
+        // Passado: só corrige o peso guardado (não reabre a série/avança nada) —
+        // permite consertar um valor errado sem precisar refazer o treino.
+        setExerciseWeight(s.exerciseId, w)
+        setPastEditSaved(true)
+        setTimeout(() => setPastEditSaved(false), 1800)
+      }
       return (
         <WeightQuestionCard
           step={s}
-          onConfirm={isCurrentStep ? handleWeightConfirm : () => {}}
+          onConfirm={isFutureStep ? () => {} : handleWeightEdit}
           history={hist}
-          isLocked={!isCurrentStep}
+          isLocked={isFutureStep}
+          initialWeight={ww}
         />
       )
     }
