@@ -19,6 +19,7 @@ export default function Header({ scrollRef }) {
 
   const isInWorkout = !!activeWorkout
   const accentColor = isInWorkout ? '#ff6600' : '#39FF14'
+  const showHeader = () => setHidden(false)
 
   return (
     <>

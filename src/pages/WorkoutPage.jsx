@@ -1461,6 +1461,12 @@ function ActiveWorkout() {
 
   // advance runs from currentStepIdx (regardless of where user is browsing)
   const curStep = steps[currentStepIdx]
+  // Estes hooks vêm depois do "if (!activeWorkout) return null" lá em cima (linha
+  // ~1297) — violação real de rules-of-hooks, não falso positivo (se activeWorkout
+  // virar null com ActiveWorkout ainda montado, a ordem dos hooks quebra). Fix de
+  // verdade é mover os early returns pra depois de todos os hooks, escopo do item
+  // 3.3 (quebrar WorkoutPage.jsx em pedaços menores) — não misturado aqui.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const advance = useCallback((result) => {
     if (result) saveSetResult(String(currentStepIdx), result)
 
@@ -1486,6 +1492,7 @@ function ActiveWorkout() {
     }
   }, [curStep, currentStepIdx, steps, day, advanceWorkoutStep, saveSetResult, startRestTimer])
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- ver comentário acima de `advance`
   const handleRestDone = useCallback(() => {
     stopRestTimer()
     setIsResting(false)
@@ -1498,6 +1505,7 @@ function ActiveWorkout() {
   }
 
   // onDone for the displayed (active) card
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- ver comentário acima de `advance`
   const handleCardDone = useCallback((result) => {
     if (isCurrentStep) {
       advance(result)
@@ -1571,8 +1579,10 @@ function ActiveWorkout() {
   // Anexado 1x (sem depender de handleWheel, que muda de identidade a cada render) —
   // handleWheelRef sempre aponta pra versão mais recente, então não fica com closure
   // velha (commit/viewingStepIdx desatualizados).
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- ver comentário acima de `advance`
   const handleWheelRef = useRef(handleWheel)
   handleWheelRef.current = handleWheel
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- ver comentário acima de `advance`
   useEffect(() => {
     const el = reelElRef.current
     if (!el) return

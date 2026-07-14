@@ -302,7 +302,9 @@ export const useStore = create(
               const snapshot = JSON.parse(raw)
               set({ viewingUserId: null, viewingUserName: null, ...snapshot })
               return
-            } catch {}
+            } catch {
+              // silêncio intencional — snapshot corrompido/ilegível cai pro fallback abaixo
+            }
           }
           // Fallback: busca do Supabase se snapshot perdido
           const { authUser } = get()
@@ -731,7 +733,7 @@ export const useStore = create(
 
               let items = []
               try {
-                ;({ items } = await exerciseSource.listExercises({ search: query, pageSize: 5 }))
+                ({ items } = await exerciseSource.listExercises({ search: query, pageSize: 5 }))
               } catch {
                 skipped++
                 continue
