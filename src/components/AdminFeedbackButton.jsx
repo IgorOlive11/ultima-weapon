@@ -4,6 +4,7 @@ import { LuBug, LuX, LuCamera, LuLoaderCircle, LuCircleCheck, LuCircleAlert } fr
 import { useStore } from '../hooks/useStore'
 import { supabase } from '../lib/supabase'
 import { getRecentErrors } from '../utils/errorBuffer'
+import { logError } from '../utils/log'
 
 const TYPES = [
   { id: 'bug',      label: 'BUG' },
@@ -125,7 +126,7 @@ export default function AdminFeedbackButton() {
       const dataUrl = await captureScreenshot()
       setScreenshot(dataUrl)
     } catch (err) {
-      console.error('[feedback] captura de tela falhou:', err)
+      logError('[feedback] captura de tela falhou:', err)
     } finally {
       setOpen(true)
       setCapturing(false)
@@ -152,7 +153,7 @@ export default function AdminFeedbackButton() {
       setStatus('sent')
       setTimeout(reset, 1500)
     } catch (err) {
-      console.error('[feedback] envio falhou:', err)
+      logError('[feedback] envio falhou:', err)
       setStatus('error')
     }
   }

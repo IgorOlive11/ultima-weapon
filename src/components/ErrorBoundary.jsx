@@ -1,5 +1,6 @@
 import { Component } from 'react'
 import { LuTriangleAlert } from 'react-icons/lu'
+import { logError } from '../utils/log'
 
 export default class ErrorBoundary extends Component {
   state = { hasError: false }
@@ -9,7 +10,7 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('[ErrorBoundary]', error, info.componentStack)
+    logError('[ErrorBoundary]', error, info.componentStack)
   }
 
   render() {

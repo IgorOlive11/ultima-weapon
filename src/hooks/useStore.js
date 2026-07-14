@@ -8,6 +8,7 @@ import { round25 } from '../utils/loads'
 import { supabase } from '../lib/supabase'
 import { exerciseSource } from '../lib/exerciseSource'
 import { translateQueryToEnglish } from '../lib/exercisePtDictionary'
+import { logDebug, logWarn, logError } from '../utils/log'
 
 // totalWeeks: no load inicial do módulo (linha abaixo) o protocolo persistido ainda
 // não foi hidratado, então cai no default — onRehydrateStorage reclampa currentWeek
@@ -66,12 +67,12 @@ const syncTimers = {}
 async function syncStudentSection(targetUserId, section, capturedData) {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session?.access_token) {
-    console.error('[save-student] sem sessão ativa — save cancelado')
+    logError('[save-student] sem sessão ativa — save cancelado')
     return
   }
 
   const fnUrl = `${supabase.supabaseUrl}/functions/v1/save-student-data`
-  console.log('[save-student] chamando edge fn', fnUrl, 'studentId=', targetUserId, 'section=', section)
+  logDebug('[save-student] chamando edge fn', fnUrl, 'studentId=', targetUserId, 'section=', section)
 
   let res
   try {
@@ -84,22 +85,22 @@ async function syncStudentSection(targetUserId, section, capturedData) {
       body: JSON.stringify({ studentId: targetUserId, section, data: capturedData }),
     })
   } catch (err) {
-    console.error('[save-student] fetch falhou (rede?):', err)
+    logError('[save-student] fetch falhou (rede?):', err)
     return
   }
 
   if (!res.ok) {
     const errText = await res.text().catch(() => '(sem body)')
-    console.error('[save-student] edge fn retornou', res.status, errText)
+    logError('[save-student] edge fn retornou', res.status, errText)
     // Fallback: escrita direta (requer RLS trainer_admin_all via profiles)
     const { error: fbErr } = await supabase.from('user_data').upsert(
       { user_id: targetUserId, section, data: capturedData, updated_at: new Date().toISOString() },
       { onConflict: 'user_id,section' }
     )
-    if (fbErr) console.error('[save-student] fallback direto também falhou:', fbErr.message)
-    else console.log('[save-student] fallback direto OK')
+    if (fbErr) logError('[save-student] fallback direto também falhou:', fbErr.message)
+    else logDebug('[save-student] fallback direto OK')
   } else {
-    console.log('[save-student] edge fn OK')
+    logDebug('[save-student] edge fn OK')
   }
 }
 
@@ -125,11 +126,13 @@ function scheduleSyncSection(section, get) {
     pushSubscription: state0.pushSubscription,
   }[section]
 
-  console.log('[sync] scheduleSyncSection', section, '| viewing=', state0.viewingUserId, '| target=', targetUserId)
+  logDebug('[sync] scheduleSyncSection', section, '| viewing=', state0.viewingUserId, '| target=', targetUserId)
 
   syncTimers[section] = setTimeout(async () => {
     if (!targetUserId || capturedData === undefined) {
-      console.warn('[sync] abortado — targetUserId=', targetUserId, 'capturedData=', capturedData === undefined ? 'undefined' : 'ok')
+      // Fica sempre visível (não é ruído de fluxo) — é exatamente a classe de bug
+      // "seção nova esquecida no mapa acima" já vista antes neste arquivo.
+      logWarn('[sync] abortado — targetUserId=', targetUserId, 'capturedData=', capturedData === undefined ? 'undefined' : 'ok')
       return
     }
 
@@ -140,7 +143,7 @@ function scheduleSyncSection(section, get) {
         { user_id: targetUserId, section, data: capturedData, updated_at: new Date().toISOString() },
         { onConflict: 'user_id,section' }
       )
-      if (error) console.error('[sync] próprio upsert falhou:', error.message)
+      if (error) logError('[sync] próprio upsert falhou:', error.message)
     }
   }, 1500)
 }
@@ -166,7 +169,7 @@ async function scheduleRestPush(seconds, get) {
       body: JSON.stringify({ seconds, title: 'Descanso finalizado', body: 'Hora da próxima série 💪' }),
     })
   } catch (err) {
-    console.error('[push] scheduleRestPush falhou:', err)
+    logError('[push] scheduleRestPush falhou:', err)
   }
 }
 
@@ -188,7 +191,7 @@ async function cancelRestPush(get) {
       body: JSON.stringify({ cancel: true }),
     })
   } catch (err) {
-    console.error('[push] cancelRestPush falhou:', err)
+    logError('[push] cancelRestPush falhou:', err)
   }
 }
 
@@ -361,7 +364,7 @@ export const useStore = create(
           )
           if (!res.ok) {
             const errText = await res.text().catch(() => '')
-            console.error('[hydrate] get-student-data falhou', res.status, errText)
+            logError('[hydrate] get-student-data falhou', res.status, errText)
           } else {
             const json = await res.json()
             if (json.data?.length) rows = json.data
