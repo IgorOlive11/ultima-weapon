@@ -73,12 +73,21 @@ export function emptyWeek() {
   return { days: defaultDays() }
 }
 
-// Default protocol template: totalWeeks semanas × 7 dias
+// Default protocol template: totalWeeks semanas × 7 dias. weekRanges vazio = "modo
+// sem ranges" (cada semana é ela mesma) — o que qualquer protocolo antigo assume.
 export function defaultUserProtocol(totalWeeks = DEFAULT_TOTAL_WEEKS) {
   return {
     totalWeeks,
+    weekRanges: [],
     weeks: Array(totalWeeks).fill(null).map(() => ({ days: defaultDays() })),
   }
+}
+
+// Acha o range { from, to } (índices 0-based, inclusive) que contém weekIdx, se
+// houver — usado tanto pra propagar edição (useStore.js) quanto pra desenhar o
+// seletor de semanas unificado (ProtocolPage.jsx).
+export function findWeekRange(weekRanges, weekIdx) {
+  return (weekRanges || []).find(r => weekIdx >= r.from && weekIdx <= r.to) || null
 }
 
 // Retrocompatibilidade: protocolos salvos antes da unificação warmup+feeder tinham

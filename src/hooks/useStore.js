@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { JS_DAY_TO_IDX, defaultUserProtocol, buildWorkoutSteps, emptyWeek, DEFAULT_TOTAL_WEEKS } from '../data/protocol'
+import { JS_DAY_TO_IDX, defaultUserProtocol, buildWorkoutSteps, emptyWeek, DEFAULT_TOTAL_WEEKS, findWeekRange } from '../data/protocol'
 import { defaultAchievements, checkNewAchievements } from '../data/achievements'
 import { timerManager } from '../utils/timerManager'
 import { playRestDoneAlarm, warmAlarmAudio } from '../utils/alarmSound'
@@ -30,6 +30,21 @@ const { week: initWeek, day: initDay } = detectWeekDay()
 
 function genId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
+}
+
+// Se weekIdx faz parte de um range compartilhado (weekRanges — Bloco 2 de "semanas
+// configuráveis"), replica os `days` dessa semana pras outras do mesmo grupo. Editar
+// qualquer semana do range reflete nas outras — é o que faz o grupo "apontar pro
+// mesmo template" sem duplicar autoria. Muta `protocol` in-place (chamado sempre
+// sobre o clone `p` já feito por quem chama, antes do `return`).
+function propagateWeekRange(protocol, weekIdx) {
+  const range = findWeekRange(protocol.weekRanges, weekIdx)
+  if (!range) return
+  const template = JSON.parse(JSON.stringify(protocol.weeks[weekIdx].days))
+  for (let i = range.from; i <= range.to; i++) {
+    if (i === weekIdx) continue
+    protocol.weeks[i].days = JSON.parse(JSON.stringify(template))
+  }
 }
 
 function defaultUserProfile() {
@@ -578,6 +593,12 @@ export const useStore = create(
             p.weeks = p.weeks.slice(0, total)
           }
           p.totalWeeks = total
+          // Encolher pode deixar range(s) apontando pra semana que não existe mais —
+          // corta o "to" pro novo limite, e descarta o range se sobrar só 1 semana
+          // (from === to não significa nada — não dá pra "compartilhar" com si mesma).
+          p.weekRanges = (p.weekRanges || [])
+            .map(r => ({ from: r.from, to: Math.min(r.to, total - 1) }))
+            .filter(r => r.from < total && r.from < r.to)
           return {
             userProtocol: p,
             currentWeek: Math.min(state.currentWeek, total - 1),
@@ -586,10 +607,43 @@ export const useStore = create(
         scheduleSyncSection('userProtocol', get)
       },
 
+      // Agrupa semanas [from..to] (0-based, inclusive) num único template
+      // compartilhado — editar qualquer uma propaga pras outras (ver
+      // propagateWeekRange). Ranges que colidirem com o novo intervalo são
+      // substituídos por ele. Propaga o conteúdo de `from` imediatamente ao criar.
+      setWeekRange: (from, to) => {
+        const lo0 = Math.min(from, to)
+        const hi0 = Math.max(from, to)
+        if (lo0 === hi0) return // 1 semana não é "range" — não dá pra compartilhar com si mesma
+        set(state => {
+          const p = JSON.parse(JSON.stringify(state.userProtocol))
+          const lo = Math.max(0, lo0)
+          const hi = Math.min(p.weeks.length - 1, hi0)
+          p.weekRanges = (p.weekRanges || []).filter(r => hi < r.from || lo > r.to)
+          p.weekRanges.push({ from: lo, to: hi })
+          p.weekRanges.sort((a, b) => a.from - b.from)
+          propagateWeekRange(p, lo)
+          return { userProtocol: p }
+        })
+        scheduleSyncSection('userProtocol', get)
+      },
+
+      // Desagrupa — cada semana do range vira independente a partir de agora
+      // (mantém o conteúdo atual, só para de propagar futuras edições).
+      removeWeekRange: (from) => {
+        set(state => {
+          const p = JSON.parse(JSON.stringify(state.userProtocol))
+          p.weekRanges = (p.weekRanges || []).filter(r => r.from !== from)
+          return { userProtocol: p }
+        })
+        scheduleSyncSection('userProtocol', get)
+      },
+
       setDayRest: (weekIdx, dayIdx, isRest) => {
         set(state => {
           const p = JSON.parse(JSON.stringify(state.userProtocol))
           p.weeks[weekIdx].days[dayIdx].isRest = isRest
+          propagateWeekRange(p, weekIdx)
           return { userProtocol: p }
         })
         scheduleSyncSection('userProtocol', get)
@@ -599,6 +653,7 @@ export const useStore = create(
         set(state => {
           const p = JSON.parse(JSON.stringify(state.userProtocol))
           p.weeks[weekIdx].days[dayIdx].restSeconds = seconds
+          propagateWeekRange(p, weekIdx)
           return { userProtocol: p }
         })
         scheduleSyncSection('userProtocol', get)
@@ -611,6 +666,7 @@ export const useStore = create(
         set(state => {
           const p = JSON.parse(JSON.stringify(state.userProtocol))
           p.weeks[weekIdx].days[dayIdx].prepRestSeconds = seconds
+          propagateWeekRange(p, weekIdx)
           return { userProtocol: p }
         })
         scheduleSyncSection('userProtocol', get)
@@ -620,6 +676,7 @@ export const useStore = create(
         set(state => {
           const p = JSON.parse(JSON.stringify(state.userProtocol))
           p.weeks[weekIdx].days[dayIdx].exercises.push({ id: genId(), sets: [], ...exercise })
+          propagateWeekRange(p, weekIdx)
           return { userProtocol: p }
         })
         scheduleSyncSection('userProtocol', get)
@@ -630,6 +687,7 @@ export const useStore = create(
           const p = JSON.parse(JSON.stringify(state.userProtocol))
           const day = p.weeks[weekIdx].days[dayIdx]
           day.exercises = day.exercises.map(e => e.id === exId ? { ...e, ...updates } : e)
+          propagateWeekRange(p, weekIdx)
           return { userProtocol: p }
         })
         scheduleSyncSection('userProtocol', get)
@@ -688,6 +746,7 @@ export const useStore = create(
           const p = JSON.parse(JSON.stringify(state.userProtocol))
           const day = p.weeks[weekIdx].days[dayIdx]
           day.exercises = day.exercises.filter(e => e.id !== exId)
+          propagateWeekRange(p, weekIdx)
           return { userProtocol: p }
         })
         scheduleSyncSection('userProtocol', get)
@@ -702,6 +761,7 @@ export const useStore = create(
               ? { ...e, sets: [...e.sets, { id: genId(), ...setDef }] }
               : e
           )
+          propagateWeekRange(p, weekIdx)
           return { userProtocol: p }
         })
         scheduleSyncSection('userProtocol', get)
@@ -716,6 +776,7 @@ export const useStore = create(
               ? { ...e, sets: e.sets.map(s => s.id === setId ? { ...s, ...updates } : s) }
               : e
           )
+          propagateWeekRange(p, weekIdx)
           return { userProtocol: p }
         })
         scheduleSyncSection('userProtocol', get)
@@ -730,6 +791,7 @@ export const useStore = create(
               ? { ...e, sets: e.sets.filter(s => s.id !== setId) }
               : e
           )
+          propagateWeekRange(p, weekIdx)
           return { userProtocol: p }
         })
         scheduleSyncSection('userProtocol', get)
@@ -739,6 +801,7 @@ export const useStore = create(
         set(state => {
           const p = JSON.parse(JSON.stringify(state.userProtocol))
           p.weeks[weekIdx].days[dayIdx].exercises = exercises
+          propagateWeekRange(p, weekIdx)
           return { userProtocol: p }
         })
         scheduleSyncSection('userProtocol', get)
@@ -751,6 +814,7 @@ export const useStore = create(
           day.exercises = day.exercises.map(e =>
             e.id === exId ? { ...e, sets } : e
           )
+          propagateWeekRange(p, weekIdx)
           return { userProtocol: p }
         })
         scheduleSyncSection('userProtocol', get)
@@ -958,6 +1022,12 @@ export const useStore = create(
         // de quem já usava o app antes desta feature).
         if (state?.userProtocol && state.userProtocol.totalWeeks == null) {
           state.userProtocol.totalWeeks = state.userProtocol.weeks?.length || DEFAULT_TOTAL_WEEKS
+        }
+        // Migração: protocolo salvo antes da repetição de semana por range não tem
+        // weekRanges — "modo sem ranges" (cada semana é ela mesma), zero mudança de
+        // comportamento pra quem já tinha protocolo.
+        if (state?.userProtocol && state.userProtocol.weekRanges == null) {
+          state.userProtocol.weekRanges = []
         }
         if (state?.userProtocol && state.currentWeek >= state.userProtocol.totalWeeks) {
           state.currentWeek = Math.max(0, state.userProtocol.totalWeeks - 1)

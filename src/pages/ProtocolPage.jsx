@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LuPlus, LuTrash2, LuChevronDown, LuChevronUp, LuBed,
   LuDumbbell, LuClock, LuCheck, LuGripVertical, LuX, LuBookmark, LuSearch,
-  LuDownload, LuUpload, LuPencil, LuImage,
+  LuDownload, LuUpload, LuPencil, LuImage, LuLink, LuUnlink,
 } from 'react-icons/lu'
 import {
   DndContext, PointerSensor, TouchSensor, useSensor, useSensors,
@@ -16,6 +16,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useStore } from '../hooks/useStore'
 import {
   DAY_NAMES, MUSCLE_GROUP_LIST, SET_TYPES, SET_TYPE_DESCRIPTIONS, GER_CONFIG, getPrepRestSeconds,
+  findWeekRange,
 } from '../data/protocol'
 import { downloadTemplateCsv, parseProtocolCsv, downloadProtocolCsv } from '../utils/protocolCsv'
 import { exerciseSource } from '../lib/exerciseSource'
@@ -1382,6 +1383,9 @@ export default function ProtocolPage() {
   const userProtocol      = useStore(s => s.userProtocol)
   const setUserProtocol   = useStore(s => s.setUserProtocol)
   const addSavedExercise  = useStore(s => s.addSavedExercise)
+  const setWeekRange      = useStore(s => s.setWeekRange)
+  const removeWeekRange   = useStore(s => s.removeWeekRange)
+  const [groupEndWeek, setGroupEndWeek] = useState(null)
 
   const handleCsvUpload = (e) => {
     const file = e.target.files?.[0]
@@ -1458,25 +1462,41 @@ export default function ProtocolPage() {
         </div>
 
         <div className="flex gap-1 overflow-x-auto scrollbar-none mb-2">
-          {userProtocol.weeks.map((w, i) => {
-            const hasContent = w.days.some(d => !d.isRest && d.exercises.length > 0)
-            return (
-              <button
-                key={i}
-                onClick={() => { setWeekIdx(i); setDayIdx(0) }}
-                className={`flex-shrink-0 px-3 py-1.5 font-display text-[13px] tracking-wider border transition-all relative ${
-                  i === weekIdx
-                    ? 'bg-neon text-bg border-neon'
-                    : 'bg-s2 border-border2 text-muted hover:text-ink'
-                }`}
-              >
-                {weekLabel(i)}
-                {hasContent && i !== weekIdx && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-neon/60 rounded-full"/>
-                )}
-              </button>
-            )
-          })}
+          {(() => {
+            const buttons = []
+            for (let i = 0; i < userProtocol.weeks.length; i++) {
+              const range = findWeekRange(userProtocol.weekRanges, i)
+              // Membro do range que não é o "from" já foi desenhado junto — pula.
+              if (range && i !== range.from) continue
+
+              const isGrouped = !!range
+              const label = isGrouped ? `${weekLabel(range.from)}-${weekLabel(range.to)}` : weekLabel(i)
+              const isActive = isGrouped ? weekIdx >= range.from && weekIdx <= range.to : i === weekIdx
+              const w = userProtocol.weeks[i]
+              const hasContent = isGrouped
+                ? userProtocol.weeks.slice(range.from, range.to + 1).some(wk => wk.days.some(d => !d.isRest && d.exercises.length > 0))
+                : w.days.some(d => !d.isRest && d.exercises.length > 0)
+
+              buttons.push(
+                <button
+                  key={i}
+                  onClick={() => { setWeekIdx(i); setDayIdx(0) }}
+                  className={`flex-shrink-0 px-3 py-1.5 font-display text-[13px] tracking-wider border transition-all relative flex items-center gap-1 ${
+                    isActive
+                      ? 'bg-neon text-bg border-neon'
+                      : 'bg-s2 border-border2 text-muted hover:text-ink'
+                  }`}
+                >
+                  {isGrouped && <LuLink size={11} />}
+                  {label}
+                  {hasContent && !isActive && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-neon/60 rounded-full"/>
+                  )}
+                </button>
+              )
+            }
+            return buttons
+          })()}
         </div>
 
         {/* Day selector */}
@@ -1529,6 +1549,54 @@ export default function ProtocolPage() {
           </span>
         </div>
       </div>
+
+      {/* Repetição de semana por range (Bloco 2) */}
+      {(() => {
+        const currentRange = findWeekRange(userProtocol.weekRanges, weekIdx)
+        if (currentRange) {
+          return (
+            <div className="px-3 py-2 border-b border-border1 bg-s1 flex items-center gap-2 flex-wrap">
+              <LuLink size={12} className="text-neon flex-shrink-0"/>
+              <span className="font-mono text-[10px] text-muted tracking-wider">
+                Compartilhada com semanas {weekLabel(currentRange.from)}–{weekLabel(currentRange.to)} — editar aqui reflete em todas.
+              </span>
+              <button
+                onClick={() => removeWeekRange(currentRange.from)}
+                className="ml-auto flex-shrink-0 flex items-center gap-1 px-2 py-1 border border-border2 text-muted hover:text-red-400 hover:border-red-400/40 font-mono text-[10px] tracking-wider transition-colors"
+              >
+                <LuUnlink size={11}/> DESAGRUPAR
+              </button>
+            </div>
+          )
+        }
+        if (weekIdx >= userProtocol.weeks.length - 1) return null
+        return (
+          <div className="px-3 py-2 border-b border-border1 bg-s1 flex items-center gap-2 flex-wrap">
+            <span className="font-mono text-[10px] text-muted tracking-wider">Repetir esta semana até:</span>
+            <select
+              value={groupEndWeek ?? ''}
+              onChange={e => setGroupEndWeek(e.target.value ? parseInt(e.target.value) : null)}
+              className="bg-s2 border border-border2 px-2 py-1 font-mono text-[10px] text-ink outline-none focus:border-neon"
+            >
+              <option value="">semana...</option>
+              {Array.from({ length: userProtocol.weeks.length }, (_, i) => i)
+                .filter(i => i > weekIdx)
+                .map(i => <option key={i} value={i}>{weekLabel(i)}</option>)}
+            </select>
+            <button
+              onClick={() => {
+                if (groupEndWeek == null) return
+                setWeekRange(weekIdx, groupEndWeek)
+                setGroupEndWeek(null)
+              }}
+              disabled={groupEndWeek == null}
+              className="flex items-center gap-1 px-2 py-1 border border-neon/40 text-neon font-mono text-[10px] tracking-wider hover:bg-neon/5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <LuLink size={11}/> AGRUPAR
+            </button>
+          </div>
+        )
+      })()}
 
       <DayEditor key={`${weekIdx}-${dayIdx}`} weekIdx={weekIdx} dayIdx={dayIdx} />
     </div>
