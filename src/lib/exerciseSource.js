@@ -150,3 +150,19 @@ export const exerciseSource = {
     return rowToItem(data)
   },
 }
+
+// Sobe um GIF pro bucket 'exercises' (Storage) e devolve a URL pública. Só passa de
+// verdade logado como admin — RLS em storage.objects bloqueia o resto (ver migration
+// 20260714000000_create_exercises_storage.sql: precisa bater bucket_id E role admin).
+// GIF fica cru (fundo branco, line-art); o filtro neon roda em runtime na exibição
+// (ExerciseGif.jsx), nunca é aplicado aqui no upload.
+export async function uploadExerciseGif(id, file) {
+  const path = `${id}.gif`
+  const { error } = await supabase.storage.from('exercises').upload(path, file, {
+    contentType: 'image/gif',
+    upsert: true,
+  })
+  if (error) throw error
+  const { data } = supabase.storage.from('exercises').getPublicUrl(path)
+  return data.publicUrl
+}
