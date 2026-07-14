@@ -140,10 +140,10 @@ function ViewExerciseButton({ libraryId }) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex-shrink-0 p-1 text-muted/60 hover:text-neon transition-colors"
-        title="Ver exercício"
+        className="flex-shrink-0 flex items-center gap-1 px-2 py-1 border border-neon/50 text-neon font-mono text-[9px] tracking-wider hover:bg-neon/10 transition-colors"
+        title="Ver execução"
       >
-        <LuImage size={15} />
+        <LuImage size={12} /> VER EXECUÇÃO
       </button>
       {open && <ExerciseDetailModal id={libraryId} onClose={() => setOpen(false)} />}
     </>
