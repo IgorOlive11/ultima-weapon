@@ -127,7 +127,9 @@ function scheduleSyncSection(section, get) {
 
 // Fire-and-forget: pede pro backend agendar um push pro fim do descanso (best-effort,
 // ver limitação documentada em supabase/functions/schedule-rest-push). Só dispara se o
-// usuário ligou o toggle de notificações e já tem uma subscription salva.
+// usuário ligou o toggle de notificações e já tem uma subscription salva. Cada chamada
+// (start ou +15s/-15s) sobrescreve o agendamento anterior no servidor — o antigo se
+// auto-cancela sozinho (ver activePushId na função).
 async function scheduleRestPush(seconds, get) {
   const { pushNotificationsEnabled, pushSubscription } = get()
   if (!pushNotificationsEnabled || !pushSubscription?.endpoint) return
@@ -145,6 +147,28 @@ async function scheduleRestPush(seconds, get) {
     })
   } catch (err) {
     console.error('[push] scheduleRestPush falhou:', err)
+  }
+}
+
+// Cancela o push agendado (pular a série ou parar o descanso manualmente) — sem isso
+// a notificação dispararia mais tarde avisando um descanso que o usuário já encerrou.
+async function cancelRestPush(get) {
+  const { pushNotificationsEnabled, pushSubscription } = get()
+  if (!pushNotificationsEnabled || !pushSubscription?.endpoint) return
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) return
+    await fetch(`${supabase.supabaseUrl}/functions/v1/schedule-rest-push`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ cancel: true }),
+    })
+  } catch (err) {
+    console.error('[push] cancelRestPush falhou:', err)
   }
 }
 
@@ -394,6 +418,7 @@ export const useStore = create(
       stopRestTimer: () => {
         timerManager.clear()
         set(state => ({ restTimer: { ...state.restTimer, running: false } }))
+        cancelRestPush(get) // cobre o botão "pular" e o "X" de fechar — os dois chamam isso
       },
 
       resetRestTimer: (seconds) => {
@@ -413,6 +438,7 @@ export const useStore = create(
         timerManager.clear()
         if (next <= 0) {
           set(state => ({ restTimer: { ...state.restTimer, running: false, seconds: 0, endsAt: 0 } }))
+          cancelRestPush(get) // -15s zerou o descanso — não deixa o push antigo disparar depois
           return
         }
         const endsAt = Date.now() + next * 1000

@@ -17,9 +17,17 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-// Agenda um push pro fim do descanso. Chamado pelo cliente ao iniciar o rest timer
-// (useStore.js startRestTimer), só quando o usuário ligou o toggle de notificações e
-// já tem uma subscription salva.
+// Agenda um push pro fim do descanso. Chamado pelo cliente ao iniciar/ajustar o rest
+// timer (useStore.js startRestTimer/adjustRestTimer), só quando o usuário ligou o
+// toggle de notificações e já tem uma subscription salva. Também aceita
+// { cancel: true } — chamado ao pular ou parar o descanso (stopRestTimer) — pra não
+// deixar uma notificação antiga disparar depois que o usuário já seguiu em frente.
+//
+// Sincronização com +15s/-15s/pular: cada agendamento novo grava um `activePushId`
+// (gerado aqui, no servidor) dentro do próprio registro de pushSubscription em
+// user_data. Antes de mandar o push de verdade, o worker em background relê esse
+// registro e só envia se o id ainda bater — se o usuário ajustou o tempo (novo id
+// sobrescreve) ou cancelou (id vira null), o envio antigo se auto-cancela.
 //
 // LIMITAÇÃO CONHECIDA (documentar, não esconder): EdgeRuntime.waitUntil mantém a
 // function rodando em background depois de responder o HTTP, mas Supabase Edge
@@ -41,8 +49,7 @@ Deno.serve(async (req) => {
   const { data: { user }, error: authErr } = await userClient.auth.getUser()
   if (authErr || !user) return json({ error: 'Unauthorized' }, 401)
 
-  const { seconds, title, body } = await req.json()
-  const delaySec = Math.max(1, Math.min(600, Number(seconds) || 0)) // clamp de segurança, máx 10min
+  const { seconds, title, body, cancel } = await req.json()
 
   const { data: row } = await adminClient
     .from('user_data')
@@ -54,9 +61,35 @@ Deno.serve(async (req) => {
   const subscription = row?.data
   if (!subscription?.endpoint) return json({ error: 'Sem subscription de push salva' }, 400)
 
+  if (cancel) {
+    await adminClient.from('user_data').upsert(
+      { user_id: user.id, section: 'pushSubscription', data: { ...subscription, activePushId: null }, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id,section' }
+    )
+    return json({ ok: true, cancelled: true })
+  }
+
+  const delaySec = Math.max(1, Math.min(600, Number(seconds) || 0)) // clamp de segurança, máx 10min
+  const pushId = crypto.randomUUID()
+
+  await adminClient.from('user_data').upsert(
+    { user_id: user.id, section: 'pushSubscription', data: { ...subscription, activePushId: pushId }, updated_at: new Date().toISOString() },
+    { onConflict: 'user_id,section' }
+  )
+
   const sendAfterDelay = async () => {
     await new Promise(resolve => setTimeout(resolve, delaySec * 1000))
     try {
+      const { data: freshRow } = await adminClient
+        .from('user_data')
+        .select('data')
+        .eq('user_id', user.id)
+        .eq('section', 'pushSubscription')
+        .single()
+      // Superado por um novo agendamento (+15s/-15s reiniciou) ou cancelado
+      // (pular/parar) — não manda um push que já não faz sentido.
+      if (freshRow?.data?.activePushId !== pushId) return
+
       await webpush.sendNotification(subscription, JSON.stringify({
         title: title || 'Descanso finalizado',
         body: body || 'Hora da próxima série 💪',
@@ -69,7 +102,7 @@ Deno.serve(async (req) => {
   // @ts-ignore — global do runtime Deno Deploy / Supabase Edge Functions
   EdgeRuntime.waitUntil(sendAfterDelay())
 
-  return json({ ok: true, scheduledInSec: delaySec })
+  return json({ ok: true, scheduledInSec: delaySec, pushId })
 })
 
 function json(body: unknown, status = 200) {
