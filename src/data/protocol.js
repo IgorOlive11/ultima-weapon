@@ -55,17 +55,29 @@ const PREP_RAMPS = {
   0: [],
 }
 
-// Default protocol template for 8 weeks × 7 days
-export function defaultUserProtocol() {
+// Total de semanas default — protocolos antigos (sem totalWeeks salvo) assumem este
+// valor (ver migração em useStore.js onRehydrateStorage). Configurável em Configurações.
+export const DEFAULT_TOTAL_WEEKS = 8
+
+function defaultDays() {
+  return Array(7).fill(null).map(() => ({
+    isRest: false,
+    restSeconds: 120,
+    prepRestSeconds: 40,
+    exercises: [],
+  }))
+}
+
+// Semana vazia isolada — usada ao crescer totalWeeks (setTotalWeeks em useStore.js).
+export function emptyWeek() {
+  return { days: defaultDays() }
+}
+
+// Default protocol template: totalWeeks semanas × 7 dias
+export function defaultUserProtocol(totalWeeks = DEFAULT_TOTAL_WEEKS) {
   return {
-    weeks: Array(8).fill(null).map(() => ({
-      days: Array(7).fill(null).map(() => ({
-        isRest: false,
-        restSeconds: 120,
-        prepRestSeconds: 40,
-        exercises: [],
-      })),
-    })),
+    totalWeeks,
+    weeks: Array(totalWeeks).fill(null).map(() => ({ days: defaultDays() })),
   }
 }
 

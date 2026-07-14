@@ -134,7 +134,16 @@ export function parseProtocolCsv(text) {
     throw new Error(`Colunas obrigatórias ausentes: ${missingCols.join(', ')}. Use o template.`)
   }
 
-  const protocol = defaultUserProtocol()
+  // Total de semanas vem do próprio CSV (maior "semana" usada) — retrocompatível com
+  // CSV antigo de 8 semanas, e cresce o protocolo se o CSV usar mais que isso.
+  let maxSemana = 1
+  for (let i = 1; i < lines.length; i++) {
+    const cells = lines[i].split(',')
+    const s = parseInt((cells[col('semana')] ?? '').trim())
+    if (!isNaN(s) && s > maxSemana) maxSemana = s
+  }
+  const totalWeeks = Math.max(1, Math.min(52, maxSemana))
+  const protocol = defaultUserProtocol(totalWeeks)
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim()
@@ -145,8 +154,8 @@ export function parseProtocolCsv(text) {
 
     const semana = parseInt(get('semana'))
     const dia    = parseInt(get('dia'))
-    if (isNaN(semana) || semana < 1 || semana > 8) continue
-    if (isNaN(dia)    || dia < 1    || dia > 7)    continue
+    if (isNaN(semana) || semana < 1 || semana > totalWeeks) continue
+    if (isNaN(dia)    || dia < 1    || dia > 7)              continue
 
     const wIdx = semana - 1
     const dIdx = dia - 1

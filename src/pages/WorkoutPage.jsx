@@ -13,7 +13,7 @@ import { round25 } from '../utils/loads'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-const WEEK_LABELS = ['S01','S02','S03','S04','S05','S06','S07','S08']
+const weekLabel = (i) => `S${String(i + 1).padStart(2, '0')}`
 
 function fmtKg(v) {
   if (!v || v <= 0) return '—'
@@ -1910,7 +1910,7 @@ function PreWorkout() {
     <div className="p-3 pb-8">
       {/* Week selector */}
       <div className="flex gap-1 overflow-x-auto pb-1 mb-2 scrollbar-none">
-        {WEEK_LABELS.map((label, i) => (
+        {userProtocol.weeks.map((_, i) => (
           <button
             key={i}
             onClick={() => setWeek(i)}
@@ -1920,7 +1920,7 @@ function PreWorkout() {
                 : 'bg-s2 border-border2 text-muted hover:text-ink'
             }`}
           >
-            {label}
+            {weekLabel(i)}
           </button>
         ))}
       </div>

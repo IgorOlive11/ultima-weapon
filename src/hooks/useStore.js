@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { JS_DAY_TO_IDX, defaultUserProtocol, buildWorkoutSteps } from '../data/protocol'
+import { JS_DAY_TO_IDX, defaultUserProtocol, buildWorkoutSteps, emptyWeek, DEFAULT_TOTAL_WEEKS } from '../data/protocol'
 import { defaultAchievements, checkNewAchievements } from '../data/achievements'
 import { timerManager } from '../utils/timerManager'
 import { playRestDoneAlarm, warmAlarmAudio } from '../utils/alarmSound'
@@ -9,7 +9,10 @@ import { supabase } from '../lib/supabase'
 import { exerciseSource } from '../lib/exerciseSource'
 import { translateQueryToEnglish } from '../lib/exercisePtDictionary'
 
-function detectWeekDay() {
+// totalWeeks: no load inicial do módulo (linha abaixo) o protocolo persistido ainda
+// não foi hidratado, então cai no default — onRehydrateStorage reclampa currentWeek
+// assim que o totalWeeks real (persistido) fica disponível.
+function detectWeekDay(totalWeeks = DEFAULT_TOTAL_WEEKS) {
   const saved = localStorage.getItem('uw_start_date')
   if (!saved) {
     localStorage.setItem('uw_start_date', new Date().toISOString().split('T')[0])
@@ -18,7 +21,7 @@ function detectWeekDay() {
   const start = new Date(saved)
   const now   = new Date()
   const diffDays = Math.floor((now - start) / (1000 * 60 * 60 * 24))
-  const weekIdx  = Math.min(Math.floor(diffDays / 7), 7)
+  const weekIdx  = Math.min(Math.floor(diffDays / 7), totalWeeks - 1)
   const dayIdx   = JS_DAY_TO_IDX[now.getDay()] ?? 0
   return { week: weekIdx, day: dayIdx }
 }
@@ -399,7 +402,7 @@ export const useStore = create(
       startDate: localStorage.getItem('uw_start_date') || new Date().toISOString().split('T')[0],
       setStartDate: (date) => {
         localStorage.setItem('uw_start_date', date)
-        const { week, day } = detectWeekDay()
+        const { week, day } = detectWeekDay(get().userProtocol.totalWeeks)
         set({ startDate: date, currentWeek: week, currentDay: day })
       },
 
@@ -553,11 +556,33 @@ export const useStore = create(
       getExerciseHistory: (name) =>
         get().exerciseHistory[name?.toUpperCase()?.trim()] || null,
 
-      // ── user protocol (8-week custom plan) ───────────────────────────────────
+      // ── user protocol (N-week custom plan, N = userProtocol.totalWeeks) ──────
       userProtocol: defaultUserProtocol(),
 
       setUserProtocol: (protocol) => {
         set({ userProtocol: protocol })
+        scheduleSyncSection('userProtocol', get)
+      },
+
+      // Cresce/encolhe o número de semanas do protocolo. Crescer só acrescenta
+      // semanas vazias no fim; encolher corta as últimas (quem chama a UI decide se
+      // confirma antes, já que isso descarta dados de semana com conteúdo).
+      setTotalWeeks: (n) => {
+        const total = Math.max(1, Math.min(52, Math.round(n) || 1))
+        set(state => {
+          const p = JSON.parse(JSON.stringify(state.userProtocol))
+          const current = p.weeks.length
+          if (total > current) {
+            for (let i = current; i < total; i++) p.weeks.push(emptyWeek())
+          } else if (total < current) {
+            p.weeks = p.weeks.slice(0, total)
+          }
+          p.totalWeeks = total
+          return {
+            userProtocol: p,
+            currentWeek: Math.min(state.currentWeek, total - 1),
+          }
+        })
         scheduleSyncSection('userProtocol', get)
       },
 
@@ -928,6 +953,15 @@ export const useStore = create(
       onRehydrateStorage: () => (state) => {
         if (state && !state.userProfile)  state.userProfile  = defaultUserProfile()
         if (state && !state.achievements) state.achievements = defaultAchievements()
+        // Migração: protocolo salvo antes do total de semanas virar configurável não
+        // tem totalWeeks — assume o tamanho real do array já persistido (8, no caso
+        // de quem já usava o app antes desta feature).
+        if (state?.userProtocol && state.userProtocol.totalWeeks == null) {
+          state.userProtocol.totalWeeks = state.userProtocol.weeks?.length || DEFAULT_TOTAL_WEEKS
+        }
+        if (state?.userProtocol && state.currentWeek >= state.userProtocol.totalWeeks) {
+          state.currentWeek = Math.max(0, state.userProtocol.totalWeeks - 1)
+        }
       },
     }
   )

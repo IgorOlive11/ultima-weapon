@@ -21,7 +21,7 @@ function SlideWelcome() {
       </p>
       <div className="w-full space-y-2 mt-2">
         {[
-          ['01', 'Monte um protocolo de 8 semanas'],
+          ['01', 'Monte seu protocolo de treino'],
           ['02', 'Registre cada série com carga e reps'],
           ['03', 'Progrida sistematicamente baseado no GER'],
         ].map(([n, txt]) => (
@@ -86,7 +86,7 @@ function SlideReady() {
       <DoomFace face="ger10" size={96} />
       <div className="font-display text-2xl text-neon tracking-[0.2em]">BORA TREINAR</div>
       <p className="font-mono text-[11px] text-muted leading-relaxed tracking-wider max-w-xs">
-        Vá em <span className="text-ink">Protocolo</span> para montar seu plano de 8 semanas,
+        Vá em <span className="text-ink">Protocolo</span> para montar seu plano de treino,
         depois volte para <span className="text-ink">Treino</span> e execute.
       </p>
       <p className="font-mono text-[9px] text-muted/60 tracking-wider">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { LuSave, LuCircleCheck, LuLock, LuBug, LuBellRing, LuSparkles, LuLink } from 'react-icons/lu'
+import { LuSave, LuCircleCheck, LuLock, LuBug, LuBellRing, LuSparkles, LuLink, LuTriangleAlert } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
 import { DAY_NAMES } from '../data/protocol'
 import { ACHIEVEMENTS } from '../data/achievements'
@@ -33,6 +33,29 @@ export default function SettingsPage() {
 
   const userProtocol = useStore((s) => s.userProtocol)
   const currentDay   = useStore((s) => s.currentDay)
+  const setTotalWeeks = useStore((s) => s.setTotalWeeks)
+
+  const [totalWeeksInput, setTotalWeeksInput] = useState(String(userProtocol.totalWeeks ?? userProtocol.weeks.length))
+  const [totalWeeksSaved, setTotalWeeksSaved] = useState(false)
+  const [confirmShrink, setConfirmShrink]     = useState(false)
+
+  const shrinkLosesData = (n) => {
+    if (n >= userProtocol.weeks.length) return false
+    return userProtocol.weeks.slice(n).some(w => w.days.some(d => !d.isRest && d.exercises.length > 0))
+  }
+
+  const saveTotalWeeks = () => {
+    const n = Math.max(1, Math.min(52, parseInt(totalWeeksInput) || 1))
+    if (shrinkLosesData(n) && !confirmShrink) {
+      setConfirmShrink(true)
+      return
+    }
+    setTotalWeeks(n)
+    setTotalWeeksInput(String(n))
+    setConfirmShrink(false)
+    setTotalWeeksSaved(true)
+    setTimeout(() => setTotalWeeksSaved(false), 2000)
+  }
 
   const authUser                      = useStore((s) => s.authUser)
   const adminFeedbackButtonEnabled    = useStore((s) => s.adminFeedbackButtonEnabled)
@@ -105,7 +128,7 @@ export default function SettingsPage() {
         <div className="space-y-2">
           {[
             ['Semana atual', `S${String(currentWeek + 1).padStart(2, '0')} · ${DAY_NAMES[currentDay]}`],
-            ['Semanas configuradas', `${filledWeeks} de 8`],
+            ['Semanas configuradas', `${filledWeeks} de ${userProtocol.weeks.length}`],
             ['Data de início', new Date(startDate + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })],
           ].map(([label, val]) => (
             <div key={label} className="flex items-center justify-between py-1.5 border-b border-border1 last:border-0">
@@ -132,6 +155,41 @@ export default function SettingsPage() {
           />
         </div>
         <SaveBtn saved={dateSaved} onClick={saveDate} />
+      </div>
+
+      {/* Total weeks */}
+      <div className="bg-s1 border border-border1 p-4">
+        <div className="font-display text-sm text-neon tracking-[0.2em] mb-1 pb-2 border-b border-border1">
+          TOTAL DE SEMANAS
+        </div>
+        <p className="font-mono text-[10px] text-muted tracking-wider leading-relaxed mt-3 mb-3">
+          Quantas semanas o protocolo tem, no total. Aumentar acrescenta semanas vazias
+          no fim; diminuir remove as últimas.
+        </p>
+        <div className="mb-3">
+          <input
+            type="number" inputMode="numeric" min={1} max={52}
+            value={totalWeeksInput}
+            onChange={e => { setTotalWeeksInput(e.target.value); setConfirmShrink(false) }}
+            className={inputCls()}
+          />
+        </div>
+        {confirmShrink && (
+          <div className="flex items-center gap-2 mb-3 px-3 py-2 border border-red-500/40 bg-red-500/5 font-mono text-[10px] text-red-400 leading-relaxed">
+            <LuTriangleAlert size={14} className="flex-shrink-0"/>
+            Semana {totalWeeksInput} pra frente tem treino cadastrado — diminuir apaga esses dados. Confirma?
+          </div>
+        )}
+        <button
+          onClick={saveTotalWeeks}
+          className={`btn-primary flex items-center justify-center gap-2 ${totalWeeksSaved ? 'saved' : ''}`}
+        >
+          {totalWeeksSaved
+            ? <><LuCircleCheck size={16} />SALVO!</>
+            : confirmShrink
+              ? <><LuTriangleAlert size={16} />CONFIRMAR E APAGAR</>
+              : <><LuSave size={16} />SALVAR</>}
+        </button>
       </div>
 
       {/* Protocol overview */}

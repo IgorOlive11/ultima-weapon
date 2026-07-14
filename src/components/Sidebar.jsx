@@ -29,7 +29,7 @@ export default function Sidebar() {
   const week = userProtocol.weeks[currentWeek]
   const day  = week?.days[currentDay]
 
-  const totalSlots = 8 * 7
+  const totalSlots = userProtocol.weeks.length * 7
   const filledSlots = userProtocol.weeks.reduce(
     (acc, w) => acc + w.days.filter(d => !d.isRest && d.exercises.length > 0).length,
     0
@@ -79,7 +79,7 @@ export default function Sidebar() {
             </span>
           </div>
           <div className="font-body text-[11px] text-muted2 mt-1 font-semibold tracking-wide">
-            {['SEG','TER','QUA','QUI','SEX','SAB','DOM'][currentDay]} · Semana {currentWeek + 1} de 8
+            {['SEG','TER','QUA','QUI','SEX','SAB','DOM'][currentDay]} · Semana {currentWeek + 1} de {userProtocol.weeks.length}
           </div>
           <div className="mt-3 h-[2px] bg-border1">
             <div className="h-full transition-all duration-500 bg-neon" style={{ width: `${pct}%` }}/>

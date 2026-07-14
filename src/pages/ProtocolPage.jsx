@@ -25,7 +25,7 @@ import ExerciseDetailModal from '../components/ExerciseDetailModal'
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
-const WEEK_LABELS = ['S01','S02','S03','S04','S05','S06','S07','S08']
+const weekLabel = (i) => `S${String(i + 1).padStart(2, '0')}`
 
 const SET_TYPE_GER_DEFAULTS = {
   NORMAL:       { ger: 10, repRange: '8-12' },
@@ -1458,8 +1458,7 @@ export default function ProtocolPage() {
         </div>
 
         <div className="flex gap-1 overflow-x-auto scrollbar-none mb-2">
-          {WEEK_LABELS.map((label, i) => {
-            const w = userProtocol.weeks[i]
+          {userProtocol.weeks.map((w, i) => {
             const hasContent = w.days.some(d => !d.isRest && d.exercises.length > 0)
             return (
               <button
@@ -1471,7 +1470,7 @@ export default function ProtocolPage() {
                     : 'bg-s2 border-border2 text-muted hover:text-ink'
                 }`}
               >
-                {label}
+                {weekLabel(i)}
                 {hasContent && i !== weekIdx && (
                   <span className="absolute -top-1 -right-1 w-2 h-2 bg-neon/60 rounded-full"/>
                 )}
