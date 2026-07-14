@@ -63,6 +63,26 @@ function defaultUserProfile() {
   }
 }
 
+// Única fonte de verdade das seções que sincronizam com o Supabase (user_data).
+// scheduleSyncSection deriva capturedData daqui; partialize (persist local) usa
+// essa lista + LOCAL_ONLY_PERSISTED_FIELDS abaixo. Seção nova = editar só aqui —
+// antes existia um 2o mapa hardcoded em scheduleSyncSection que precisava ser
+// atualizado na mão junto, e esquecer fazia a seção persistir local mas nunca
+// subir pro servidor, em silêncio (3.2).
+const SYNCABLE_SECTIONS = [
+  'logs', 'userProtocol', 'userProfile', 'exerciseHistory', 'savedExercises',
+  'mealLog', 'microLog', 'achievements', 'workoutSessions', 'pushSubscription',
+]
+
+// Persistem localmente (localStorage) mas nunca sincronizam com o Supabase —
+// preferência/estado de dispositivo, não dado do usuário que precise atravessar
+// dispositivos.
+const LOCAL_ONLY_PERSISTED_FIELDS = [
+  'activeWorkout', 'restTimer', 'tutorialSeen', 'stackNavHintSeen',
+  'neonGifFilterEnabled', 'adminFeedbackButtonEnabled', 'adminFeedbackButtonPos',
+  'pushNotificationsEnabled',
+]
+
 const syncTimers = {}
 
 // Guarda de last-write-wins silencioso (3.1): último updated_at CONHECIDO por
@@ -115,33 +135,26 @@ async function syncStudentSection(targetUserId, section, capturedData) {
 }
 
 function scheduleSyncSection(section, get) {
+  // Guarda explícita contra seção desconhecida (3.2) — antes, esquecer de
+  // registrar uma seção nova no mapa hardcoded fazia isto abortar em silêncio
+  // (capturedData undefined), sincronizando local mas nunca subindo pro servidor.
+  if (!SYNCABLE_SECTIONS.includes(section)) {
+    logWarn('[sync] seção desconhecida (fora de SYNCABLE_SECTIONS) — ignorando:', section)
+    return
+  }
+
   if (syncTimers[section]) clearTimeout(syncTimers[section])
 
   // Captura tudo AGORA — o estado pode ser sobrescrito antes do timer disparar
   const state0        = get()
   const targetUserId  = state0.viewingUserId || state0.authUser?.id
   const isStudentSave = !!state0.viewingUserId
-  const capturedData  = {
-    logs:            state0.logs,
-    userProtocol:    state0.userProtocol,
-    userProfile:     state0.userProfile,
-    exerciseHistory: state0.exerciseHistory,
-    savedExercises:  state0.savedExercises,
-    mealLog:         state0.mealLog,
-    microLog:        state0.microLog,
-    achievements:    state0.achievements,
-    // adicionados depois — precisam estar aqui, senão scheduleSyncSection aborta em
-    // silêncio (capturedData fica undefined) mesmo persistindo local certinho
-    workoutSessions: state0.workoutSessions,
-    pushSubscription: state0.pushSubscription,
-  }[section]
+  const capturedData  = state0[section]
 
   logDebug('[sync] scheduleSyncSection', section, '| viewing=', state0.viewingUserId, '| target=', targetUserId)
 
   syncTimers[section] = setTimeout(async () => {
     if (!targetUserId || capturedData === undefined) {
-      // Fica sempre visível (não é ruído de fluxo) — é exatamente a classe de bug
-      // "seção nova esquecida no mapa acima" já vista antes neste arquivo.
       logWarn('[sync] abortado — targetUserId=', targetUserId, 'capturedData=', capturedData === undefined ? 'undefined' : 'ok')
       return
     }
@@ -1062,27 +1075,15 @@ export const useStore = create(
     }),
     {
       name: 'uw-store-v3',
-      partialize: (state) => ({
-        logs:            state.logs,
-        userProfile:     state.userProfile,
-        microLog:        state.microLog,
-        mealLog:         state.mealLog,
-        userProtocol:    state.userProtocol,
-        activeWorkout:   state.activeWorkout,
-        workoutSessions: state.workoutSessions,
-        restTimer:       state.restTimer,
-        exerciseHistory: state.exerciseHistory,
-        savedExercises:  state.savedExercises,
-        achievements:    state.achievements,
-        tutorialSeen:    state.tutorialSeen,
-        stackNavHintSeen: state.stackNavHintSeen,
-        neonGifFilterEnabled: state.neonGifFilterEnabled,
-        adminFeedbackButtonEnabled: state.adminFeedbackButtonEnabled,
-        adminFeedbackButtonPos:     state.adminFeedbackButtonPos,
-        pushNotificationsEnabled:   state.pushNotificationsEnabled,
-        pushSubscription:           state.pushSubscription,
+      // Deriva de SYNCABLE_SECTIONS + LOCAL_ONLY_PERSISTED_FIELDS (3.2) — mesma
+      // lista que scheduleSyncSection usa pro que sobe pro servidor, mais os
+      // campos que só persistem local. Seção nova: editar só as listas lá em cima.
+      partialize: (state) => {
+        const out = {}
+        for (const key of [...SYNCABLE_SECTIONS, ...LOCAL_ONLY_PERSISTED_FIELDS]) out[key] = state[key]
+        return out
         // _viewerSnapshot e pendingAchievements nunca persistem — só existem em memória
-      }),
+      },
       onRehydrateStorage: () => (state) => {
         if (state && !state.userProfile)  state.userProfile  = defaultUserProfile()
         if (state && !state.achievements) state.achievements = defaultAchievements()
