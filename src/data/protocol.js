@@ -68,9 +68,21 @@ function defaultDays() {
   }))
 }
 
+// Tipo de semana: SÓ RÓTULO — nenhuma lógica de volume/carga/faixa lê isso hoje.
+// Fica pronto pra uma feature futura consumir; por enquanto é só referência visual
+// na edição do protocolo e no cabeçalho do treino.
+export const DEFAULT_WEEK_TYPE = 'PROGRESSAO'
+export const WEEK_TYPE_CONFIG = {
+  PROGRESSAO: { label: 'PROGRESSÃO', color: '#39FF14' },
+  BASE:       { label: 'BASE',       color: '#38bdf8' },
+  DELOAD:     { label: 'DELOAD',     color: '#ffaa00' },
+  REVOLUME:   { label: 'REVOLUME',   color: '#ff44ff' },
+}
+export const WEEK_TYPE_LIST = Object.keys(WEEK_TYPE_CONFIG)
+
 // Semana vazia isolada — usada ao crescer totalWeeks (setTotalWeeks em useStore.js).
 export function emptyWeek() {
-  return { days: defaultDays() }
+  return { weekType: DEFAULT_WEEK_TYPE, days: defaultDays() }
 }
 
 // Default protocol template: totalWeeks semanas × 7 dias. weekRanges vazio = "modo
@@ -79,7 +91,7 @@ export function defaultUserProtocol(totalWeeks = DEFAULT_TOTAL_WEEKS) {
   return {
     totalWeeks,
     weekRanges: [],
-    weeks: Array(totalWeeks).fill(null).map(() => ({ days: defaultDays() })),
+    weeks: Array(totalWeeks).fill(null).map(() => ({ weekType: DEFAULT_WEEK_TYPE, days: defaultDays() })),
   }
 }
 

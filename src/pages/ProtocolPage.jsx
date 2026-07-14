@@ -16,7 +16,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useStore } from '../hooks/useStore'
 import {
   DAY_NAMES, MUSCLE_GROUP_LIST, SET_TYPES, SET_TYPE_DESCRIPTIONS, GER_CONFIG, getPrepRestSeconds,
-  findWeekRange,
+  findWeekRange, WEEK_TYPE_CONFIG, WEEK_TYPE_LIST, DEFAULT_WEEK_TYPE,
 } from '../data/protocol'
 import { downloadTemplateCsv, parseProtocolCsv, downloadProtocolCsv } from '../utils/protocolCsv'
 import { exerciseSource } from '../lib/exerciseSource'
@@ -1385,6 +1385,7 @@ export default function ProtocolPage() {
   const addSavedExercise  = useStore(s => s.addSavedExercise)
   const setWeekRange      = useStore(s => s.setWeekRange)
   const removeWeekRange   = useStore(s => s.removeWeekRange)
+  const setWeekType       = useStore(s => s.setWeekType)
   const [groupEndWeek, setGroupEndWeek] = useState(null)
 
   const handleCsvUpload = (e) => {
@@ -1532,7 +1533,7 @@ export default function ProtocolPage() {
       </div>
 
       {/* Week summary bar */}
-      <div className="px-3 py-2 border-b border-border1 flex gap-4 bg-s1">
+      <div className="px-3 py-2 border-b border-border1 flex gap-4 bg-s1 items-center flex-wrap">
         <div>
           <div className="font-mono text-[9px] text-muted tracking-widest">SEMANA {weekIdx+1}</div>
           <div className="font-display text-sm tracking-wider text-ink">{weekStats.activeDays} DIAS ATIVOS</div>
@@ -1540,6 +1541,19 @@ export default function ProtocolPage() {
         <div>
           <div className="font-mono text-[9px] text-muted tracking-widest">EXERCÍCIOS</div>
           <div className="font-display text-sm tracking-wider text-ink">{weekStats.totalExercises} TOTAL</div>
+        </div>
+        <div>
+          <div className="font-mono text-[9px] text-muted tracking-widest">TIPO</div>
+          <select
+            value={userProtocol.weeks[weekIdx].weekType || DEFAULT_WEEK_TYPE}
+            onChange={e => setWeekType(weekIdx, e.target.value)}
+            className="bg-s2 border border-border2 px-1.5 py-0.5 font-display text-xs tracking-wider outline-none focus:border-neon"
+            style={{ color: WEEK_TYPE_CONFIG[userProtocol.weeks[weekIdx].weekType || DEFAULT_WEEK_TYPE].color }}
+          >
+            {WEEK_TYPE_LIST.map(t => (
+              <option key={t} value={t}>{WEEK_TYPE_CONFIG[t].label}</option>
+            ))}
+          </select>
         </div>
         <div className="ml-auto flex items-center">
           <span className={`font-mono text-[10px] px-2 py-0.5 ${

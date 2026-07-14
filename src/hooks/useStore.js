@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { JS_DAY_TO_IDX, defaultUserProtocol, buildWorkoutSteps, emptyWeek, DEFAULT_TOTAL_WEEKS, findWeekRange } from '../data/protocol'
+import { JS_DAY_TO_IDX, defaultUserProtocol, buildWorkoutSteps, emptyWeek, DEFAULT_TOTAL_WEEKS, findWeekRange, DEFAULT_WEEK_TYPE } from '../data/protocol'
 import { defaultAchievements, checkNewAchievements } from '../data/achievements'
 import { timerManager } from '../utils/timerManager'
 import { playRestDoneAlarm, warmAlarmAudio } from '../utils/alarmSound'
@@ -40,10 +40,12 @@ function genId() {
 function propagateWeekRange(protocol, weekIdx) {
   const range = findWeekRange(protocol.weekRanges, weekIdx)
   if (!range) return
-  const template = JSON.parse(JSON.stringify(protocol.weeks[weekIdx].days))
+  const week = protocol.weeks[weekIdx]
+  const template = JSON.parse(JSON.stringify(week.days))
   for (let i = range.from; i <= range.to; i++) {
     if (i === weekIdx) continue
     protocol.weeks[i].days = JSON.parse(JSON.stringify(template))
+    protocol.weeks[i].weekType = week.weekType // rótulo (Bloco 3) também é parte do "template" do grupo
   }
 }
 
@@ -639,6 +641,18 @@ export const useStore = create(
         scheduleSyncSection('userProtocol', get)
       },
 
+      // Só rótulo (PROGRESSAO | BASE | DELOAD | REVOLUME) — nenhuma lógica reage a
+      // isso hoje. Propaga pro resto do range se a semana estiver agrupada.
+      setWeekType: (weekIdx, weekType) => {
+        set(state => {
+          const p = JSON.parse(JSON.stringify(state.userProtocol))
+          p.weeks[weekIdx].weekType = weekType
+          propagateWeekRange(p, weekIdx)
+          return { userProtocol: p }
+        })
+        scheduleSyncSection('userProtocol', get)
+      },
+
       setDayRest: (weekIdx, dayIdx, isRest) => {
         set(state => {
           const p = JSON.parse(JSON.stringify(state.userProtocol))
@@ -1028,6 +1042,13 @@ export const useStore = create(
         // comportamento pra quem já tinha protocolo.
         if (state?.userProtocol && state.userProtocol.weekRanges == null) {
           state.userProtocol.weekRanges = []
+        }
+        // Migração: semana salva antes do tipo (Bloco 3) virar campo assume o
+        // default — é só rótulo, então isso não muda nenhum número/comportamento.
+        if (state?.userProtocol?.weeks) {
+          for (const w of state.userProtocol.weeks) {
+            if (!w.weekType) w.weekType = DEFAULT_WEEK_TYPE
+          }
         }
         if (state?.userProtocol && state.currentWeek >= state.userProtocol.totalWeeks) {
           state.currentWeek = Math.max(0, state.userProtocol.totalWeeks - 1)

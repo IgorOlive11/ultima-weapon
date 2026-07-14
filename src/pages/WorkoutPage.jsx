@@ -5,7 +5,7 @@ import {
   LuFlame, LuDumbbell, LuPlus, LuMinus, LuClock, LuImage,
 } from 'react-icons/lu'
 import { useStore } from '../hooks/useStore'
-import { DAY_NAMES, SET_TYPES, GER_CONFIG, getWeightQuestion, MIN_PLATE_INCREMENT, getPrepRestSeconds } from '../data/protocol'
+import { DAY_NAMES, SET_TYPES, GER_CONFIG, getWeightQuestion, MIN_PLATE_INCREMENT, getPrepRestSeconds, WEEK_TYPE_CONFIG, DEFAULT_WEEK_TYPE } from '../data/protocol'
 import { ACHIEVEMENTS } from '../data/achievements'
 import DoomFace from '../components/DoomFace'
 import ExerciseDetailModal from '../components/ExerciseDetailModal'
@@ -1952,6 +1952,15 @@ function PreWorkout() {
         <div className="font-display text-[13px] tracking-[0.15em] text-neon">
           SEMANA {currentWeek + 1}
         </div>
+        <span
+          className="font-mono text-[9px] tracking-widest px-1.5 py-0.5 border"
+          style={{
+            color: WEEK_TYPE_CONFIG[week.weekType || DEFAULT_WEEK_TYPE].color,
+            borderColor: `${WEEK_TYPE_CONFIG[week.weekType || DEFAULT_WEEK_TYPE].color}55`,
+          }}
+        >
+          {WEEK_TYPE_CONFIG[week.weekType || DEFAULT_WEEK_TYPE].label}
+        </span>
         {!day.isRest && hasExercises && (
           <div className="ml-auto font-mono text-[10px] text-muted">
             {day.exercises.length} exercícios
