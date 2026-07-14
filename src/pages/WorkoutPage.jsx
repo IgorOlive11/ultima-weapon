@@ -1280,7 +1280,6 @@ function ActiveWorkout() {
 
   const REEL_EST = 210 // estimativa só pro primeiro paint, antes da 1ª medição
   const REEL_GAP = 14
-  const REEL_DECAY = 160
 
   if (!activeWorkout) return null
 
@@ -1334,6 +1333,24 @@ function ActiveWorkout() {
       acc += h + REEL_GAP
     }
   }
+
+  // Posição "virtual" do foco, em UNIDADES DE CARD (não px) — 1 unidade sempre
+  // significa "um card de distância", não importa a altura real dele. Sem isso,
+  // opacidade/escala vinham de offsetPx/REEL_DECAY (px fixos), e um card mais alto
+  // (ex. WEIGHT_QUESTION com histórico) ficava opticamente mais perto ou mais longe
+  // que um card baixo — daí a inconsistência (às vezes só dava pra ver 1 card, às
+  // vezes 2). dragY (px) é convertido pra fração de unidade usando o gap real na
+  // direção do arrasto, então o arrasto continua suave e sensível ao dedo.
+  const gapToPrev = viewingStepIdx > 0
+    ? centers[viewingStepIdx] - centers[viewingStepIdx - 1]
+    : REEL_EST + REEL_GAP
+  const gapToNext = viewingStepIdx < steps.length - 1
+    ? centers[viewingStepIdx + 1] - centers[viewingStepIdx]
+    : REEL_EST + REEL_GAP
+  const dragUnits = dragY > 0
+    ? dragY / (gapToPrev || 1)
+    : dragY / (gapToNext || 1)
+  const focusVirtualIdx = viewingStepIdx - dragUnits
 
   // Sync viewingStepIdx to follow currentStepIdx when user was on the current step —
   // via commit() (mesmo caminho do arrasto/scroll), pra ligar animating e sair com a
@@ -1728,7 +1745,7 @@ function ActiveWorkout() {
         >
         {steps.map((s, i) => {
           const offsetPx = (centers[i] - centers[viewingStepIdx]) + dragY
-          const ad = Math.abs(offsetPx) / REEL_DECAY
+          const ad = Math.abs(i - focusVirtualIdx) // distância em unidades de card, não em px
           if (ad > 2.2) return null // fora do alcance visível (opacidade já bateu no piso antes disso)
           const scale    = Math.max(0.84, 1 - ad * 0.12)
           const opacity  = Math.max(0.22, 1 - ad * 0.5)
