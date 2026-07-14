@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LuPlay, LuCheck, LuSwords, LuTriangleAlert,
@@ -1283,6 +1283,8 @@ function ActiveWorkout() {
   const [heights,   setHeights]   = useState([])    // altura real de cada card, medida por índice
 
   const wrapRefs        = useRef([])
+  const roRef           = useRef(null) // ResizeObserver único, criado 1x (ver abaixo)
+  const reelElRef       = useRef(null) // container do trilho — wheel nativo (ver abaixo)
   const prevCurIdxRef   = useRef(0)
   const dragStartYRef   = useRef(null)
   const pointerDownRef  = useRef(false)
@@ -1303,21 +1305,27 @@ function ActiveWorkout() {
     wrapRefs.current = wrapRefs.current.concat(Array(steps.length - wrapRefs.current.length).fill(undefined))
   }
 
-  // mede a altura real de cada card (ref + ResizeObserver) — sem isso o reel não
-  // sabe onde centralizar os vizinhos quando a altura varia por tipo/conteúdo
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  useLayoutEffect(() => {
-    const measure = () => {
+  // Mede a altura real de cada card — sem isso o reel não sabe onde centralizar os
+  // vizinhos quando a altura varia por tipo/conteúdo (ex. nome quebrando linha).
+  //
+  // ResizeObserver ÚNICO, criado 1x e nunca recriado (ver ref callback do card mais
+  // abaixo, que dá observe()/unobserve() a cada mount/unmount de elemento). ANTES este
+  // efeito recriava o observer a cada render (sem array de deps) — se a altura medida
+  // oscilasse entre dois valores de um render pro outro (texto quebrando linha bem na
+  // borda, subpixel de layout, etc.), setHeights disparava de novo a cada render pra
+  // sempre, virando um loop infinito (React error #185 — "Maximum update depth
+  // exceeded" — tela preta ao rolar). O callback do ResizeObserver já dispara uma vez
+  // sozinho ao começar a observar um elemento nem precisa de measure() manual aqui.
+  if (!roRef.current) {
+    roRef.current = new ResizeObserver(() => {
       setHeights(prev => {
         const next = wrapRefs.current.map((el, i) => el ? el.offsetHeight : (prev[i] ?? REEL_EST))
         return next.some((h, i) => h !== prev[i]) ? next : prev
       })
-    }
-    measure()
-    const ro = new ResizeObserver(measure)
-    wrapRefs.current.forEach(el => el && ro.observe(el))
-    return () => ro.disconnect()
-  }) // sem deps: re-mede a cada render (barato — só lê offsetHeight já commitado)
+    })
+  }
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => () => roRef.current?.disconnect(), [])
 
   // Cronômetro geral da sessão — recalcula sempre a partir de startedAt (timestamp
   // durável, sobrevive a refresh), nunca de um contador em memória. Para de tiquetaquear
@@ -1557,6 +1565,22 @@ function ActiveWorkout() {
     else if (wheelAccumRef.current < -40) { commit(-1); wheelAccumRef.current = 0; lockWheel() }
   }
 
+  // React anexa onWheel como listener PASSIVO por padrão — e.preventDefault() dentro
+  // dele é ignorado (com warning no console). Precisa de um listener nativo com
+  // { passive: false } pra travar o scroll da página de verdade enquanto rola o reel.
+  // Anexado 1x (sem depender de handleWheel, que muda de identidade a cada render) —
+  // handleWheelRef sempre aponta pra versão mais recente, então não fica com closure
+  // velha (commit/viewingStepIdx desatualizados).
+  const handleWheelRef = useRef(handleWheel)
+  handleWheelRef.current = handleWheel
+  useEffect(() => {
+    const el = reelElRef.current
+    if (!el) return
+    const listener = (e) => handleWheelRef.current(e)
+    el.addEventListener('wheel', listener, { passive: false })
+    return () => el.removeEventListener('wheel', listener)
+  }, [])
+
   // renderiza o card de um índice qualquer do trilho — só o índice ativo (viewingStepIdx) é interativo;
   // os demais usam o mesmo chrome/dispatcher, travados e com onDone no-op
   const renderRailCard = (i) => {
@@ -1738,11 +1762,11 @@ function ActiveWorkout() {
         </AnimatePresence>
 
         <div
+          ref={reelElRef}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
-          onWheel={handleWheel}
           style={{
             touchAction: 'none',
             // Fade mais suave: só a franja bem na borda (4%) some de vez — antes 12%
@@ -1765,7 +1789,12 @@ function ActiveWorkout() {
           return (
             <div
               key={i}
-              ref={el => { wrapRefs.current[i] = el }}
+              ref={el => {
+                const prevEl = wrapRefs.current[i]
+                if (prevEl && prevEl !== el) roRef.current?.unobserve(prevEl)
+                wrapRefs.current[i] = el
+                if (el) roRef.current?.observe(el)
+              }}
               className={isActive ? '' : 'pointer-events-none select-none'}
               onTransitionEnd={isActive ? () => setAnimating(false) : undefined}
               style={{
