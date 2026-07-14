@@ -3,4 +3,9 @@ node_modules/
 # artefato de dev do service worker (vite-plugin-pwa devOptions.enabled)
 dev-dist/
 
+# nunca versionar env — hoje só tem VITE_SUPABASE_URL/anon key (públicas por design,
+# vão pro bundle de qualquer jeito), mas o dia que entrar um secret aqui isso evita
+# vazamento pro git. Ver .env.example pra referência das chaves esperadas.
+.env
 .env.local
+.env.*.local
