@@ -73,6 +73,7 @@ function AddExerciseModal({ onAdd, onClose }) {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [libraryId, setLibraryId]   = useState(null)
   const [libraryGif, setLibraryGif] = useState(null)
+  const [libraryNamePt, setLibraryNamePt] = useState(null)
   const [showLibDetail, setShowLibDetail] = useState(false)
 
   useEffect(() => {
@@ -112,9 +113,19 @@ function AddExerciseModal({ onAdd, onClose }) {
     setName(ex.name)
     setLibraryId(ex.id)
     setLibraryGif(ex.gifUrl)
+    setLibraryNamePt(ex.namePt || null)
     setSuggestions([])
     setShowSuggestions(false)
+    // Exercício próprio já cadastra músculo alvo/secundário (MUSCLE_GROUP_LIST) —
+    // reaproveita direto e some com os seletores manuais. Exercício antigo (ExerciseDB,
+    // taxonomia em inglês) não bate com MUSCLE_GROUP_LIST — cai pro seletor manual.
+    setMuscle(MUSCLE_GROUP_LIST.includes(ex.targetMuscles?.[0]) ? ex.targetMuscles[0] : MUSCLE_GROUP_LIST[0])
+    setAccessoryMuscle(MUSCLE_GROUP_LIST.includes(ex.secondaryMuscles?.[0]) ? ex.secondaryMuscles[0] : '')
   }
+
+  // Só esconde os seletores manuais quando o vínculo já resolveu um músculo alvo
+  // válido — exercício antigo sem taxonomia compatível continua pedindo manual.
+  const libraryMuscleKnown = !!libraryId && MUSCLE_GROUP_LIST.includes(muscle)
 
   const submit = () => {
     if (!name.trim()) return
@@ -123,6 +134,8 @@ function AddExerciseModal({ onAdd, onClose }) {
       muscle,
       ...(accessoryMuscle ? { accessoryMuscle } : {}),
       ...(libraryId ? { libraryId } : {}),
+      // Apelido PT já vem cadastrado na própria biblioteca — nada pra digitar de novo aqui.
+      ...(libraryId && libraryNamePt ? { namePt: libraryNamePt } : {}),
     }
     if (saveEx) addSavedExercise(ex)
     onAdd(ex)
@@ -285,53 +298,64 @@ function AddExerciseModal({ onAdd, onClose }) {
               </div>
             )}
 
-            <div className="mb-4">
-              <label className="section-label block mb-1">GRUPO MUSCULAR</label>
-              <div className="flex flex-wrap gap-1.5">
-                {MUSCLE_GROUP_LIST.map(m => (
-                  <button
-                    key={m}
-                    onClick={() => setMuscle(m)}
-                    className={`px-2.5 py-1 font-mono text-[11px] tracking-wider border transition-all ${
-                      muscle === m
-                        ? 'bg-neon text-bg border-neon'
-                        : 'bg-s2 border-border2 text-muted hover:text-ink'
-                    }`}
-                  >
-                    {m}
-                  </button>
-                ))}
+            {libraryMuscleKnown ? (
+              <div className="mb-4 font-mono text-[10px] text-muted tracking-wider bg-s2 border border-border2 px-3 py-2.5 space-y-0.5">
+                <div>MÚSCULO (DA BIBLIOTECA): <span className="text-neon">{muscle}</span>
+                  {accessoryMuscle && <> · ACESSÓRIO: <span className="text-amber-400">{accessoryMuscle}</span></>}
+                </div>
+                {libraryNamePt && <div>APELIDO: <span className="text-ink">{libraryNamePt}</span></div>}
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="mb-4">
+                  <label className="section-label block mb-1">GRUPO MUSCULAR</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {MUSCLE_GROUP_LIST.map(m => (
+                      <button
+                        key={m}
+                        onClick={() => setMuscle(m)}
+                        className={`px-2.5 py-1 font-mono text-[11px] tracking-wider border transition-all ${
+                          muscle === m
+                            ? 'bg-neon text-bg border-neon'
+                            : 'bg-s2 border-border2 text-muted hover:text-ink'
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            <div className="mb-4">
-              <label className="section-label block mb-1">MÚSCULO ACESSÓRIO <span className="text-muted/50">(opcional)</span></label>
-              <div className="font-mono text-[9px] text-muted/60 mb-2 leading-relaxed">
-                Músculo recrutado neste exercício que é principal de outro exercício posterior.<br/>
-                Reduz aquecimentos desse músculo.
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  onClick={() => setAccessoryMuscle('')}
-                  className={`px-2.5 py-1 font-mono text-[10px] border transition-all ${
-                    accessoryMuscle === '' ? 'bg-neon text-bg border-neon' : 'bg-s2 border-border2 text-muted hover:text-ink'
-                  }`}
-                >
-                  NENHUM
-                </button>
-                {MUSCLE_GROUP_LIST.map(m => (
-                  <button
-                    key={m}
-                    onClick={() => setAccessoryMuscle(accessoryMuscle === m ? '' : m)}
-                    className={`px-2.5 py-1 font-mono text-[10px] border transition-all ${
-                      accessoryMuscle === m ? 'bg-amber-500/20 text-amber-400 border-amber-500/60' : 'bg-s2 border-border2 text-muted hover:text-ink'
-                    }`}
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
-            </div>
+                <div className="mb-4">
+                  <label className="section-label block mb-1">MÚSCULO ACESSÓRIO <span className="text-muted/50">(opcional)</span></label>
+                  <div className="font-mono text-[9px] text-muted/60 mb-2 leading-relaxed">
+                    Músculo recrutado neste exercício que é principal de outro exercício posterior.<br/>
+                    Reduz aquecimentos desse músculo.
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      onClick={() => setAccessoryMuscle('')}
+                      className={`px-2.5 py-1 font-mono text-[10px] border transition-all ${
+                        accessoryMuscle === '' ? 'bg-neon text-bg border-neon' : 'bg-s2 border-border2 text-muted hover:text-ink'
+                      }`}
+                    >
+                      NENHUM
+                    </button>
+                    {MUSCLE_GROUP_LIST.map(m => (
+                      <button
+                        key={m}
+                        onClick={() => setAccessoryMuscle(accessoryMuscle === m ? '' : m)}
+                        className={`px-2.5 py-1 font-mono text-[10px] border transition-all ${
+                          accessoryMuscle === m ? 'bg-amber-500/20 text-amber-400 border-amber-500/60' : 'bg-s2 border-border2 text-muted hover:text-ink'
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* save toggle */}
             <div className="flex items-center justify-between bg-s2 border border-border2 px-3 py-2.5 mb-5">
@@ -389,7 +413,16 @@ function EditExerciseModal({ exercise, onSave, onClose }) {
   useEffect(() => {
     if (!exercise.libraryId) return
     let cancelled = false
-    exerciseSource.getExercise(exercise.libraryId).then(ex => { if (!cancelled) setLibraryGif(ex?.gifUrl ?? null) })
+    exerciseSource.getExercise(exercise.libraryId).then(ex => {
+      if (cancelled || !ex) return
+      setLibraryGif(ex.gifUrl ?? null)
+      // Já linkado desde antes de abrir — músculo alvo/secundário e apelido PT vêm
+      // do cadastro da biblioteca (mesma regra do pick feito na hora). Não tem mais
+      // seletor manual nem campo de apelido pra digitar de novo aqui.
+      if (MUSCLE_GROUP_LIST.includes(ex.targetMuscles?.[0])) setMuscle(ex.targetMuscles[0])
+      if (MUSCLE_GROUP_LIST.includes(ex.secondaryMuscles?.[0])) setAccessoryMuscle(ex.secondaryMuscles[0])
+      setNamePt(ex.namePt || '')
+    })
     return () => { cancelled = true }
   }, [exercise.libraryId])
 
@@ -414,7 +447,14 @@ function EditExerciseModal({ exercise, onSave, onClose }) {
     setLibraryGif(ex.gifUrl)
     setSuggestions([])
     setShowSuggestions(false)
+    setMuscle(MUSCLE_GROUP_LIST.includes(ex.targetMuscles?.[0]) ? ex.targetMuscles[0] : MUSCLE_GROUP_LIST[0])
+    setAccessoryMuscle(MUSCLE_GROUP_LIST.includes(ex.secondaryMuscles?.[0]) ? ex.secondaryMuscles[0] : '')
+    setNamePt(ex.namePt || '')
   }
+
+  // Só esconde os seletores manuais quando o vínculo já resolveu um músculo alvo
+  // válido — exercício antigo sem taxonomia compatível continua pedindo manual.
+  const libraryMuscleKnown = !!libraryId && MUSCLE_GROUP_LIST.includes(muscle)
 
   const submit = () => {
     if (!name.trim()) return
@@ -424,6 +464,7 @@ function EditExerciseModal({ exercise, onSave, onClose }) {
       ...(accessoryMuscle ? { accessoryMuscle } : { accessoryMuscle: undefined }),
       prepSetsOverride: prepOverride,
       libraryId: libraryId || null,
+      // Apelido PT já vem cadastrado na própria biblioteca quando linkado.
       ...(libraryId ? { namePt: namePt.trim() || null } : {}),
     })
     onClose()
@@ -515,63 +556,59 @@ function EditExerciseModal({ exercise, onSave, onClose }) {
             </div>
           )}
 
-          {libraryId && (
-            <div className="mb-4">
-              <label className="section-label block mb-1">APELIDO EM PORTUGUÊS <span className="text-muted/50">(opcional)</span></label>
-              <input
-                className="w-full bg-s2 border border-border2 px-3 py-2.5 font-body text-sm text-ink focus:border-neon outline-none transition-colors"
-                placeholder={name}
-                value={namePt}
-                onChange={e => setNamePt(e.target.value)}
-              />
-              <div className="font-mono text-[9px] text-muted/60 mt-1.5 leading-relaxed">
-                Exibido no lugar do nome em inglês durante o treino. Nunca traduzido automaticamente.
+          {libraryMuscleKnown ? (
+            <div className="mb-5 font-mono text-[10px] text-muted tracking-wider bg-s2 border border-border2 px-3 py-2.5 space-y-0.5">
+              <div>MÚSCULO (DA BIBLIOTECA): <span className="text-neon">{muscle}</span>
+                {accessoryMuscle && <> · ACESSÓRIO: <span className="text-amber-400">{accessoryMuscle}</span></>}
               </div>
+              {namePt && <div>APELIDO: <span className="text-ink">{namePt}</span></div>}
             </div>
+          ) : (
+            <>
+              <div className="mb-4">
+                <label className="section-label block mb-2">GRUPAMENTO MUSCULAR</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {MUSCLE_GROUP_LIST.map(m => (
+                    <button
+                      key={m}
+                      onClick={() => setMuscle(m)}
+                      className={`px-2.5 py-1 font-mono text-[10px] border transition-all ${
+                        muscle === m ? 'bg-neon text-bg border-neon' : 'bg-s2 border-border2 text-muted hover:text-ink'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-5">
+                <label className="section-label block mb-1">MÚSCULO ACESSÓRIO <span className="text-muted/50">(opcional)</span></label>
+                <div className="font-mono text-[9px] text-muted/60 mb-2">Músculo recrutado que é principal em outro exercício posterior.</div>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    onClick={() => setAccessoryMuscle('')}
+                    className={`px-2.5 py-1 font-mono text-[10px] border transition-all ${
+                      accessoryMuscle === '' ? 'bg-neon text-bg border-neon' : 'bg-s2 border-border2 text-muted hover:text-ink'
+                    }`}
+                  >
+                    NENHUM
+                  </button>
+                  {MUSCLE_GROUP_LIST.map(m => (
+                    <button
+                      key={m}
+                      onClick={() => setAccessoryMuscle(accessoryMuscle === m ? '' : m)}
+                      className={`px-2.5 py-1 font-mono text-[10px] border transition-all ${
+                        accessoryMuscle === m ? 'bg-amber-500/20 text-amber-400 border-amber-500/60' : 'bg-s2 border-border2 text-muted hover:text-ink'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
-
-          <div className="mb-4">
-            <label className="section-label block mb-2">GRUPAMENTO MUSCULAR</label>
-            <div className="flex flex-wrap gap-1.5">
-              {MUSCLE_GROUP_LIST.map(m => (
-                <button
-                  key={m}
-                  onClick={() => setMuscle(m)}
-                  className={`px-2.5 py-1 font-mono text-[10px] border transition-all ${
-                    muscle === m ? 'bg-neon text-bg border-neon' : 'bg-s2 border-border2 text-muted hover:text-ink'
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mb-5">
-            <label className="section-label block mb-1">MÚSCULO ACESSÓRIO <span className="text-muted/50">(opcional)</span></label>
-            <div className="font-mono text-[9px] text-muted/60 mb-2">Músculo recrutado que é principal em outro exercício posterior.</div>
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                onClick={() => setAccessoryMuscle('')}
-                className={`px-2.5 py-1 font-mono text-[10px] border transition-all ${
-                  accessoryMuscle === '' ? 'bg-neon text-bg border-neon' : 'bg-s2 border-border2 text-muted hover:text-ink'
-                }`}
-              >
-                NENHUM
-              </button>
-              {MUSCLE_GROUP_LIST.map(m => (
-                <button
-                  key={m}
-                  onClick={() => setAccessoryMuscle(accessoryMuscle === m ? '' : m)}
-                  className={`px-2.5 py-1 font-mono text-[10px] border transition-all ${
-                    accessoryMuscle === m ? 'bg-amber-500/20 text-amber-400 border-amber-500/60' : 'bg-s2 border-border2 text-muted hover:text-ink'
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          </div>
 
           <div className="mb-5">
             <label className="section-label block mb-1">SÉRIES DE PREPARO</label>
