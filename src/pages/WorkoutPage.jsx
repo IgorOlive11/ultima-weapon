@@ -1682,21 +1682,11 @@ function ActiveWorkout() {
         </button>
       )}
 
-      {/* trilho único (reel): altura de cada card medida por conteúdo, nada é cortado */}
-      <div
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        onWheel={handleWheel}
-        style={{
-          touchAction: 'none',
-          WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent)',
-          maskImage: 'linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent)',
-        }}
-        className="relative flex-1 min-h-0 overflow-hidden"
-      >
-        {/* dica discreta — só na primeira vez */}
+      {/* trilho único (reel): altura de cada card medida por conteúdo, nada é cortado.
+          Toasts (dica + "atualizado") ficam FORA da div com mask-image logo abaixo —
+          mask-image se aplica a toda a subárvore renderizada, então um filho não
+          escapa dela com z-index; precisa ser irmão pra aparecer por cima de verdade. */}
+      <div className="relative flex-1 min-h-0">
         <AnimatePresence>
           {showStackHint && (
             <motion.div
@@ -1725,6 +1715,19 @@ function ActiveWorkout() {
           )}
         </AnimatePresence>
 
+        <div
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          onWheel={handleWheel}
+          style={{
+            touchAction: 'none',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent)',
+            maskImage: 'linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent)',
+          }}
+          className="relative h-full overflow-hidden"
+        >
         {steps.map((s, i) => {
           const offsetPx = (centers[i] - centers[viewingStepIdx]) + dragY
           const ad = Math.abs(offsetPx) / REEL_DECAY
@@ -1758,6 +1761,7 @@ function ActiveWorkout() {
             </div>
           )
         })}
+        </div>
       </div>
 
       {/* rest timer — always visible when resting, regardless of viewing step */}
