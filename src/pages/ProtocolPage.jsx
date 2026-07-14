@@ -75,6 +75,9 @@ function AddExerciseModal({ onAdd, onClose }) {
   const [libraryGif, setLibraryGif] = useState(null)
   const [libraryNamePt, setLibraryNamePt] = useState(null)
   const [showLibDetail, setShowLibDetail] = useState(false)
+  // Buscar e linkar é o caminho padrão agora — os seletores manuais só aparecem se
+  // o usuário pedir explicitamente (exercício de verdade novo, sem match na lib).
+  const [manualMuscleMode, setManualMuscleMode] = useState(false)
 
   useEffect(() => {
     if (libraryId) { setSuggestions([]); return } // já linkado — não sugere mais
@@ -126,9 +129,10 @@ function AddExerciseModal({ onAdd, onClose }) {
   // Só esconde os seletores manuais quando o vínculo já resolveu um músculo alvo
   // válido — exercício antigo sem taxonomia compatível continua pedindo manual.
   const libraryMuscleKnown = !!libraryId && MUSCLE_GROUP_LIST.includes(muscle)
+  const needsMuscleInput   = !libraryMuscleKnown && !manualMuscleMode
 
   const submit = () => {
-    if (!name.trim()) return
+    if (!name.trim() || needsMuscleInput) return
     const ex = {
       name: name.trim(),
       muscle,
@@ -289,7 +293,7 @@ function AddExerciseModal({ onAdd, onClose }) {
                   <LuImage size={14}/>
                 </button>
                 <button
-                  onClick={() => { setLibraryId(null); setLibraryGif(null) }}
+                  onClick={() => { setLibraryId(null); setLibraryGif(null); setManualMuscleMode(false) }}
                   className="text-muted hover:text-red-400 p-1 flex-shrink-0"
                   title="Remover vínculo"
                 >
@@ -304,6 +308,16 @@ function AddExerciseModal({ onAdd, onClose }) {
                   {accessoryMuscle && <> · ACESSÓRIO: <span className="text-amber-400">{accessoryMuscle}</span></>}
                 </div>
                 {libraryNamePt && <div>APELIDO: <span className="text-ink">{libraryNamePt}</span></div>}
+              </div>
+            ) : !manualMuscleMode ? (
+              <div className="mb-4 font-mono text-[10px] text-muted/60 tracking-wider text-center border border-dashed border-border2 px-3 py-3 leading-relaxed">
+                Busque o nome acima pra vincular à biblioteca (traz músculo e apelido sozinho).
+                <button
+                  onClick={() => setManualMuscleMode(true)}
+                  className="block mx-auto mt-2 text-neon hover:underline"
+                >
+                  Não achei — cadastrar músculo manualmente
+                </button>
               </div>
             ) : (
               <>
@@ -377,7 +391,7 @@ function AddExerciseModal({ onAdd, onClose }) {
 
             <button
               onClick={submit}
-              disabled={!name.trim()}
+              disabled={!name.trim() || needsMuscleInput}
               className="w-full py-3 font-display text-sm tracking-[0.2em] bg-neon text-bg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
             >
               ADICIONAR EXERCÍCIO
@@ -409,6 +423,10 @@ function EditExerciseModal({ exercise, onSave, onClose }) {
   const [suggestions, setSuggestions]     = useState([])
   const [suggestLoading, setSuggestLoading] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
+  // Exercício que já existia sem vínculo (de antes desta feature) mantém os
+  // seletores manuais visíveis de cara — só um exercício novo (Add) força
+  // buscar-e-linkar primeiro.
+  const [manualMuscleMode, setManualMuscleMode] = useState(!exercise.libraryId)
 
   useEffect(() => {
     if (!exercise.libraryId) return
@@ -455,9 +473,10 @@ function EditExerciseModal({ exercise, onSave, onClose }) {
   // Só esconde os seletores manuais quando o vínculo já resolveu um músculo alvo
   // válido — exercício antigo sem taxonomia compatível continua pedindo manual.
   const libraryMuscleKnown = !!libraryId && MUSCLE_GROUP_LIST.includes(muscle)
+  const needsMuscleInput   = !libraryMuscleKnown && !manualMuscleMode
 
   const submit = () => {
-    if (!name.trim()) return
+    if (!name.trim() || needsMuscleInput) return
     onSave({
       name: name.trim(),
       muscle,
@@ -547,7 +566,7 @@ function EditExerciseModal({ exercise, onSave, onClose }) {
                 <LuImage size={14}/>
               </button>
               <button
-                onClick={() => { setLibraryId(null); setLibraryGif(null) }}
+                onClick={() => { setLibraryId(null); setLibraryGif(null); setManualMuscleMode(false) }}
                 className="text-muted hover:text-red-400 p-1 flex-shrink-0"
                 title="Remover vínculo"
               >
@@ -562,6 +581,16 @@ function EditExerciseModal({ exercise, onSave, onClose }) {
                 {accessoryMuscle && <> · ACESSÓRIO: <span className="text-amber-400">{accessoryMuscle}</span></>}
               </div>
               {namePt && <div>APELIDO: <span className="text-ink">{namePt}</span></div>}
+            </div>
+          ) : !manualMuscleMode ? (
+            <div className="mb-5 font-mono text-[10px] text-muted/60 tracking-wider text-center border border-dashed border-border2 px-3 py-3 leading-relaxed">
+              Busque o nome acima pra vincular à biblioteca (traz músculo e apelido sozinho).
+              <button
+                onClick={() => setManualMuscleMode(true)}
+                className="block mx-auto mt-2 text-neon hover:underline"
+              >
+                Não achei — cadastrar músculo manualmente
+              </button>
             </div>
           ) : (
             <>
@@ -640,7 +669,8 @@ function EditExerciseModal({ exercise, onSave, onClose }) {
 
           <button
             onClick={submit}
-            className="w-full py-3 bg-neon text-bg font-display text-sm tracking-[0.2em] hover:opacity-90 transition-opacity"
+            disabled={needsMuscleInput}
+            className="w-full py-3 bg-neon text-bg font-display text-sm tracking-[0.2em] hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
           >
             SALVAR
           </button>
