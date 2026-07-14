@@ -316,7 +316,7 @@ function AddExerciseModal({ onAdd, onClose }) {
                   onClick={() => setManualMuscleMode(true)}
                   className="block mx-auto mt-2 text-neon hover:underline"
                 >
-                  Não achei — cadastrar músculo manualmente
+                  Não achei — cadastrar exercício manualmente
                 </button>
               </div>
             ) : (
