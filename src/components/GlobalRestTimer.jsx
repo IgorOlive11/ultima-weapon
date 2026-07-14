@@ -97,14 +97,14 @@ export default function GlobalRestTimer() {
                   disabled={isDone}
                   className="px-1.5 py-0.5 border border-border2 font-mono text-[9px] text-muted tracking-wider hover:text-ink hover:border-neon/50 transition-colors disabled:opacity-30 disabled:pointer-events-none"
                 >
-                  +15S
+                  +15
                 </button>
                 <button
                   onClick={() => adjustRestTimer(-15)}
                   disabled={isDone}
                   className="px-1.5 py-0.5 border border-border2 font-mono text-[9px] text-muted tracking-wider hover:text-ink hover:border-neon/50 transition-colors disabled:opacity-30 disabled:pointer-events-none"
                 >
-                  -15S
+                  -15
                 </button>
               </div>
 
@@ -112,14 +112,6 @@ export default function GlobalRestTimer() {
               <div className="relative z-10 flex-1">
                 <div className="font-mono text-[10px] text-muted tracking-[0.2em] uppercase">
                   {isDone ? 'DESCANSADO — BOA SORTE' : 'DESCANSO'}
-                </div>
-                <div className="h-1.5 bg-border1 mt-1 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full"
-                    animate={{ width: `${pct * 100}%` }}
-                    transition={{ duration: 1, ease: 'linear' }}
-                    style={{ background: barColor }}
-                  />
                 </div>
               </div>
 

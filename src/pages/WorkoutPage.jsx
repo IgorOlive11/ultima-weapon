@@ -1181,7 +1181,7 @@ function InlineRestTimer({ onNext }) {
           disabled={isDone}
           className="relative z-10 flex-shrink-0 px-2 py-1.5 border border-border2 font-mono text-[10px] text-muted tracking-wider hover:text-ink hover:border-neon/50 transition-colors disabled:opacity-30 disabled:pointer-events-none"
         >
-          -15S
+          -15
         </button>
 
         <div className="relative z-10">
@@ -1203,17 +1203,10 @@ function InlineRestTimer({ onNext }) {
           disabled={isDone}
           className="relative z-10 flex-shrink-0 px-2 py-1.5 border border-border2 font-mono text-[10px] text-muted tracking-wider hover:text-ink hover:border-neon/50 transition-colors disabled:opacity-30 disabled:pointer-events-none"
         >
-          +15S
+          +15
         </button>
 
-        <div className="relative z-10 flex-1 h-2 bg-border1 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full rounded-full"
-            animate={{ width: `${pct * 100}%` }}
-            transition={{ duration: 1, ease: 'linear' }}
-            style={{ background: barColor }}
-          />
-        </div>
+        <div className="relative z-10 flex-1" />
 
         <button
           onClick={handleNext}
@@ -1353,16 +1346,12 @@ function ActiveWorkout() {
     prevCurIdxRef.current = currentStepIdx
   }, [currentStepIdx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Dica discreta de navegação (só na primeira vez que o usuário vê o reel)
+  // Dica discreta de navegação (só na primeira vez) — fica até o usuário realmente
+  // rolar o reel (commit), não some sozinha num timer.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     if (stackNavHintSeen) return
     setShowStackHint(true)
-    const t = setTimeout(() => {
-      setShowStackHint(false)
-      setStackNavHintSeen(true)
-    }, 4000)
-    return () => clearTimeout(t)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Show gamification popup when landing on a WEIGHT_QUESTION step
@@ -1493,6 +1482,11 @@ function ActiveWorkout() {
     if (next >= 0 && next <= steps.length - 1) setViewingStepIdx(next)
     setDragY(0)
     setAnimating(true)
+    // usuário rolou de verdade — dica cumpriu o papel, não precisa mais aparecer
+    if (showStackHint) {
+      setShowStackHint(false)
+      setStackNavHintSeen(true)
+    }
   }
 
   const returnToCurrent = () => {
@@ -1723,8 +1717,12 @@ function ActiveWorkout() {
           onWheel={handleWheel}
           style={{
             touchAction: 'none',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent)',
-            maskImage: 'linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent)',
+            // Fade mais suave: só a franja bem na borda (4%) some de vez — antes 12%
+            // cortava tanto que o card seguinte (com altura variável por tipo/conteúdo)
+            // às vezes ficava invisível de tão perto da borda, dando impressão de que
+            // não havia próxima série.
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 4%, #000 96%, transparent)',
+            maskImage: 'linear-gradient(to bottom, transparent, #000 4%, #000 96%, transparent)',
           }}
           className="relative h-full overflow-hidden"
         >
