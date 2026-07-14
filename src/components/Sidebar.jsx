@@ -9,7 +9,6 @@ import { useStore } from '../hooks/useStore'
 const BASE_NAV = [
   { id: 'workout',  label: 'TREINO',        Icon: LuSwords },
   { id: 'protocol', label: 'PROTOCOLO',     Icon: LuClipboardList },
-  { id: 'library',  label: 'EXERCÍCIOS',    Icon: LuDumbbell },
   { id: 'history',  label: 'HISTÓRICO',     Icon: LuTrendingUp },
   { id: 'settings', label: 'CONFIGURAÇÕES', Icon: LuSlidersHorizontal },
 ]
@@ -41,6 +40,7 @@ export default function Sidebar() {
     nav.push({ id: 'trainer', label: 'ALUNOS', Icon: LuUsers })
   }
   if (authUser?.role === 'admin') {
+    nav.push({ id: 'library', label: 'EXERCÍCIOS', Icon: LuDumbbell })
     nav.push({ id: 'admin', label: 'ADMIN', Icon: LuShield })
   }
 
