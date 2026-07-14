@@ -10,7 +10,10 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 values ('exercises', 'exercises', true, 10485760, array['image/gif'])
 on conflict (id) do nothing;
 
-alter table storage.objects enable row level security;
+-- SEM "alter table storage.objects enable row level security" aqui de propósito:
+-- essa tabela pertence ao role interno supabase_storage_admin, não ao "postgres" do
+-- SQL Editor — o ALTER dá 42501 (must be owner). RLS já vem habilitado por padrão
+-- em storage.objects em todo projeto Supabase, então a linha era redundante mesmo.
 
 -- Leitura pública (conteúdo de referência, igual exercises_library) — bucket já é
 -- público pra URL direta, mas a policy cobre também list()/download() via API.
