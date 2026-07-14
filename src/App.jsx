@@ -7,6 +7,7 @@ import GlobalRestTimer from './components/GlobalRestTimer'
 import ViewingAsBanner from './components/ViewingAsBanner'
 import AdminFeedbackButton from './components/AdminFeedbackButton'
 import NeonGifFilters from './components/NeonGifFilters'
+import ErrorBoundary from './components/ErrorBoundary'
 import WorkoutPage from './pages/WorkoutPage'
 import ProtocolPage from './pages/ProtocolPage'
 import ExerciseLibraryPage from './pages/ExerciseLibraryPage'
@@ -49,13 +50,15 @@ export default function App() {
         className="flex-1 overflow-y-auto overflow-x-hidden"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
-        {activeTab === 'workout'  && <WorkoutPage />}
-        {activeTab === 'protocol' && <ProtocolPage />}
-        {activeTab === 'library'  && <ExerciseLibraryPage />}
-        {activeTab === 'history'  && <HistoryPage />}
-        {activeTab === 'settings' && <SettingsPage />}
-        {activeTab === 'trainer'  && <TrainerPage />}
-        {activeTab === 'admin'    && <AdminPage />}
+        <ErrorBoundary key={activeTab}>
+          {activeTab === 'workout'  && <WorkoutPage />}
+          {activeTab === 'protocol' && <ProtocolPage />}
+          {activeTab === 'library'  && <ExerciseLibraryPage />}
+          {activeTab === 'history'  && <HistoryPage />}
+          {activeTab === 'settings' && <SettingsPage />}
+          {activeTab === 'trainer'  && <TrainerPage />}
+          {activeTab === 'admin'    && <AdminPage />}
+        </ErrorBoundary>
       </main>
       <GlobalRestTimer />
       <AdminFeedbackButton />
