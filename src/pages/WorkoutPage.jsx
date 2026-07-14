@@ -159,8 +159,8 @@ function WorkingSetShell({ step, typeInfo, label, workingWeight, ger, children }
       <div className="h-1 flex-shrink-0" style={{ background: typeInfo.color }} />
       <div className="p-3 flex-1 min-h-0 overflow-hidden flex flex-col">
         {step.muscle && <div className="font-mono text-[9px] text-muted tracking-[0.22em] mb-0.5">{step.muscle}</div>}
-        <div className="flex items-center gap-1.5 mb-1">
-          <div className="font-display text-base tracking-wider text-ink leading-none truncate">
+        <div className="flex items-start gap-1.5 mb-1">
+          <div className="font-display text-base tracking-wider text-ink leading-tight break-words min-w-0 flex-1">
             {step.exerciseNamePt || step.exerciseName}
           </div>
           <ViewExerciseButton libraryId={step.exerciseLibraryId} />
@@ -425,8 +425,8 @@ function WeightQuestionCard({ step, onConfirm, history, isLocked, initialWeight 
 
       <div className="p-4 flex-1 min-h-0 overflow-hidden flex flex-col">
         <div className="font-mono text-[10px] text-muted tracking-[0.25em] mb-1">{step.muscle}</div>
-        <div className="flex items-center gap-1.5 mb-1">
-          <div className="font-display text-lg tracking-wider text-ink truncate">
+        <div className="flex items-start gap-1.5 mb-1">
+          <div className="font-display text-lg tracking-wider text-ink leading-tight break-words min-w-0 flex-1">
             {step.exerciseNamePt || step.exerciseName}
           </div>
           <ViewExerciseButton libraryId={step.exerciseLibraryId} />
