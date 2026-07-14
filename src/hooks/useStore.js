@@ -64,6 +64,16 @@ function defaultUserProfile() {
 }
 
 const syncTimers = {}
+
+// Guarda de last-write-wins silencioso (3.1): último updated_at CONHECIDO por
+// (userId, section) — visto num hydrate ou gravado por este mesmo processo/aba.
+// Se o servidor estiver com um updated_at mais novo que o conhecido na hora de
+// gravar, é sinal de que outra aba/dispositivo escreveu no meio do caminho — a
+// gravação é recusada em vez de sobrescrever cego (ver scheduleSyncSection).
+// Em memória de propósito (é bookkeeping de sincronização, não dado do usuário).
+const lastSeenUpdatedAt = {}
+function sectionKey(userId, section) { return `${userId}:${section}` }
+
 async function syncStudentSection(targetUserId, section, capturedData) {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session?.access_token) {
@@ -139,11 +149,43 @@ function scheduleSyncSection(section, get) {
     if (isStudentSave) {
       await syncStudentSection(targetUserId, section, capturedData)
     } else {
+      const key = sectionKey(targetUserId, section)
+      const knownUpdatedAt = lastSeenUpdatedAt[key] ?? null
+
+      // Só checa contra o servidor se já temos uma baseline conhecida (hydrate ou
+      // gravação anterior nesta aba) — sem isso não há com o que comparar, e a 1a
+      // sincronização da sessão segue gravando normal (ver comentário no hydrate).
+      if (knownUpdatedAt != null) {
+        const { data: existingRow, error: readErr } = await supabase
+          .from('user_data')
+          .select('updated_at')
+          .eq('user_id', targetUserId)
+          .eq('section', section)
+          .maybeSingle()
+
+        if (!readErr && existingRow?.updated_at) {
+          const serverUpdatedAt = new Date(existingRow.updated_at).getTime()
+          if (serverUpdatedAt > knownUpdatedAt) {
+            // Outra aba/dispositivo gravou depois da última vez que vimos esta
+            // seção — nosso capturedData é potencialmente mais velho. Recusa
+            // sobrescrever cego (last-write-wins silencioso é perda de dado real
+            // num app de treino). Atualiza a baseline pro que o servidor tem agora,
+            // pra não ficar repetindo o aviso pra sempre nas próximas tentativas.
+            logWarn('[sync] recusado — servidor mais novo que o conhecido pra', section,
+              '| conhecido=', new Date(knownUpdatedAt).toISOString(), '| servidor=', existingRow.updated_at)
+            lastSeenUpdatedAt[key] = serverUpdatedAt
+            return
+          }
+        }
+      }
+
+      const nowIso = new Date().toISOString()
       const { error } = await supabase.from('user_data').upsert(
-        { user_id: targetUserId, section, data: capturedData, updated_at: new Date().toISOString() },
+        { user_id: targetUserId, section, data: capturedData, updated_at: nowIso },
         { onConflict: 'user_id,section' }
       )
       if (error) logError('[sync] próprio upsert falhou:', error.message)
+      else lastSeenUpdatedAt[key] = new Date(nowIso).getTime()
     }
   }, 1500)
 }
@@ -347,9 +389,17 @@ export const useStore = create(
         if (isOwnData) {
           const { data, error } = await supabase
             .from('user_data')
-            .select('section, data')
+            .select('section, data, updated_at')
             .eq('user_id', userId)
-          if (!error && data?.length) rows = data
+          if (!error && data?.length) {
+            rows = data
+            // Semeia a guarda de last-write-wins (3.1) com o que o servidor tinha
+            // agora — sem isso, a 1a sincronização desta aba pra cada seção não tem
+            // baseline pra comparar (segue gravando normal até a 2a sync em diante).
+            for (const row of data) {
+              if (row.updated_at) lastSeenUpdatedAt[sectionKey(userId, row.section)] = new Date(row.updated_at).getTime()
+            }
+          }
         } else {
           // dados de aluno — usa edge function com service role (bypassa RLS)
           const { data: { session } } = await supabase.auth.getSession()
