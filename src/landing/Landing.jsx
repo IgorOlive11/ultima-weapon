@@ -6,6 +6,7 @@ import {
   PiChartLineUpBold,
   PiArrowRightBold,
 } from 'react-icons/pi'
+import AsciiRadar from '@/components/originkit/ui/ascii-radar'
 
 /* ────────────────────────────────────────────────────────────────────────────
    Landing de teste. Aplicacao do skill design-taste-frontend numa superficie
@@ -230,6 +231,42 @@ export default function Landing() {
             </div>
           </div>
         </Reveal>
+      </section>
+
+      {/* ── RADAR ── componente Originkit (ascii-radar). Cores DOOM, 1 acento.
+           Sem prop de pausa, entao com reduced-motion troca por um quadro estatico. ── */}
+      <section className="border-t border-border1 bg-bg py-16 md:py-24">
+        <div className="mx-auto max-w-6xl px-4">
+          <Reveal>
+            <div className="lp-bracket relative h-[300px] border border-border2 bg-bg md:h-[420px]">
+              {reduce ? (
+                <div className="flex h-full items-center justify-center">
+                  <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-[#8a8a8a]">
+                    radar off / movimento reduzido
+                  </span>
+                </div>
+              ) : (
+                <AsciiRadar
+                  background="#080808"
+                  glyphColor="#FF1414"
+                  ringColor="#FF1414"
+                  density={45}
+                  glyphSize={58}
+                  speed={42}
+                  ringSpeed={46}
+                />
+              )}
+              <div className="pointer-events-none absolute left-4 top-4 font-mono text-[10px] uppercase tracking-[0.3em] text-neon">
+                Radar / varredura
+              </div>
+              {!reduce && (
+                <div className="pointer-events-none absolute bottom-4 right-4 font-mono text-[10px] uppercase tracking-[0.2em] text-[#8a8a8a]">
+                  toque pra pingar
+                </div>
+              )}
+            </div>
+          </Reveal>
+        </div>
       </section>
 
       {/* ── ESCALA GER ── faixa horizontal, imagens reais (pixel art do proprio app) ── */}

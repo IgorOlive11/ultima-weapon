@@ -4,6 +4,10 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  // alias @ -> src (esperado por componentes Originkit; ver src/components/originkit)
+  resolve: {
+    alias: { '@': resolve(__dirname, 'src') },
+  },
   // multi-page: app principal (index.html) + landing de teste (landing.html)
   build: {
     rollupOptions: {
