@@ -144,3 +144,17 @@
   }
   .animate-pulse-border { animation: pulseBorder 1.2s ease infinite; }
 }
+
+/* Respeita prefers-reduced-motion (skill design-taste-frontend, §6.B — não-negociável).
+   Neutraliza os loops infinitos (doom-face bob, pulse-border) e encurta transições/
+   animações hand-rolled. framer-motion é JS e não é coberto aqui — ver useReducedMotion
+   nos componentes que usam <motion.*> (WorkoutPage, GlobalRestTimer, TutorialModal, etc). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .doom-face-anim { animation: none !important; }
+}

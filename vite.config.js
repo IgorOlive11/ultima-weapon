@@ -1,8 +1,18 @@
+import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  // multi-page: app principal (index.html) + landing de teste (landing.html)
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        landing: resolve(__dirname, 'landing.html'),
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({
